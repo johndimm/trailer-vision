@@ -777,6 +777,12 @@ const TrailerPlayer = memo(function TrailerPlayer({
       // postMessage targets line up. Omitting it on localhost often triggers www-widgetapi errors.
       const origin =
         typeof window !== "undefined" ? window.location.origin : undefined;
+      const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+      const allowYtNativeFs =
+        /iPhone|iPad|iPod/i.test(ua) ||
+        (typeof navigator !== "undefined" &&
+          navigator.platform === "MacIntel" &&
+          navigator.maxTouchPoints > 1);
       playerInstance = new window.YT.Player(mountEl, {
         videoId: videoIdRef.current,
         width: "100%",
@@ -789,7 +795,7 @@ const TrailerPlayer = memo(function TrailerPlayer({
           modestbranding: 1,
           playsinline: 1,
           enablejsapi: 1,
-          fs: 0,
+          fs: allowYtNativeFs ? 1 : 0,
           ...(origin ? { origin } : {}),
         },
         events: {
@@ -1481,6 +1487,51 @@ const ChannelsToolbar = memo(function ChannelsToolbar({
   );
 });
 
+function isIosTouchDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPad|iPod/i.test(ua)) return true;
+  return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+}
+
+async function requestFullscreenPolyfill(el: HTMLElement): Promise<boolean> {
+  try {
+    if (typeof el.requestFullscreen === "function") {
+      await el.requestFullscreen();
+      return true;
+    }
+  } catch {
+    /* fall through */
+  }
+  const wk = (el as unknown as { webkitRequestFullscreen?: () => void }).webkitRequestFullscreen;
+  if (typeof wk === "function") {
+    try {
+      wk.call(el);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+async function exitFullscreenPolyfill(): Promise<void> {
+  try {
+    if (typeof document.exitFullscreen === "function") {
+      await document.exitFullscreen();
+      return;
+    }
+  } catch {
+    /* fall through */
+  }
+  const d = document as Document & { webkitExitFullscreen?: () => void };
+  try {
+    d.webkitExitFullscreen?.();
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function Home() {
   /** Persisted lists — refs only on this page (nothing in the tree reads them for render). Updates skip full-tree re-renders. */
   const historyRef = useRef<RatingEntry[]>([]);
@@ -1511,6 +1562,8 @@ export default function Home() {
   const [llm, setLlm] = useState<string>(() => loadSetting("llm", "deepseek"));
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isTrailerFullscreen, setIsTrailerFullscreen] = useState(false);
+  const [pseudoTrailerFullscreen, setPseudoTrailerFullscreen] = useState(false);
+  const trailerFsUi = isTrailerFullscreen || pseudoTrailerFullscreen;
   const [shareToast, setShareToast] = useState<"copying" | "copied" | null>(null);
   const [careerMode, setCareerMode] = useState<CareerMode | null>(null);
   const [careerLoading, setCareerLoading] = useState(false);
@@ -1644,7 +1697,7 @@ export default function Home() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setLightboxUrl(null); }
+      if (e.key === "Escape") { setLightboxUrl(null); setPseudoTrailerFullscreen(false); }
       if (e.key === "ArrowRight") {
         const active = document.activeElement;
         if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
@@ -1662,6 +1715,43 @@ export default function Home() {
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
+
+  const exitTrailerFullscreen = useCallback(async () => {
+    if (pseudoTrailerFullscreen) {
+      setPseudoTrailerFullscreen(false);
+      return;
+    }
+    await exitFullscreenPolyfill();
+  }, [pseudoTrailerFullscreen]);
+
+  const enterTrailerFullscreen = useCallback(async () => {
+    const root = videoContainerRef.current;
+    if (!root) return;
+    if (isIosTouchDevice()) {
+      setPseudoTrailerFullscreen(true);
+      return;
+    }
+    setPseudoTrailerFullscreen(false);
+    try {
+      const ok = await requestFullscreenPolyfill(root);
+      if (!ok) setPseudoTrailerFullscreen(true);
+    } catch {
+      setPseudoTrailerFullscreen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!pseudoTrailerFullscreen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [pseudoTrailerFullscreen]);
+
+  useEffect(() => {
+    setPseudoTrailerFullscreen(false);
+  }, [current?.title, current?.trailerKey]);
 
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
@@ -1682,7 +1772,7 @@ export default function Home() {
   }, [currentTrailerKey, current?.title]);
 
   useLayoutEffect(() => {
-    if (!careerMode || displayMode !== "trailers" || careerLoading || isTrailerFullscreen) return;
+    if (!careerMode || displayMode !== "trailers" || careerLoading || trailerFsUi) return;
     const el = careerTrailerBlockRef.current;
     if (!el) return;
     const h = Math.round(el.getBoundingClientRect().height);
@@ -1691,7 +1781,7 @@ export default function Home() {
     careerMode,
     displayMode,
     careerLoading,
-    isTrailerFullscreen,
+    trailerFsUi,
     current?.title,
     current?.trailerKey,
     current?.posterUrl,
@@ -2848,7 +2938,12 @@ export default function Home() {
                   }
                 >
                   {current.trailerKey ? (
-                    <div ref={videoContainerRef} className="relative bg-black">
+                    <div
+                      ref={videoContainerRef}
+                      className={`flex min-h-0 flex-col bg-black ${
+                        pseudoTrailerFullscreen ? "fixed inset-0 z-[70] overflow-y-auto overscroll-y-contain" : "relative"
+                      }`}
+                    >
                       <TrailerPlayer
                         videoId={current.trailerKey}
                         onProgress={setWatchFrac}
@@ -2856,7 +2951,7 @@ export default function Home() {
                         resumeFromFraction={trailerResumeByChannel[activeChannelId]?.[canonicalTitleKey(current.title)]}
                       />
                       {/* Fullscreen: overlay Next + exit */}
-                      {isTrailerFullscreen && (
+                      {trailerFsUi && (
                         <>
                           <button
                             type="button"
@@ -2879,7 +2974,7 @@ export default function Home() {
                           <button
                             type="button"
                             onPointerDown={(e) => e.preventDefault()}
-                            onClick={() => document.exitFullscreen?.()}
+                            onClick={() => void exitTrailerFullscreen()}
                             className="fixed top-5 left-5 z-50 rounded-xl bg-black/50 p-2.5 text-white/70 hover:bg-black/80 hover:text-white transition-colors select-none"
                             title="Exit fullscreen"
                             aria-label="Exit fullscreen"
@@ -2915,7 +3010,7 @@ export default function Home() {
                       </div>
                     </div>
                   )}
-                  {!isTrailerFullscreen && (
+                  {!trailerFsUi && (
                     <MovieRatingBlock
                       layout="trailerBar"
                       passCurrentCardStable={passCurrentCardStable}
@@ -2941,11 +3036,11 @@ export default function Home() {
                           />
                         </div>
                         <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 sm:pt-0.5">
-                          {!isTrailerFullscreen && (
+                          {!trailerFsUi && (
                             <button
                               type="button"
                               onPointerDown={(e) => e.preventDefault()}
-                              onClick={() => videoContainerRef.current?.requestFullscreen?.()}
+                              onClick={() => void enterTrailerFullscreen()}
                               className="shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
                               title="Enter fullscreen — Next button available in fullscreen"
                               aria-label="Enter fullscreen"
@@ -2988,7 +3083,7 @@ export default function Home() {
                       />
                     )}
                   </div>
-                  {current.trailerKey && current.posterUrl && !isTrailerFullscreen && (
+                  {current.trailerKey && current.posterUrl && !trailerFsUi && (
                     <div className="flex w-full min-w-0 justify-center border-t border-zinc-800 bg-zinc-950 px-3 pb-4 pt-3 sm:px-6 sm:pb-5 sm:pt-3">
                       <button
                         type="button"

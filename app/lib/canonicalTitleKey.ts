@@ -3,6 +3,7 @@
  * (e.g. Se7en vs Seven; US "The Bicycle Thief" vs international "The Bicycle Thieves").
  */
 export function canonicalTitleKey(title: string): string {
+  if (!title || typeof title !== "string") return "";
   const s = title
     .toLowerCase()
     .normalize("NFKD")
