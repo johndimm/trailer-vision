@@ -19,6 +19,7 @@ import {
   mergeFactoryChannelsAndQueues,
 } from "./lib/factoryChannels";
 import { canonicalTitleKey } from "./lib/canonicalTitleKey";
+import TrailerVisionConstellationsEmbed from "./components/TrailerVisionConstellationsEmbed";
 import { pushUnseenInterestEntry, type UnseenInterestEntry } from "./lib/unseenInterestLog";
 
 function migrateRatingEntry(e: RatingEntry): RatingEntry {
@@ -1613,6 +1614,28 @@ export default function Home() {
     return ch?.freeText ?? "";
   }, [activeChannelId, userRequest, channels]);
 
+  const constellationsNowPlayingKey = useMemo((): string | null => {
+    if (!current) return null;
+    const person = careerMode?.personName?.trim() ?? "";
+    return `${activeChannelId}::${person}::${current.title}::${current.type}`;
+  }, [activeChannelId, careerMode, current]);
+
+  const constellationsAutoExpand = useMemo((): string[] => {
+    if (!current) return [];
+    const out: string[] = [current.title];
+    const d = current.director?.replace(/\s+/g, " ").trim();
+    if (d) out.push(d);
+    return out;
+  }, [current]);
+
+  const constellationsExternalSearch = useMemo((): { term: string; id: string | number } | null => {
+    if (!current) return null;
+    const t = current.title.replace(/\s+/g, " ").trim();
+    if (!t) return null;
+    const ch = (activeChannelId && activeChannelId.length > 0 ? activeChannelId : "all").toString();
+    return { term: t, id: `trailer:${ch}:${canonicalTitleKey(t)}` };
+  }, [activeChannelId, current]);
+
   const updateChannelPrompt = useCallback((value: string) => {
     if (activeChannelId === "all") {
       setUserRequest(value);
@@ -3159,6 +3182,14 @@ export default function Home() {
             </div>
           ) : null}
         </div>
+
+        {/* Constellations graph — below queue/up next */}
+        <TrailerVisionConstellationsEmbed
+          nowPlayingKey={constellationsNowPlayingKey}
+          autoExpandMatchTitles={constellationsAutoExpand}
+          externalSearch={constellationsExternalSearch}
+          onNewChannelFromNode={() => {}}
+        />
 
         {/* Taste profile card */}
         <div className="bg-zinc-950 rounded-2xl border border-zinc-800 shadow-sm p-4">
