@@ -185,6 +185,7 @@ interface CurrentMovie {
   trailerKey: string | null;
   rtScore: string | null;
   reason: string | null;
+  streaming?: string[];
 }
 
 export interface WatchlistEntry {
@@ -535,9 +536,12 @@ function MovieCardSkeleton({ mode }: { mode: "trailers" | "posters" }) {
       </div>
     );
     return (
-      <div className="bg-black" aria-busy="true" aria-label="Loading movie">
-        <div className="relative aspect-video w-full shrink-0 overflow-hidden bg-black">
-          <div className="absolute inset-0 animate-pulse bg-zinc-800/40" aria-hidden />
+      <div className="bg-zinc-900" aria-busy="true" aria-label="Loading movie">
+        <div className="relative aspect-video w-full shrink-0 overflow-hidden bg-zinc-900">
+          <div className="absolute inset-0 animate-pulse bg-zinc-700/50" aria-hidden />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-sm text-zinc-500">Loading…</span>
+          </div>
         </div>
         {trailerBarSkeleton}
         <div className="flex flex-col gap-4 p-4 sm:pb-6 sm:p-6">
@@ -1014,6 +1018,15 @@ const TrailerMetadata = memo(function TrailerMetadata({
       {movie.plot && (
         <p className="mt-2 text-sm text-zinc-300 leading-relaxed w-full min-w-0 break-words">{movie.plot}</p>
       )}
+      {movie.streaming && movie.streaming.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {movie.streaming.map((s) => (
+            <span key={s} className="text-xs font-medium px-2 py-0.5 rounded-full bg-sky-950/60 text-sky-300 border border-sky-800/50">
+              {s}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 });
@@ -1122,6 +1135,15 @@ const PosterMovieTop = memo(function PosterMovieTop({
         )}
         {movie.plot && (
           <p className="mt-2 text-sm text-zinc-300 leading-relaxed line-clamp-3 sm:line-clamp-none">{movie.plot}</p>
+        )}
+        {movie.streaming && movie.streaming.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {movie.streaming.map((s) => (
+              <span key={s} className="text-xs font-medium px-2 py-0.5 rounded-full bg-sky-950/60 text-sky-300 border border-sky-800/50">
+                {s}
+              </span>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -1688,7 +1710,13 @@ export default function Home() {
     try {
       const q = JSON.parse(raw) as CurrentMovie[];
       if (Array.isArray(q) && q.every((m) => m && typeof m.title === "string")) {
-        prefetchRef.current = q;
+        const seen = new Set<string>();
+        prefetchRef.current = q.filter((m) => {
+          const k = canonicalTitleKey(m.title);
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
       } else {
         prefetchRef.current = [];
       }
@@ -2856,9 +2884,18 @@ export default function Home() {
     llm,
   ]);
 
+  const hubUrl = process.env.NEXT_PUBLIC_HUB_URL || "http://127.0.0.1:8000";
+
   return (
     <div className="flex min-h-screen w-full flex-col items-center bg-black px-4 py-6 sm:py-10">
       <div className="w-full max-w-3xl space-y-4 sm:space-y-6">
+        <a
+          href={hubUrl}
+          title="Film & Music — return to hub"
+          className="block text-sm font-bold text-zinc-400 transition-colors hover:text-zinc-100"
+        >
+          Trailer Vision
+        </a>
         <ChannelsToolbar
           channels={channels}
           activeChannelId={activeChannelId}
