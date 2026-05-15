@@ -1625,6 +1625,7 @@ export default function Home() {
   }, [channels]);
   const channelsRef = useRef<Channel[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string>("");
+  const [newChannelText, setNewChannelText] = useState<string>("");
   const activeChannelIdRef = useRef<string>("");
   activeChannelIdRef.current = activeChannelId;
   channelsRef.current = channels;
@@ -2840,8 +2841,8 @@ export default function Home() {
     void fetchNext({ mediaType, llm }, true);
   }, [mediaType, llm, fetchNext, persistPrefetchQueue]);
 
-  const createChannelFromHomePrompt = useCallback(() => {
-    const t = getChannelPromptForSave();
+  const createChannelFromHomePrompt = useCallback((text: string) => {
+    const t = text.trim();
     if (!t) return;
     let list: Channel[] = [];
     try {
@@ -2889,13 +2890,6 @@ export default function Home() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center bg-black px-4 py-6 sm:py-10">
       <div className="w-full max-w-3xl space-y-4 sm:space-y-6">
-        <a
-          href={hubUrl}
-          title="Film & Music — return to hub"
-          className="block text-sm font-bold text-zinc-400 transition-colors hover:text-zinc-100"
-        >
-          Trailer Vision
-        </a>
         <ChannelsToolbar
           channels={channels}
           activeChannelId={activeChannelId}
@@ -2908,24 +2902,20 @@ export default function Home() {
 
         <div className="rounded-2xl border border-zinc-800/90 bg-zinc-950/80 p-2 sm:p-2.5">
           <div className="flex flex-row items-center gap-1.5 sm:gap-2">
-            <label htmlFor="channel-what-you-want" className="sr-only">
-              Channel prompt — same as What you want in the channel editor
-            </label>
             <div className="relative min-w-0 flex-1">
               <input
-                id="channel-what-you-want"
                 type="text"
                 autoComplete="off"
-                value={channelPromptValue}
-                onChange={(e) => updateChannelPrompt(e.target.value.replace(/\r?\n/g, " "))}
+                value={newChannelText}
+                onChange={(e) => setNewChannelText(e.target.value.replace(/\r?\n/g, " "))}
                 placeholder="What you want to watch…"
                 className="h-9 w-full rounded-lg border border-zinc-600 bg-zinc-900 py-0 pl-2.5 pr-8 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 sm:h-10 sm:pl-3 sm:pr-9"
               />
-              {channelPromptValue.length > 0 && (
+              {newChannelText.length > 0 && (
                 <button
                   type="button"
                   onPointerDown={(e) => e.preventDefault()}
-                  onClick={() => updateChannelPrompt("")}
+                  onClick={() => setNewChannelText("")}
                   className="absolute right-1 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200 sm:right-1.5 sm:h-7 sm:w-7"
                   title="Clear"
                   aria-label="Clear"
@@ -2936,17 +2926,8 @@ export default function Home() {
             </div>
             <button
               type="button"
-              onClick={updateThisChannel}
-              disabled={!activeChannelId}
-              title="Refresh picks for this channel with this prompt"
-              className="h-9 shrink-0 rounded-lg border border-zinc-600 bg-zinc-800/90 px-2 text-xs font-semibold text-zinc-100 transition-colors hover:bg-zinc-700 disabled:pointer-events-none disabled:opacity-40 sm:h-10 sm:px-3 sm:text-sm"
-            >
-              Update
-            </button>
-            <button
-              type="button"
-              onClick={createChannelFromHomePrompt}
-              disabled={!channelPromptValue.trim()}
+              onClick={() => { createChannelFromHomePrompt(newChannelText); setNewChannelText(""); }}
+              disabled={!newChannelText.trim()}
               title="New channel with this text"
               className="h-9 shrink-0 rounded-lg bg-indigo-600 px-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-40 sm:h-10 sm:px-3 sm:text-sm"
             >
