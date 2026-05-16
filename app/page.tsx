@@ -1651,7 +1651,7 @@ export default function Home() {
     return out;
   }, [current]);
 
-  const constellationsExternalSearch = useMemo((): { term: string; id: string | number } | null => {
+  const constellationsExternalSearch = useMemo((): { term: string; id: string | number; typeHint?: string } | null => {
     if (!current) return null;
     const t = current.title.replace(/\s+/g, " ").trim();
     if (!t) return null;
