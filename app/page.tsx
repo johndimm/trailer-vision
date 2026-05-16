@@ -2914,6 +2914,13 @@ export default function Home() {
                 autoComplete="off"
                 value={newChannelText}
                 onChange={(e) => setNewChannelText(e.target.value.replace(/\r?\n/g, " "))}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  e.preventDefault();
+                  if (!newChannelText.trim()) return;
+                  createChannelFromHomePrompt(newChannelText);
+                  setNewChannelText("");
+                }}
                 placeholder="What you want to watch…"
                 className="h-9 w-full rounded-lg border border-zinc-600 bg-zinc-900 py-0 pl-2.5 pr-8 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 sm:h-10 sm:pl-3 sm:pr-9"
               />
