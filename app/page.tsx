@@ -19,6 +19,7 @@ import {
   mergeFactoryChannelsAndQueues,
 } from "./lib/factoryChannels";
 import { canonicalTitleKey } from "./lib/canonicalTitleKey";
+import { filmWorkSearchTerm } from "./lib/filmWorkSearchTerm";
 import TrailerVisionConstellationsEmbed from "./components/TrailerVisionConstellationsEmbed";
 import { pushUnseenInterestEntry, type UnseenInterestEntry } from "./lib/unseenInterestLog";
 
@@ -1645,7 +1646,8 @@ export default function Home() {
 
   const constellationsAutoExpand = useMemo((): string[] => {
     if (!current) return [];
-    const out: string[] = [current.title];
+    const seed = filmWorkSearchTerm(current.title, current.year, current.type);
+    const out: string[] = [seed];
     const d = current.director?.replace(/\s+/g, " ").trim();
     if (d) out.push(d);
     return out;
@@ -1653,10 +1655,14 @@ export default function Home() {
 
   const constellationsExternalSearch = useMemo((): { term: string; id: string | number; typeHint?: string } | null => {
     if (!current) return null;
-    const t = current.title.replace(/\s+/g, " ").trim();
+    const t = filmWorkSearchTerm(current.title, current.year, current.type);
     if (!t) return null;
     const ch = (activeChannelId && activeChannelId.length > 0 ? activeChannelId : "all").toString();
-    return { term: t, id: `trailer:${ch}:${canonicalTitleKey(t)}`, typeHint: current.type === "tv" ? "TV series" : "Film" };
+    return {
+      term: t,
+      id: `trailer:${ch}:${canonicalTitleKey(t)}`,
+      typeHint: current.type === "tv" ? "TV series" : "Film",
+    };
   }, [activeChannelId, current]);
 
   const updateChannelPrompt = useCallback((value: string) => {
