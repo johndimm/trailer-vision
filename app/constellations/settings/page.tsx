@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import NavBar from "../../components/NavBar";
 
 // These constants match the soundings lib/constellations/services/aiUtils.ts values
 // and are shared via localStorage key.
@@ -46,17 +45,11 @@ export default function ConstellationsSettingsPage() {
   };
 
   if (!mounted) {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
-        <NavBar />
-      </div>
-    );
+    return <div className="min-h-screen bg-zinc-950" />;
   }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
-      <NavBar />
-
       <div className="flex-1 p-6 max-w-[800px] mx-auto w-full flex flex-col gap-10">
 
         <div className="flex items-center gap-3">

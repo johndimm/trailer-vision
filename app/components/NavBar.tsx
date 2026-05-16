@@ -12,7 +12,7 @@ const LINKS = [
   { href: "/help", label: "Help" },
 ];
 
-export default function NavBar() {
+export default function NavBar({ hubUrl }: { hubUrl?: string }) {
   const pathname = usePathname();
 
   return (
@@ -21,7 +21,7 @@ export default function NavBar() {
         <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max min-h-11 items-center gap-1 pr-1">
             <a
-              href={process.env.NEXT_PUBLIC_HUB_URL || "http://127.0.0.1:8000"}
+              href={hubUrl || "http://127.0.0.1:8000"}
               className="font-bold text-zinc-100 mr-2 shrink-0 text-sm tracking-tight hidden sm:inline hover:text-zinc-300 transition-colors"
             >
               Trailer Vision
