@@ -33,7 +33,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <NavBar hubUrl={process.env.NEXT_PUBLIC_HUB_URL || "http://127.0.0.1:8000"} />
+        <NavBar hubUrl={process.env.NEXT_PUBLIC_HUB_URL || process.env.VITE_HUB_URL || "http://127.0.0.1:8000"} />
         {children}
       </body>
     </html>
