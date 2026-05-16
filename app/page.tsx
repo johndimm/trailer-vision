@@ -1656,7 +1656,7 @@ export default function Home() {
     const t = current.title.replace(/\s+/g, " ").trim();
     if (!t) return null;
     const ch = (activeChannelId && activeChannelId.length > 0 ? activeChannelId : "all").toString();
-    return { term: t, id: `trailer:${ch}:${canonicalTitleKey(t)}` };
+    return { term: t, id: `trailer:${ch}:${canonicalTitleKey(t)}`, typeHint: current.type === "tv" ? "TV series" : "Film" };
   }, [activeChannelId, current]);
 
   const updateChannelPrompt = useCallback((value: string) => {
