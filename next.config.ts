@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     VITE_AI_PROVIDER: (
       process.env.VITE_AI_PROVIDER ||
       process.env.NEXT_PUBLIC_VITE_AI_PROVIDER ||
-      "gemini"
+      (process.env.NEXT_PUBLIC_VITE_CACHE_URL || process.env.VITE_CACHE_URL || process.env.VITE_CACHE_API_URL ? "" : "gemini")
     ),
     NEXT_PUBLIC_VITE_CACHE_URL: (
       process.env.NEXT_PUBLIC_VITE_CACHE_URL ||
