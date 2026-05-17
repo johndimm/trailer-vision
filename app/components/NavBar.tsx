@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/channels", label: "Channels" },
   { href: "/history", label: "History" },
   { href: "/watchlist", label: "Watchlist" },
+  { href: "/constellations", label: "Graph" },
   { href: "/settings", label: "Settings" },
   { href: "/help", label: "Help" },
 ];
@@ -16,8 +17,8 @@ export default function NavBar({ hubUrl }: { hubUrl?: string }) {
   const pathname = usePathname();
 
   return (
-    <nav className="w-full min-w-0 border-b border-zinc-800 bg-black/90 backdrop-blur-sm sticky top-0 z-40">
-      <div className="max-w-3xl mx-auto min-w-0 px-4 h-11 flex items-center">
+    <nav className="sticky top-0 z-40 w-full min-w-0 shrink-0 border-b border-zinc-800 bg-black/90 backdrop-blur-sm">
+      <div className="mx-auto flex h-11 min-w-0 max-w-[min(100%,90rem)] items-center px-3 sm:px-4 lg:px-8">
         <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max min-h-11 items-center gap-1 pr-1">
             <a

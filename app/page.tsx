@@ -1167,7 +1167,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   showNextInRating = true,
   /** Under video vs poster: same inner controls; wrapper only (strip vs rounded card). */
   layout = "card",
-  careerPrevNav = null,
+  prevNav = null,
   careerNextDisabled = false,
 }: {
   passCurrentCardStable: () => void;
@@ -1182,8 +1182,8 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   previousMode?: "seen" | "unseen";
   showNextInRating?: boolean;
   layout?: "card" | "trailerBar";
-  /** Career mode: show Prev; disabled at first film to keep 3-col layout. */
-  careerPrevNav?: { onPass: () => void; disabled: boolean } | null;
+  /** Prev control — career filmography index or playback back stack. */
+  prevNav?: { onPass: () => void; disabled: boolean } | null;
   /** Career mode: disable Next on last film in filmography (passCurrentCard is a no-op there). */
   careerNextDisabled?: boolean;
 }) {
@@ -1210,7 +1210,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   const autoFilled = WATCH_PROGRESS_AUTO_RATING ? progressToStars(watchFrac) : 0;
   const displayFilled = userLocked ? lockedValue : autoFilled;
 
-  const navPairTight = Boolean(careerPrevNav && showNextInRating);
+  const navPairTight = Boolean(prevNav && showNextInRating);
   const starBlock = seenStatus === null ? (
     <StarRow
       key={`${starKeyPrefix}-seen-${movieTitle}`}
@@ -1245,11 +1245,11 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
             }`
       }
     >
-      {careerPrevNav && (
+      {prevNav && (
         <div className="shrink-0 max-sm:col-start-1 max-sm:row-start-1 sm:col-start-1 sm:row-start-1 self-center">
           <PassNextButton
-            onPass={careerPrevNav.onPass}
-            disabled={careerPrevNav.disabled}
+            onPass={prevNav.onPass}
+            disabled={prevNav.disabled}
             prominent
             direction="prev"
           />
@@ -1426,19 +1426,23 @@ const ChannelsToolbar = memo(function ChannelsToolbar({
   onRequestDeleteChannel: (ch: Channel) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-2 items-center pb-1">
+    <div
+      className="flex flex-nowrap items-center gap-2 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-color:rgba(63,63,70,0.65)_transparent] [scrollbar-width:thin] lg:flex-col lg:items-stretch lg:overflow-y-auto lg:overflow-x-visible lg:pb-0 lg:[scrollbar-width:auto] lg:max-h-[min(72vh,560px)]"
+      role="toolbar"
+      aria-label="Channels"
+    >
       {!channels.some((ch) => ch.id !== "all") ? (
         <>
           <button
             type="button"
             onClick={onLoadStarter}
-            className="shrink-0 rounded-full border border-indigo-700 bg-indigo-950 px-4 py-2 text-sm font-semibold text-indigo-200 shadow-sm transition-colors hover:border-indigo-500 hover:bg-indigo-900"
+            className="shrink-0 rounded-full border border-indigo-700 bg-indigo-950 px-4 py-2 text-sm font-semibold text-indigo-200 shadow-sm transition-colors hover:border-indigo-500 hover:bg-indigo-900 lg:w-full lg:rounded-xl lg:py-2.5"
           >
             Load starter channels
           </button>
           <Link
             href="/channels?new=1"
-            className="shrink-0 flex size-8 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900 text-lg font-light leading-none text-zinc-400 transition-colors hover:border-indigo-500 hover:bg-indigo-950 hover:text-indigo-400"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900 text-lg font-light leading-none text-zinc-400 transition-colors hover:border-indigo-500 hover:bg-indigo-950 hover:text-indigo-400 lg:size-9 lg:shrink-0 lg:self-center"
             title="Create a new channel"
             aria-label="Create a new channel"
           >
@@ -1451,7 +1455,7 @@ const ChannelsToolbar = memo(function ChannelsToolbar({
             <button
               type="button"
               onClick={onMergeStarters}
-              className="shrink-0 rounded-full border border-zinc-600 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:bg-zinc-800 hover:text-zinc-100"
+              className="shrink-0 rounded-full border border-zinc-600 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:bg-zinc-800 hover:text-zinc-100 lg:w-full lg:shrink-0 lg:rounded-xl lg:py-2 lg:text-left"
               title="Add bundled example channels you don’t already have (same as Settings → Starter channel pack)"
             >
               Merge starter pack
@@ -1460,18 +1464,18 @@ const ChannelsToolbar = memo(function ChannelsToolbar({
           {channels.map((ch) => {
             const deletable = ch.id !== "all";
             return (
-              <div key={ch.id} className="group relative shrink-0">
+              <div key={ch.id} className="group relative shrink-0 lg:w-full lg:min-w-0">
                 <button
                   type="button"
                   onClick={() => onSelectChannel(ch.id)}
                   aria-pressed={activeChannelId === ch.id}
                   aria-current={activeChannelId === ch.id ? "true" : undefined}
-                  className={`max-w-[240px] rounded-full py-1.5 text-sm font-semibold whitespace-nowrap transition-colors pl-3.5 ${
+                  className={`max-w-[240px] rounded-full py-1.5 pl-3.5 text-left text-sm font-semibold transition-colors lg:flex lg:max-w-none lg:w-full lg:items-center lg:rounded-xl lg:py-2 lg:pl-3 ${
                     deletable ? "pr-9" : "pr-3.5"
                   } ${
                     activeChannelId === ch.id
-                      ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400/90 ring-offset-2 ring-offset-black"
-                      : "bg-zinc-900 border border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800"
+                      ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400/90 ring-offset-2 ring-offset-black lg:ring-offset-zinc-950"
+                      : "border border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800"
                   }`}
                 >
                   <span className="block truncate">{ch.name}</span>
@@ -1484,7 +1488,7 @@ const ChannelsToolbar = memo(function ChannelsToolbar({
                       e.stopPropagation();
                       onRequestDeleteChannel(ch);
                     }}
-                    className={`absolute right-1 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-sm leading-none opacity-100 transition-opacity sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100 ${
+                    className={`absolute right-1 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-sm leading-none opacity-100 transition-opacity sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100 lg:pointer-events-auto lg:opacity-100 ${
                       activeChannelId === ch.id
                         ? "text-zinc-300 hover:bg-white/10 hover:text-red-300"
                         : "text-zinc-500 hover:bg-red-900/30 hover:text-red-400"
@@ -1499,7 +1503,7 @@ const ChannelsToolbar = memo(function ChannelsToolbar({
           })}
           <Link
             href="/channels?new=1"
-            className="shrink-0 flex size-8 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900 text-lg font-light leading-none text-zinc-400 transition-colors hover:border-indigo-500 hover:bg-indigo-950 hover:text-indigo-400"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900 text-lg font-light leading-none text-zinc-400 transition-colors hover:border-indigo-500 hover:bg-indigo-950 hover:text-indigo-400 lg:size-9 lg:shrink-0 lg:self-center"
             title="Create a new channel"
             aria-label="Create a new channel"
           >
@@ -1603,6 +1607,10 @@ export default function Home() {
   const [careerTrailerBlockStableH, setCareerTrailerBlockStableH] = useState(0);
   const prefetchRef = useRef<CurrentMovie[]>([]);
   const [prefetchQueueUi, setPrefetchQueueUi] = useState<CurrentMovie[]>([]);
+  /** Titles the user left via Next / queue pick — Prev walks back through this stack. */
+  const navBackStackRef = useRef<CurrentMovie[]>([]);
+  const suppressNavPushRef = useRef(false);
+  const [navBackDepth, setNavBackDepth] = useState(0);
   const replenishGenRef = useRef(0);
   const savedPrefetchChannelRef = useRef<string | null>(null);
   const replenishInFlight = useRef(0);
@@ -1740,6 +1748,15 @@ export default function Home() {
       /* ignore quota */
     }
     setPrefetchQueueUi([...prefetchRef.current]);
+  }, []);
+
+  const pushNavBack = useCallback((leaving: CurrentMovie | null) => {
+    if (suppressNavPushRef.current || !leaving || careerModeRef.current) return;
+    const stack = navBackStackRef.current;
+    const key = canonicalTitleKey(leaving.title);
+    if (stack.length > 0 && canonicalTitleKey(stack[stack.length - 1]!.title) === key) return;
+    navBackStackRef.current = [...stack, leaving];
+    setNavBackDepth(navBackStackRef.current.length);
   }, []);
 
   const handleTrailerPlaybackError = useCallback(() => {
@@ -2092,6 +2109,7 @@ export default function Home() {
         for (const w of watchlistRef.current) excluded.add(canonicalTitleKey(w.title));
         if (excluded.has(canonicalTitleKey(next.title))) continue; // already seen — discard silently
         persistPrefetchQueue();
+        pushNavBack(currentRef.current);
         setCurrent(next);
         setInitialLoading(false);
         // Always keep MAX_REPLENISH_IN_FLIGHT batches running so the queue never drains while waiting.
@@ -2115,6 +2133,7 @@ export default function Home() {
           setFetchError("Couldn't find a new title. Try again.");
           return;
         }
+        pushNavBack(currentRef.current);
         setCurrent(next);
         setInitialLoading(false);
         setFetchError(null);
@@ -2129,7 +2148,7 @@ export default function Home() {
         if (advanceFetchDepthRef.current === 0) setIsAdvancingCard(false);
       }
     }
-  }, [replenish, persistPrefetchQueue]);
+  }, [replenish, persistPrefetchQueue, pushNavBack]);
 
   const fetchNextRef = useRef(fetchNext);
   fetchNextRef.current = fetchNext;
@@ -2180,6 +2199,7 @@ export default function Home() {
       replenishGenInFlight.current = 0;
       prefetchRef.current = q.filter((_, i) => i !== index);
       persistPrefetchQueue();
+      pushNavBack(currentRef.current);
       setCurrent(movie);
       setInitialLoading(false);
       setFetchError(null);
@@ -2192,7 +2212,7 @@ export default function Home() {
         replenish({ mediaType, llm });
       }
     },
-    [mediaType, llm, replenish, persistPrefetchQueue, current]
+    [mediaType, llm, replenish, persistPrefetchQueue, pushNavBack, current]
   );
 
   useEffect(() => {
@@ -2427,6 +2447,8 @@ export default function Home() {
       }
       loadPrefetchIntoRefForChannel(activeChannelId);
       persistPrefetchQueue();
+      navBackStackRef.current = [];
+      setNavBackDepth(0);
       batchYieldRef.current = [];
       zeroYieldStreakRef.current = 0;
       savedPrefetchChannelRef.current = activeChannelId;
@@ -2733,10 +2755,33 @@ export default function Home() {
     void careerNavigate(i);
   }, [careerNavigate]);
 
-  const careerPrevNav = useMemo((): { onPass: () => void; disabled: boolean } | null => {
-    if (!careerMode) return null;
-    return { onPass: handleCareerPrev, disabled: careerMode.index === 0 };
-  }, [careerMode, careerMode?.index, handleCareerPrev]);
+  const goToPreviousCard = useCallback(() => {
+    if (careerModeRef.current) {
+      handleCareerPrev();
+      return;
+    }
+    const stack = navBackStackRef.current;
+    if (stack.length === 0) return;
+    const prevMovie = stack[stack.length - 1]!;
+    navBackStackRef.current = stack.slice(0, -1);
+    setNavBackDepth(navBackStackRef.current.length);
+    const cur = currentRef.current;
+    if (cur) {
+      prefetchRef.current = [cur, ...prefetchRef.current];
+      persistPrefetchQueue();
+    }
+    suppressNavPushRef.current = true;
+    setCurrent(prevMovie);
+    setInitialLoading(false);
+    suppressNavPushRef.current = false;
+  }, [handleCareerPrev, persistPrefetchQueue]);
+
+  const prevNav = useMemo((): { onPass: () => void; disabled: boolean } => {
+    if (careerMode) {
+      return { onPass: handleCareerPrev, disabled: careerMode.index === 0 };
+    }
+    return { onPass: goToPreviousCard, disabled: navBackDepth === 0 };
+  }, [careerMode, careerMode?.index, handleCareerPrev, goToPreviousCard, navBackDepth]);
 
   const careerAtLastFilm = useMemo(
     () => Boolean(careerMode && careerMode.films.length > 0 && careerMode.index === careerMode.films.length - 1),
@@ -2760,6 +2805,8 @@ export default function Home() {
       replenishGenRef.current += 1;
       replenishGenInFlight.current = 0;
       prefetchRef.current = [];
+      navBackStackRef.current = [];
+      setNavBackDepth(0);
       batchYieldRef.current = [];
       zeroYieldStreakRef.current = 0;
       persistPrefetchQueue();
@@ -2894,61 +2941,75 @@ export default function Home() {
   const hubUrl = process.env.NEXT_PUBLIC_HUB_URL || "http://127.0.0.1:8000";
 
   return (
-    <div className="flex min-h-screen w-full flex-col items-center bg-black px-4 py-6 sm:py-10">
-      <div className="w-full max-w-3xl space-y-4 sm:space-y-6">
-        <ChannelsToolbar
-          channels={channels}
-          activeChannelId={activeChannelId}
-          onLoadStarter={loadStarterChannelsFromFactory}
-          onMergeStarters={mergeStartersKeepActive}
-          showMergeStarterPack={factoryPackFullyMerged === false}
-          onSelectChannel={selectChannel}
-          onRequestDeleteChannel={requestDeleteChannel}
-        />
-
-        <div className="rounded-2xl border border-zinc-800/90 bg-zinc-950/80 p-2 sm:p-2.5">
-          <div className="flex flex-row items-center gap-1.5 sm:gap-2">
-            <div className="relative min-w-0 flex-1">
-              <input
-                type="text"
-                autoComplete="off"
-                value={newChannelText}
-                onChange={(e) => setNewChannelText(e.target.value.replace(/\r?\n/g, " "))}
-                onKeyDown={(e) => {
-                  if (e.key !== "Enter") return;
-                  e.preventDefault();
-                  if (!newChannelText.trim()) return;
+    <div className="flex min-h-screen w-full flex-col bg-black px-3 py-3 sm:px-4 sm:py-5 lg:px-8 lg:py-6">
+      <div className="mx-auto flex w-full max-w-[min(100%,90rem)] flex-col gap-4 lg:grid lg:grid-cols-[minmax(14rem,22rem)_minmax(0,1fr)] lg:items-start lg:gap-x-8 lg:gap-y-0 xl:grid-cols-[minmax(15rem,24rem)_minmax(0,1fr)] xl:gap-x-12">
+        <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-11 lg:z-10 lg:max-h-[calc(100dvh-3.5rem)] lg:self-start lg:pr-1">
+          <p className="hidden text-[11px] font-semibold uppercase tracking-wide text-zinc-500 lg:block">
+            Channels
+          </p>
+          <div className="shrink-0 rounded-2xl border border-zinc-800/90 bg-zinc-950/80 p-2.5 sm:p-3">
+            <label htmlFor="channel-what-you-want" className="mb-1.5 block text-xs font-medium text-zinc-400">
+              New channel
+            </label>
+            <div className="flex flex-col gap-2">
+              <div className="relative w-full min-w-0">
+                <textarea
+                  id="channel-what-you-want"
+                  autoComplete="off"
+                  rows={1}
+                  value={newChannelText}
+                  onChange={(e) => setNewChannelText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" || e.shiftKey) return;
+                    e.preventDefault();
+                    if (!newChannelText.trim()) return;
+                    createChannelFromHomePrompt(newChannelText);
+                    setNewChannelText("");
+                  }}
+                  placeholder="Genres, era, directors…"
+                  className="min-h-9 w-full resize-y rounded-lg border border-zinc-600 bg-zinc-900 px-2.5 py-2 pr-8 text-sm leading-snug text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 sm:px-3 sm:pr-9"
+                />
+                {newChannelText.length > 0 && (
+                  <button
+                    type="button"
+                    onPointerDown={(e) => e.preventDefault()}
+                    onClick={() => setNewChannelText("")}
+                    className="absolute right-1.5 top-2 z-10 flex h-7 w-7 items-center justify-center rounded text-base leading-none text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                    title="Clear"
+                    aria-label="Clear"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
                   createChannelFromHomePrompt(newChannelText);
                   setNewChannelText("");
                 }}
-                placeholder="What you want to watch…"
-                className="h-9 w-full rounded-lg border border-zinc-600 bg-zinc-900 py-0 pl-2.5 pr-8 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 sm:h-10 sm:pl-3 sm:pr-9"
-              />
-              {newChannelText.length > 0 && (
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.preventDefault()}
-                  onClick={() => setNewChannelText("")}
-                  className="absolute right-1 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200 sm:right-1.5 sm:h-7 sm:w-7"
-                  title="Clear"
-                  aria-label="Clear"
-                >
-                  ×
-                </button>
-              )}
+                disabled={!newChannelText.trim()}
+                title="Create a new channel with this text"
+                className="h-10 w-full shrink-0 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-40"
+              >
+                Create channel
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => { createChannelFromHomePrompt(newChannelText); setNewChannelText(""); }}
-              disabled={!newChannelText.trim()}
-              title="New channel with this text"
-              className="h-9 shrink-0 rounded-lg bg-indigo-600 px-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-40 sm:h-10 sm:px-3 sm:text-sm"
-            >
-              New channel
-            </button>
           </div>
-        </div>
 
+          <ChannelsToolbar
+            channels={channels}
+            activeChannelId={activeChannelId}
+            onLoadStarter={loadStarterChannelsFromFactory}
+            onMergeStarters={mergeStartersKeepActive}
+            showMergeStarterPack={factoryPackFullyMerged === false}
+            onSelectChannel={selectChannel}
+            onRequestDeleteChannel={requestDeleteChannel}
+          />
+
+        </aside>
+
+        <div className="flex min-w-0 flex-col gap-4 sm:gap-5 lg:min-h-0">
         {/* Movie card */}
         <div
           ref={cardRef}
@@ -3075,7 +3136,7 @@ export default function Home() {
                       defaultSeen={activeChannelId === "all"}
                       previousRating={historyRef.current.find((e) => e.title === current.title)?.userRating}
                       previousMode={historyRef.current.find((e) => e.title === current.title)?.ratingMode}
-                      careerPrevNav={careerPrevNav}
+                      prevNav={prevNav}
                       careerNextDisabled={careerAtLastFilm}
                     />
                   )}
@@ -3189,7 +3250,7 @@ export default function Home() {
                     defaultSeen={activeChannelId === "all"}
                     previousRating={historyRef.current.find(e => e.title === current.title)?.userRating}
                     previousMode={historyRef.current.find(e => e.title === current.title)?.ratingMode}
-                    careerPrevNav={careerPrevNav}
+                    prevNav={prevNav}
                     careerNextDisabled={careerAtLastFilm}
                   />
                   {careerMode ? (
@@ -3214,13 +3275,16 @@ export default function Home() {
           ) : null}
         </div>
 
-        {/* Constellations graph — below queue/up next */}
-        <TrailerVisionConstellationsEmbed
-          nowPlayingKey={constellationsNowPlayingKey}
-          autoExpandMatchTitles={constellationsAutoExpand}
-          externalSearch={constellationsExternalSearch}
-          onNewChannelFromNode={() => {}}
-        />
+        {current ? (
+          <div className="w-full overflow-hidden rounded-2xl border border-zinc-800/90 bg-zinc-950/80">
+            <TrailerVisionConstellationsEmbed
+              nowPlayingKey={constellationsNowPlayingKey}
+              autoExpandMatchTitles={constellationsAutoExpand}
+              externalSearch={constellationsExternalSearch}
+              onNewChannelFromNode={() => {}}
+            />
+          </div>
+        ) : null}
 
         {/* Taste profile card */}
         <div className="bg-zinc-950 rounded-2xl border border-zinc-800 shadow-sm p-4">
@@ -3239,6 +3303,7 @@ export default function Home() {
           </div>
         </div>
 
+        </div>
       </div>
 
       {/* Fetch error with retry */}

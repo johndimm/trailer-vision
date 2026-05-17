@@ -247,9 +247,17 @@ async function fetchPosterFallback(title: string, type: "movie" | "tv", year: nu
   return null;
 }
 
-/** First balanced `{ ... }` with string-aware brace tracking */
-function extractRootJsonObject(text: string): string | null {
-  const start = text.indexOf("{");
+function stripMarkdownJsonFence(text: string): string {
+  return text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+}
+
+/** Balanced `[ ... ]` or `{ ... }` with string-aware bracket tracking. */
+function extractBalancedJson(
+  text: string,
+  open: "[" | "{",
+  close: "]" | "}"
+): string | null {
+  const start = text.indexOf(open);
   if (start < 0) return null;
   let depth = 0;
   let inString = false;
@@ -269,8 +277,8 @@ function extractRootJsonObject(text: string): string | null {
       continue;
     }
     if (inString) continue;
-    if (ch === "{") depth++;
-    else if (ch === "}") {
+    if (ch === open) depth++;
+    else if (ch === close) {
       depth--;
       if (depth === 0) return text.slice(start, i + 1);
     }
@@ -278,35 +286,122 @@ function extractRootJsonObject(text: string): string | null {
   return null;
 }
 
-function parseLlmResponse(text: string, fallbackSingleObjectWalker: string): { items: RawItem[]; tasteSummary: string | null } {
-  let stripped = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  let jsonText = stripped.replace(/[\r\n]+/g, " ");
-  let root: unknown;
-  try {
-    root = JSON.parse(jsonText);
-  } catch {
-    const extracted = extractRootJsonObject(stripped) ?? extractRootJsonObject(fallbackSingleObjectWalker);
-    if (!extracted) throw new Error("no JSON");
-    jsonText = extracted.replace(/[\r\n]+/g, " ");
-    root = JSON.parse(jsonText);
-  }
+function extractRootJsonObject(text: string): string | null {
+  return extractBalancedJson(text, "{", "}");
+}
 
-  let items: RawItem[];
+function extractRootJsonArray(text: string): string | null {
+  return extractBalancedJson(text, "[", "]");
+}
+
+/** Every complete `{...}` object in the text (string-aware). Salvages truncated batch responses. */
+function extractAllJsonObjects(text: string): string[] {
+  const out: string[] = [];
+  let i = 0;
+  while (i < text.length) {
+    const start = text.indexOf("{", i);
+    if (start < 0) break;
+    const obj = extractRootJsonObject(text.slice(start));
+    if (!obj) {
+      i = start + 1;
+      continue;
+    }
+    out.push(obj);
+    i = start + obj.length;
+  }
+  return out;
+}
+
+function repairTrailingCommas(json: string): string {
+  return json.replace(/,\s*([}\]])/g, "$1");
+}
+
+function tryParseJson(text: string): unknown | null {
+  const candidates = [
+    text,
+    repairTrailingCommas(text),
+    text.replace(/[\r\n]+/g, " "),
+    repairTrailingCommas(text.replace(/[\r\n]+/g, " ")),
+    extractRootJsonObject(text),
+    extractRootJsonArray(text),
+  ].filter((s): s is string => typeof s === "string" && s.length > 0);
+
+  for (const candidate of candidates) {
+    for (const variant of [candidate, repairTrailingCommas(candidate)]) {
+      try {
+        return JSON.parse(variant);
+      } catch {
+        /* try next */
+      }
+    }
+  }
+  return null;
+}
+
+function isRawItem(o: unknown): o is RawItem {
+  if (!o || typeof o !== "object") return false;
+  const r = o as RawItem;
+  return typeof r.title === "string" && (r.type === "movie" || r.type === "tv");
+}
+
+function collectItemsFromRoot(root: unknown): { items: RawItem[]; tasteSummary: string | null } {
+  let items: RawItem[] = [];
   let tasteSummary: string | null = null;
 
   if (Array.isArray(root)) {
-    items = root as RawItem[];
-  } else if (root && typeof root === "object" && root !== null) {
+    items = root.filter(isRawItem);
+  } else if (root && typeof root === "object") {
     const o = root as Record<string, unknown>;
     if (typeof o.taste_summary === "string") tasteSummary = o.taste_summary.trim() || null;
-    if (Array.isArray(o.items)) items = o.items as RawItem[];
-    else if (Array.isArray(o.titles)) items = o.titles as RawItem[];
-    else if (typeof o.title === "string" && (o.type === "movie" || o.type === "tv")) items = [o as RawItem];
-    else items = [];
-  } else {
-    items = [];
+    if (Array.isArray(o.items)) items = o.items.filter(isRawItem);
+    else if (Array.isArray(o.titles)) items = o.titles.filter(isRawItem);
+    else if (isRawItem(o)) items = [o];
   }
 
+  return { items, tasteSummary };
+}
+
+function parseLlmResponse(text: string, fallbackObjects: string[]): { items: RawItem[]; tasteSummary: string | null } {
+  const stripped = stripMarkdownJsonFence(text);
+
+  let items: RawItem[] = [];
+  let tasteSummary: string | null = null;
+
+  const root = tryParseJson(stripped);
+  if (root !== null) {
+    const collected = collectItemsFromRoot(root);
+    items = collected.items;
+    tasteSummary = collected.tasteSummary;
+  }
+
+  if (items.length === 0) {
+    const objectCandidates = [
+      ...fallbackObjects,
+      ...extractAllJsonObjects(stripped),
+    ];
+    const seen = new Set<string>();
+    for (const objText of objectCandidates) {
+      const parsed = tryParseJson(objText);
+      if (!parsed) continue;
+      const collected = collectItemsFromRoot(parsed);
+      if (!tasteSummary && collected.tasteSummary) tasteSummary = collected.tasteSummary;
+      for (const item of collected.items) {
+        const key = item.title!.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        items.push(item);
+      }
+      if (isRawItem(parsed)) {
+        const key = parsed.title!.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          items.push(parsed);
+        }
+      }
+    }
+  }
+
+  if (items.length === 0) throw new Error("no JSON");
   return { items, tasteSummary };
 }
 
@@ -584,32 +679,20 @@ ${history.length === 0 && allExcluded.length === 0
     return Response.json({ error: String(err) }, { status: 500 });
   }
 
-  // Fallback: legacy walker that collected inner JSON objects (last wins) — reuse for parseItems second arg
-  let legacyWalker = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  const candidates: string[] = [];
-  let depth = 0,
-    start = -1;
-  for (let i = 0; i < legacyWalker.length; i++) {
-    const ch = legacyWalker[i];
-    if (ch === "{") {
-      if (depth === 0) start = i;
-      depth++;
-    } else if (ch === "}") {
-      depth--;
-      if (depth === 0 && start !== -1) {
-        candidates.push(legacyWalker.slice(start, i + 1));
-        start = -1;
-      }
-    }
-  }
-  if (candidates.length > 0) legacyWalker = candidates[candidates.length - 1];
+  const fallbackObjects = extractAllJsonObjects(stripMarkdownJsonFence(text));
 
   let rawItems: RawItem[];
   try {
-    rawItems = parseLlmResponse(text, legacyWalker).items;
+    rawItems = parseLlmResponse(text, fallbackObjects).items;
   } catch (e) {
-    console.error("Failed to parse LLM response as JSON:", text, e);
-    return Response.json({ error: "Failed to parse response", raw: text }, { status: 500 });
+    console.error(
+      "Failed to parse LLM response as JSON:",
+      e,
+      "\n--- response preview ---\n",
+      text.slice(0, 1200),
+      text.length > 1200 ? "\n...(truncated log)" : ""
+    );
+    return Response.json({ error: "Failed to parse response", raw: text.slice(0, 2000) }, { status: 500 });
   }
 
   const seenKeys = new Set<string>();
