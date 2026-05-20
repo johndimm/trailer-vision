@@ -56,7 +56,12 @@ export function mergeNewChannelFormPrefill(partial: unknown): NewChannelData {
   return {
     ...emptyData(),
     name: typeof p.name === "string" ? p.name : "",
-    freeText: typeof p.freeText === "string" ? p.freeText : "",
+    freeText:
+      typeof p.freeText === "string"
+        ? p.freeText
+        : typeof p.notes === "string"
+          ? p.notes
+          : "",
     genres: Array.isArray(p.genres) ? p.genres.filter((g): g is string => typeof g === "string") : [],
     timePeriods: Array.isArray(p.timePeriods) ? p.timePeriods.filter((g): g is string => typeof g === "string") : [],
     language: typeof p.language === "string" ? p.language : "",

@@ -110,8 +110,8 @@ incrementally rather than starting from scratch.
 
 ## Prefetch queue with daisy-chain replenishment
 Maintain a client-side prefetch queue (ref, not state) of pre-fetched CurrentMovie objects.
-LLM_BATCH_SIZE = 5. MAX_REPLENISH_IN_FLIGHT = 3. HIGH_WATER_MARK = 6 (caps buffered cards so
-new ratings affect upcoming picks sooner; smaller than a deep backlog).
+LLM_BATCH_SIZE = 5. MAX_REPLENISH_IN_FLIGHT = 2. HIGH_WATER_MARK = 8 (caps the upcoming queue
+at roughly 5–10 titles so new ratings affect picks sooner).
 
 On card pop: show the card instantly; if replenishInFlight < MAX_REPLENISH_IN_FLIGHT, start
 a background replenish immediately (don't wait for the queue to run low).

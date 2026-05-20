@@ -2,9 +2,15 @@
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useId, useMemo, memo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Channel } from "./channels/page";
 import { ALL_CHANNEL, normalizeChannel, CHANNELS_KEY, ACTIVE_CHANNEL_KEY } from "./channels/page";
-import { channelDraftFromPrompt, NEW_CHANNEL_PREFILL_KEY } from "./lib/channelFromPrompt";
+import { channelDraftFromPrompt } from "./lib/channelFromPrompt";
+import { queueNewChannelFromGraphNode } from "./lib/newChannelFromGraphNode";
+import {
+  queueNewChannelFromMovie,
+} from "./lib/queueNewChannelFromMovie";
+import type { MovieChannelSeedInput } from "./lib/movieToChannelSeeds";
 import RTBadge from "./components/RTBadge";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { clampStarRating, migrateRatingValue } from "./lib/ratingScale";
@@ -202,17 +208,12 @@ export interface WatchlistEntry {
   addedAt: string;
 }
 
-/**
- * Titles per LLM POST. Server max is 8; 7 is a good balance of throughput vs latency.
- * (At 5, the visible queue could barely exceed one batch before capping—felt too short for niche channels.)
- */
-const LLM_BATCH_SIZE = 7;
-/** Max concurrent LLM fetches. With daisy-chaining, this many batches run until HIGH_WATER_MARK. */
-const MAX_REPLENISH_IN_FLIGHT = 3;
-/**
- * Max prefetch depth before daisy-chaining pauses. ~3 full batches of LLM_BATCH_SIZE.
- */
-const HIGH_WATER_MARK = 21;
+/** Titles per LLM POST (server max is 8). */
+const LLM_BATCH_SIZE = 5;
+/** Max concurrent LLM fetches while filling the upcoming queue. */
+const MAX_REPLENISH_IN_FLIGHT = 2;
+/** Cap upcoming queue length; daisy-chain stops at this depth (target ~5–10 visible). */
+const HIGH_WATER_MARK = 8;
 
 /**
  * Rotating lenses that force the LLM to explore different corners of cinema on each batch.
@@ -251,6 +252,42 @@ function youtubeSearchUrlForMovie(title: string, type: "movie" | "tv", year: num
     .filter(Boolean)
     .join(" ");
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+}
+
+function MovieTitleChannelLink({
+  movie,
+  onCreateChannel,
+  headingClassName,
+}: {
+  movie: MovieChannelSeedInput & { trailerKey?: string | null };
+  onCreateChannel: (movie: MovieChannelSeedInput) => void;
+  headingClassName: string;
+}) {
+  return (
+    <h2 className={headingClassName}>
+      <span className="inline-flex min-w-0 max-w-full flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onCreateChannel(movie)}
+          title="Create a channel from this title"
+          className="min-w-0 break-words text-left hover:text-indigo-400 transition-colors"
+        >
+          {movie.title}
+        </button>
+        {!movie.trailerKey && (
+          <a
+            href={youtubeSearchUrlForMovie(movie.title, movie.type, movie.year ?? null)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 text-sm text-zinc-400 hover:text-indigo-400"
+            aria-label={`Search YouTube for ${movie.title} trailer`}
+          >
+            ↗
+          </a>
+        )}
+      </span>
+    </h2>
+  );
 }
 
 const STORAGE_KEY = "movie-recs-history";
@@ -296,6 +333,7 @@ const StarRow = memo(function StarRow({
   compact = false,
   /** Smaller controls when Prev/Next share the row (mobile) — keeps stars from overlapping */
   careerNavTight = false,
+  hideLabel = false,
 }: {
   filled: number;
   color: "red" | "blue";
@@ -304,6 +342,8 @@ const StarRow = memo(function StarRow({
   /** Tighter label + stars for single-line toolbar layout */
   compact?: boolean;
   careerNavTight?: boolean;
+  /** Fullscreen toolbar: mode comes from Interest/Rating segment, not a second label. */
+  hideLabel?: boolean;
 }) {
   const [hover, setHover] = useState(0);
   /** Value from last click — keeps stars lit after pointer leaves (hover clears on mouseleave). */
@@ -331,11 +371,13 @@ const StarRow = memo(function StarRow({
     <div
       className={`flex min-w-0 flex-wrap items-center ${compact ? "justify-center gap-x-2 gap-y-1 sm:gap-x-3 sm:gap-y-0" : "gap-3"}`}
     >
-      <span
-        className={`font-medium text-zinc-200 shrink-0 leading-snug ${labelClass}`}
-      >
-        {label}
-      </span>
+      {!hideLabel && (
+        <span
+          className={`font-medium text-zinc-200 shrink-0 leading-snug ${labelClass}`}
+        >
+          {label}
+        </span>
+      )}
       <div className={`flex min-w-0 shrink items-center ${compact ? "gap-0.5 sm:gap-1" : "gap-1"}`} onMouseLeave={() => setHover(0)}>
         {[1, 2, 3, 4, 5].map((n) => (
           <button
@@ -362,6 +404,48 @@ const StarRow = memo(function StarRow({
           </button>
         ))}
       </div>
+    </div>
+  );
+});
+
+/** Compact Interest / Rating toggle for fullscreen toolbar (film-and-music style). */
+const SeenModeSegment = memo(function SeenModeSegment({
+  value,
+  onChange,
+}: {
+  value: "unseen" | null;
+  onChange: (v: "unseen" | null) => void;
+}) {
+  return (
+    <div
+      className="inline-flex shrink-0 overflow-hidden rounded-lg border border-zinc-600"
+      role="group"
+      aria-label="Have you seen this title?"
+    >
+      <button
+        type="button"
+        onPointerDown={(e) => e.preventDefault()}
+        onClick={() => onChange("unseen")}
+        className={`px-3 py-1.5 text-sm font-semibold transition-colors touch-manipulation ${
+          value === "unseen"
+            ? "bg-blue-600 text-white"
+            : "bg-transparent text-zinc-500 hover:text-zinc-300"
+        }`}
+      >
+        Interest
+      </button>
+      <button
+        type="button"
+        onPointerDown={(e) => e.preventDefault()}
+        onClick={() => onChange(null)}
+        className={`border-l border-zinc-600 px-3 py-1.5 text-sm font-semibold transition-colors touch-manipulation ${
+          value === null
+            ? "bg-red-600 text-white"
+            : "bg-transparent text-zinc-500 hover:text-zinc-300"
+        }`}
+      >
+        Rating
+      </button>
     </div>
   );
 });
@@ -625,12 +709,14 @@ const PrefetchQueuePanel = memo(function PrefetchQueuePanel({
   activeChannelId,
   onPlayAtIndex,
   onRemoveAtIndex,
+  onCreateChannelFromMovie,
 }: {
   prefetchQueueUi: CurrentMovie[];
   channels: Channel[];
   activeChannelId: string;
   onPlayAtIndex: (index: number) => void;
   onRemoveAtIndex: (index: number) => void;
+  onCreateChannelFromMovie?: (movie: MovieChannelSeedInput) => void;
 }) {
   return (
     <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-3 sm:p-4">
@@ -649,7 +735,7 @@ const PrefetchQueuePanel = memo(function PrefetchQueuePanel({
         </span>
       </div>
       <p className="text-xs text-zinc-500 mt-1">
-        Click a title to play it now. Remove drops it from the list. Saved per channel when Settings backup includes the prefetch queue.
+        Click the row to play now; click the title to create a channel. Remove drops it from the list. Saved per channel when Settings backup includes the prefetch queue.
       </p>
       {prefetchQueueUi.length === 0 ? (
         <p className="text-sm text-zinc-500 mt-3">Nothing queued yet — titles appear here as the model responds.</p>
@@ -660,25 +746,52 @@ const PrefetchQueuePanel = memo(function PrefetchQueuePanel({
               key={`${canonicalTitleKey(m.title)}-${index}`}
               className="flex items-stretch gap-1 py-1 px-1 text-sm"
             >
-              <button
-                type="button"
-                onClick={() => onPlayAtIndex(index)}
-                className="min-w-0 flex-1 flex flex-col gap-0.5 rounded-lg px-2 py-1.5 text-left text-zinc-200 hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-                aria-label={`Play ${m.title} now`}
-              >
+              <div className="min-w-0 flex-1 flex flex-col gap-0.5 rounded-lg px-2 py-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate font-medium" title={m.title}>
-                    {m.title}
-                    {m.year != null && <span className="text-zinc-500 font-normal"> · {m.year}</span>}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onPlayAtIndex(index)}
+                    className="shrink-0 rounded px-1 py-0.5 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                    aria-label={`Play ${m.title} now`}
+                    title="Play now"
+                  >
+                    ▶
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    {onCreateChannelFromMovie ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onCreateChannelFromMovie({
+                            title: m.title,
+                            type: m.type,
+                            year: m.year,
+                            director: m.director,
+                            actors: m.actors,
+                            plot: m.plot,
+                          })
+                        }
+                        title="Create a channel from this title"
+                        className="min-w-0 truncate font-medium text-zinc-200 text-left hover:text-indigo-400 transition-colors block w-full"
+                      >
+                        {m.title}
+                        {m.year != null && <span className="text-zinc-500 font-normal"> · {m.year}</span>}
+                      </button>
+                    ) : (
+                      <span className="min-w-0 truncate font-medium" title={m.title}>
+                        {m.title}
+                        {m.year != null && <span className="text-zinc-500 font-normal"> · {m.year}</span>}
+                      </span>
+                    )}
+                  </div>
                   <span className="shrink-0 text-[10px] uppercase tracking-wide text-zinc-500">
                     {m.type === "tv" ? "TV" : "Film"}
                   </span>
                 </div>
                 {m.reason && (
-                  <p className="text-xs text-zinc-400 line-clamp-2">{m.reason}</p>
+                  <p className="text-xs text-zinc-400 line-clamp-2 pl-7">{m.reason}</p>
                 )}
-              </button>
+              </div>
               <button
                 type="button"
                 onClick={(e) => {
@@ -959,10 +1072,12 @@ function PersonLink({
 const TrailerMetadata = memo(function TrailerMetadata({
   movie,
   onPersonClick,
+  onCreateChannelFromMovie,
   careerPersonName = null,
 }: {
   movie: CurrentMovie;
   onPersonClick: OnPersonClick;
+  onCreateChannelFromMovie: (movie: MovieChannelSeedInput) => void;
   /** When set (career mode), that person’s name is highlighted in the credit lines. */
   careerPersonName?: string | null;
 }) {
@@ -975,21 +1090,11 @@ const TrailerMetadata = memo(function TrailerMetadata({
         </span>
         {movie.rtScore && <RTBadge score={movie.rtScore} />}
       </div>
-      <h2 className="text-2xl font-bold text-white mt-1 leading-tight w-full min-w-0 break-words">
-        {!movie.trailerKey ? (
-          <a
-            href={youtubeSearchUrlForMovie(movie.title, movie.type, movie.year)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline decoration-zinc-600 decoration-2 underline-offset-2 hover:text-indigo-400 hover:decoration-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 rounded-sm"
-            aria-label={`Search YouTube for ${movie.title} trailer`}
-          >
-            {movie.title}
-          </a>
-        ) : (
-          movie.title
-        )}
-      </h2>
+      <MovieTitleChannelLink
+        movie={movie}
+        onCreateChannel={onCreateChannelFromMovie}
+        headingClassName="text-2xl font-bold text-white mt-1 leading-tight w-full min-w-0 break-words"
+      />
       {movie.director && (
         <p className="mt-1 text-sm text-zinc-300">
           <span className="text-zinc-400">{movie.type === "tv" ? "Created by" : "Dir."}</span>{" "}
@@ -1037,12 +1142,14 @@ const PosterMovieTop = memo(function PosterMovieTop({
   movie,
   onOpenPoster,
   onPersonClick,
+  onCreateChannelFromMovie,
   careerPersonName = null,
   detailsLoading = false,
 }: {
   movie: CurrentMovie;
   onOpenPoster: (url: string) => void;
   onPersonClick: OnPersonClick;
+  onCreateChannelFromMovie: (movie: MovieChannelSeedInput) => void;
   careerPersonName?: string | null;
   /** True while a new title’s details are still being fetched (keeps layout stable vs swapping to a short placeholder). */
   detailsLoading?: boolean;
@@ -1093,21 +1200,11 @@ const PosterMovieTop = memo(function PosterMovieTop({
           </span>
           {movie.rtScore && <RTBadge score={movie.rtScore} />}
         </div>
-        <h2 className="text-xl sm:text-2xl font-bold text-white mt-0.5 leading-tight w-full min-w-0 break-words">
-          {!movie.trailerKey ? (
-            <a
-              href={youtubeSearchUrlForMovie(movie.title, movie.type, movie.year)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline decoration-zinc-600 decoration-2 underline-offset-2 hover:text-indigo-400 hover:decoration-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 rounded-sm"
-              aria-label={`Search YouTube for ${movie.title} trailer`}
-            >
-              {movie.title}
-            </a>
-          ) : (
-            movie.title
-          )}
-        </h2>
+        <MovieTitleChannelLink
+          movie={movie}
+          onCreateChannel={onCreateChannelFromMovie}
+          headingClassName="text-xl sm:text-2xl font-bold text-white mt-0.5 leading-tight w-full min-w-0 break-words"
+        />
         {movie.director && (
           <p className="mt-1 text-sm text-zinc-300">
             <span className="text-zinc-400">{movie.type === "tv" ? "Created by" : "Dir."}</span>{" "}
@@ -1181,7 +1278,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   previousRating?: number;
   previousMode?: "seen" | "unseen";
   showNextInRating?: boolean;
-  layout?: "card" | "trailerBar";
+  layout?: "card" | "trailerBar" | "fullscreenOverlay";
   /** Prev control — career filmography index or playback back stack. */
   prevNav?: { onPass: () => void; disabled: boolean } | null;
   /** Career mode: disable Next on last film in filmography (passCurrentCard is a no-op there). */
@@ -1210,7 +1307,9 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   const autoFilled = WATCH_PROGRESS_AUTO_RATING ? progressToStars(watchFrac) : 0;
   const displayFilled = userLocked ? lockedValue : autoFilled;
 
-  const navPairTight = Boolean(prevNav && showNextInRating);
+  const isTrailerStrip = layout === "trailerBar";
+  const navPairTight =
+    layout === "fullscreenOverlay" || isTrailerStrip || Boolean(prevNav && showNextInRating);
   const starBlock = seenStatus === null ? (
     <StarRow
       key={`${starKeyPrefix}-seen-${movieTitle}`}
@@ -1238,35 +1337,57 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   const navRow = (
     <div
       className={
-        navPair
-          ? "grid w-full min-w-0 grid-cols-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center gap-x-2 gap-y-2 sm:gap-y-0 sm:gap-x-3"
-          : `flex min-w-0 flex-wrap items-center justify-center gap-x-4 gap-y-3 sm:gap-x-5 ${
-              showNextInRating ? "" : "justify-center"
-            }`
+        isTrailerStrip
+          ? "flex w-full min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-2 sm:gap-x-3"
+          : navPair
+            ? "grid w-full min-w-0 grid-cols-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center gap-x-2 gap-y-2 sm:gap-y-0 sm:gap-x-3"
+            : `flex min-w-0 flex-wrap items-center justify-center gap-x-4 gap-y-3 sm:gap-x-5 ${
+                showNextInRating ? "" : "justify-center"
+              }`
       }
     >
       {prevNav && (
-        <div className="shrink-0 max-sm:col-start-1 max-sm:row-start-1 sm:col-start-1 sm:row-start-1 self-center">
+        <div
+          className={
+            isTrailerStrip
+              ? "shrink-0 self-center"
+              : "shrink-0 max-sm:col-start-1 max-sm:row-start-1 sm:col-start-1 sm:row-start-1 self-center"
+          }
+        >
           <PassNextButton
             onPass={prevNav.onPass}
             disabled={prevNav.disabled}
-            prominent
             direction="prev"
+            muted={isTrailerStrip}
+            prominent={!isTrailerStrip}
           />
         </div>
       )}
       <div
         className={
-          navPair
-            ? "min-w-0 w-full max-sm:col-span-2 max-sm:row-start-2 sm:col-start-2 sm:row-start-1 flex justify-center"
-            : "min-w-0 flex shrink"
+          isTrailerStrip
+            ? "flex min-w-0 flex-1 justify-center"
+            : navPair
+              ? "min-w-0 w-full max-sm:col-span-2 max-sm:row-start-2 sm:col-start-2 sm:row-start-1 flex justify-center"
+              : "min-w-0 flex shrink"
         }
       >
         {starBlock}
       </div>
       {showNextInRating && (
-        <div className="shrink-0 max-sm:col-start-2 max-sm:row-start-1 sm:col-start-3 self-center">
-          <PassNextButton onPass={passCurrentCardStable} prominent disabled={careerNextDisabled} />
+        <div
+          className={
+            isTrailerStrip
+              ? "shrink-0 self-center"
+              : "shrink-0 max-sm:col-start-2 max-sm:row-start-1 sm:col-start-3 self-center"
+          }
+        >
+          <PassNextButton
+            onPass={passCurrentCardStable}
+            muted={isTrailerStrip}
+            prominent={!isTrailerStrip}
+            disabled={careerNextDisabled}
+          />
         </div>
       )}
     </div>
@@ -1287,10 +1408,112 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
     );
   }
 
+  if (layout === "fullscreenOverlay") {
+    const fsStars = (
+      <StarRow
+        key={`${starKeyPrefix}-fs-${movieTitle}-${seenStatus === null ? "seen" : "unseen"}`}
+        compact
+        careerNavTight
+        hideLabel
+        filled={displayFilled}
+        color={seenStatus === null ? "red" : "blue"}
+        label={seenStatus === null ? "Rating" : "Interest"}
+        onRate={(v) => {
+          setUserLocked(true);
+          setLockedValue(v);
+          onRate(v, seenStatus === null ? "seen" : "unseen");
+        }}
+      />
+    );
+    return (
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center bg-gradient-to-t from-black/80 to-transparent px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-10"
+        role="region"
+        aria-label="Rating controls"
+      >
+        <div className="pointer-events-auto flex w-full max-w-3xl min-w-0 flex-wrap items-center justify-center gap-2 sm:gap-3">
+          {prevNav && (
+            <PassNextButton
+              onPass={prevNav.onPass}
+              disabled={prevNav.disabled}
+              direction="prev"
+              prominent
+            />
+          )}
+          <SeenModeSegment value={seenStatus} onChange={onSeenStatusChange} />
+          <div className="rounded-lg border border-zinc-600 px-1.5 py-0.5">{fsStars}</div>
+          {showNextInRating && (
+            <PassNextButton
+              onPass={passCurrentCardStable}
+              prominent
+              disabled={careerNextDisabled}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl bg-zinc-900 border border-zinc-700 px-2 py-2 sm:px-3 sm:py-2.5">
       {ratingBody}
     </div>
+  );
+});
+
+/** Normal-view exit + bottom toolbar when trailer or poster is fullscreen. */
+const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
+  onExit,
+  passCurrentCardStable,
+  onRate,
+  movieTitle,
+  watchFrac,
+  defaultSeen,
+  previousRating,
+  previousMode,
+  prevNav,
+  careerNextDisabled,
+}: {
+  onExit: () => void;
+  passCurrentCardStable: () => void;
+  onRate: (stars: number, mode: "seen" | "unseen") => void;
+  movieTitle: string;
+  watchFrac: number;
+  defaultSeen: boolean;
+  previousRating?: number;
+  previousMode?: "seen" | "unseen";
+  prevNav: { onPass: () => void; disabled: boolean } | null;
+  careerNextDisabled: boolean;
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        onPointerDown={(e) => e.preventDefault()}
+        onClick={onExit}
+        className="fixed top-5 left-5 z-[60] inline-flex items-center gap-2 rounded-xl border border-zinc-600/80 bg-black/70 px-3 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/90 select-none"
+        title="Leave fullscreen and return to normal view"
+        aria-label="Exit fullscreen — normal view"
+      >
+        <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9L4 4m0 0v4m0-4h4M15 9l5-5m0 0v4m0-4h-4M9 15l-5 5m0 0v-4m0 4h4M15 15l5 5m0 0v-4m0 4h-4" />
+        </svg>
+        Normal view
+      </button>
+      <MovieRatingBlock
+        layout="fullscreenOverlay"
+        passCurrentCardStable={passCurrentCardStable}
+        onRate={onRate}
+        movieTitle={movieTitle}
+        starKeyPrefix="tr"
+        watchFrac={watchFrac}
+        defaultSeen={defaultSeen}
+        previousRating={previousRating}
+        previousMode={previousMode}
+        prevNav={prevNav}
+        careerNextDisabled={careerNextDisabled}
+      />
+    </>
   );
 });
 
@@ -1561,6 +1784,7 @@ async function exitFullscreenPolyfill(): Promise<void> {
 }
 
 export default function Home() {
+  const router = useRouter();
   /** Persisted lists — refs only on this page (nothing in the tree reads them for render). Updates skip full-tree re-renders. */
   const historyRef = useRef<RatingEntry[]>([]);
   const skippedRef = useRef<string[]>([]);
@@ -1726,12 +1950,14 @@ export default function Home() {
       const q = JSON.parse(raw) as CurrentMovie[];
       if (Array.isArray(q) && q.every((m) => m && typeof m.title === "string")) {
         const seen = new Set<string>();
-        prefetchRef.current = q.filter((m) => {
-          const k = canonicalTitleKey(m.title);
-          if (seen.has(k)) return false;
-          seen.add(k);
-          return true;
-        });
+        prefetchRef.current = q
+          .filter((m) => {
+            const k = canonicalTitleKey(m.title);
+            if (seen.has(k)) return false;
+            seen.add(k);
+            return true;
+          })
+          .slice(0, HIGH_WATER_MARK);
       } else {
         prefetchRef.current = [];
       }
@@ -2056,6 +2282,7 @@ export default function Home() {
         for (const m of prefetchRef.current) excluded.add(canonicalTitleKey(m.title));
 
         for (const movie of movies) {
+          if (prefetchRef.current.length >= HIGH_WATER_MARK) break;
           const key = canonicalTitleKey(movie.title);
           seenThisBatch.add(key);
           if (prefetchRef.current.some((m) => canonicalTitleKey(m.title) === key)) continue;
@@ -2767,7 +2994,7 @@ export default function Home() {
     setNavBackDepth(navBackStackRef.current.length);
     const cur = currentRef.current;
     if (cur) {
-      prefetchRef.current = [cur, ...prefetchRef.current];
+      prefetchRef.current = [cur, ...prefetchRef.current].slice(0, HIGH_WATER_MARK);
       persistPrefetchQueue();
     }
     suppressNavPushRef.current = true;
@@ -2938,6 +3165,13 @@ export default function Home() {
     llm,
   ]);
 
+  const openNewChannelFromMovie = useCallback(
+    (movie: MovieChannelSeedInput) => {
+      queueNewChannelFromMovie(movie, (path) => router.push(path));
+    },
+    [router],
+  );
+
   const hubUrl = process.env.NEXT_PUBLIC_HUB_URL || "http://127.0.0.1:8000";
 
   return (
@@ -3065,58 +3299,84 @@ export default function Home() {
                         onPlaybackError={handleTrailerPlaybackError}
                         resumeFromFraction={trailerResumeByChannel[activeChannelId]?.[canonicalTitleKey(current.title)]}
                       />
-                      {/* Fullscreen: overlay Next + exit */}
                       {trailerFsUi && (
-                        <>
-                          <button
-                            type="button"
-                            disabled={careerAtLastFilm}
-                            onPointerDown={(e) => e.preventDefault()}
-                            onClick={passCurrentCardStable}
-                            className={`fixed top-5 right-5 z-50 inline-flex items-center gap-2 rounded-xl border-2 px-6 py-3 text-base font-semibold shadow-lg transition-all select-none ${
-                              careerAtLastFilm
-                                ? "cursor-not-allowed border-zinc-600 bg-zinc-800 text-zinc-500 shadow-none opacity-60"
-                                : "border-indigo-200/90 bg-indigo-600 text-white shadow-indigo-950/40 hover:bg-indigo-500 hover:border-white/90"
-                            }`}
-                            title={careerAtLastFilm ? "No more titles in this list" : "Go to the next title"}
-                            aria-label={careerAtLastFilm ? "No next title" : "Next title"}
-                          >
-                            Next
-                            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                              <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            onPointerDown={(e) => e.preventDefault()}
-                            onClick={() => void exitTrailerFullscreen()}
-                            className="fixed top-5 left-5 z-50 rounded-xl bg-black/50 p-2.5 text-white/70 hover:bg-black/80 hover:text-white transition-colors select-none"
-                            title="Exit fullscreen"
-                            aria-label="Exit fullscreen"
-                          >
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9L4 4m0 0v4m0-4h4M15 9l5-5m0 0v4m0-4h-4M9 15l-5 5m0 0v-4m0 4h4M15 15l5 5m0 0v-4m0 4h-4" />
-                            </svg>
-                          </button>
-                        </>
+                        <TrailerFullscreenChrome
+                          onExit={() => void exitTrailerFullscreen()}
+                          passCurrentCardStable={passCurrentCardStable}
+                          onRate={handlePendingChange}
+                          movieTitle={current.title}
+                          watchFrac={watchFrac}
+                          defaultSeen={activeChannelId === "all"}
+                          previousRating={historyRef.current.find((e) => e.title === current.title)?.userRating}
+                          previousMode={historyRef.current.find((e) => e.title === current.title)?.ratingMode}
+                          prevNav={prevNav}
+                          careerNextDisabled={careerAtLastFilm}
+                        />
                       )}
                     </div>
                   ) : current.posterUrl && !current.trailerKey ? (
-                    <div className="border-b border-zinc-800/80 bg-zinc-950">
-                      <div className="flex min-w-0 items-start justify-between gap-3 p-4 sm:p-6">
-                        <div className="min-w-0 flex-1">
-                          <PosterMovieTop
-                            movie={current}
-                            onOpenPoster={openPosterLightbox}
-                            onPersonClick={enterCareerMode}
-                            careerPersonName={careerMode?.personName ?? null}
-                            detailsLoading={careerLoading}
+                    <div
+                      ref={videoContainerRef}
+                      className={`flex min-h-0 flex-col bg-black ${
+                        pseudoTrailerFullscreen ? "fixed inset-0 z-[70] overflow-y-auto overscroll-y-contain" : ""
+                      }`}
+                    >
+                      {trailerFsUi ? (
+                        <div className="relative flex min-h-0 flex-1 items-center justify-center bg-black px-4 pb-36 pt-16">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={current.posterUrl}
+                            alt={`${current.title} poster`}
+                            referrerPolicy="no-referrer"
+                            className="max-h-full max-w-full object-contain"
                           />
                         </div>
-                        <div className="shrink-0 pt-0.5">
-                          <ShareButton onClick={handleShare} toast={shareToast} />
+                      ) : (
+                        <div className="border-b border-zinc-800/80 bg-zinc-950">
+                          <div className="flex min-w-0 items-start justify-between gap-3 p-4 sm:p-6">
+                            <div className="min-w-0 flex-1">
+                              <PosterMovieTop
+                                movie={current}
+                                onOpenPoster={openPosterLightbox}
+                                onPersonClick={enterCareerMode}
+                                onCreateChannelFromMovie={openNewChannelFromMovie}
+                                careerPersonName={careerMode?.personName ?? null}
+                                detailsLoading={careerLoading}
+                              />
+                            </div>
+                            <div className="flex shrink-0 flex-col items-end gap-1 pt-0.5">
+                              <button
+                                type="button"
+                                onPointerDown={(e) => e.preventDefault()}
+                                onClick={() => void enterTrailerFullscreen()}
+                                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
+                                title="Enter fullscreen — rating controls stay on screen"
+                                aria-label="Enter fullscreen"
+                              >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                </svg>
+                                Fullscreen
+                              </button>
+                              <ShareButton onClick={handleShare} toast={shareToast} />
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
+                      {trailerFsUi && (
+                        <TrailerFullscreenChrome
+                          onExit={() => void exitTrailerFullscreen()}
+                          passCurrentCardStable={passCurrentCardStable}
+                          onRate={handlePendingChange}
+                          movieTitle={current.title}
+                          watchFrac={watchFrac}
+                          defaultSeen={activeChannelId === "all"}
+                          previousRating={historyRef.current.find((e) => e.title === current.title)?.userRating}
+                          previousMode={historyRef.current.find((e) => e.title === current.title)?.ratingMode}
+                          prevNav={prevNav}
+                          careerNextDisabled={careerAtLastFilm}
+                        />
+                      )}
                     </div>
                   ) : (
                     <div ref={videoContainerRef} className="relative bg-black">
@@ -3140,6 +3400,8 @@ export default function Home() {
                       careerNextDisabled={careerAtLastFilm}
                     />
                   )}
+                  {!trailerFsUi && (
+                  <>
                   <div className="flex flex-col gap-4 p-4 sm:pb-6 sm:p-6">
                     {current.trailerKey && (
                       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
@@ -3147,6 +3409,7 @@ export default function Home() {
                           <TrailerMetadata
                             movie={current}
                             onPersonClick={enterCareerMode}
+                            onCreateChannelFromMovie={openNewChannelFromMovie}
                             careerPersonName={careerMode?.personName ?? null}
                           />
                         </div>
@@ -3195,10 +3458,11 @@ export default function Home() {
                         activeChannelId={activeChannelId}
                         onPlayAtIndex={playPrefetchAtIndex}
                         onRemoveAtIndex={removeFromPrefetchQueue}
+                        onCreateChannelFromMovie={openNewChannelFromMovie}
                       />
                     )}
                   </div>
-                  {current.trailerKey && current.posterUrl && !trailerFsUi && (
+                  {current.trailerKey && current.posterUrl && (
                     <div className="flex w-full min-w-0 justify-center border-t border-zinc-800 bg-zinc-950 px-3 pb-4 pt-3 sm:px-6 sm:pb-5 sm:pt-3">
                       <button
                         type="button"
@@ -3218,6 +3482,8 @@ export default function Home() {
                       </button>
                     </div>
                   )}
+                  </>
+                  )}
                 </div>
               ) : (
                 /* ── POSTER MODE (user chose “posters” in settings — large poster + metadata) ── */
@@ -3228,6 +3494,7 @@ export default function Home() {
                         movie={current}
                         onOpenPoster={openPosterLightbox}
                         onPersonClick={enterCareerMode}
+                        onCreateChannelFromMovie={openNewChannelFromMovie}
                         careerPersonName={careerMode?.personName ?? null}
                         detailsLoading={careerLoading}
                       />
@@ -3267,6 +3534,7 @@ export default function Home() {
                       activeChannelId={activeChannelId}
                       onPlayAtIndex={playPrefetchAtIndex}
                       onRemoveAtIndex={removeFromPrefetchQueue}
+                      onCreateChannelFromMovie={openNewChannelFromMovie}
                     />
                   )}
                 </div>
@@ -3275,13 +3543,28 @@ export default function Home() {
           ) : null}
         </div>
 
+        <div className="flex gap-3 px-1 py-1">
+          <Link
+            href={`/channels${activeChannelId && activeChannelId !== "all" ? `?select=${activeChannelId}` : ""}`}
+            className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            Edit Channel
+          </Link>
+          <span className="text-zinc-700 text-sm select-none">·</span>
+          <Link href="/channel-history" className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
+            Channel History
+          </Link>
+        </div>
+
         {current ? (
           <div className="w-full overflow-hidden rounded-2xl border border-zinc-800/90 bg-zinc-950/80">
             <TrailerVisionConstellationsEmbed
               nowPlayingKey={constellationsNowPlayingKey}
               autoExpandMatchTitles={constellationsAutoExpand}
               externalSearch={constellationsExternalSearch}
-              onNewChannelFromNode={() => {}}
+              onNewChannelFromNode={(node) =>
+                queueNewChannelFromGraphNode(node, (path) => router.push(path))
+              }
             />
           </div>
         ) : null}
@@ -3296,11 +3579,6 @@ export default function Home() {
           ) : (
             <p className="text-sm text-zinc-600 italic">Rate a few titles to build your taste profile.</p>
           )}
-          <div className="flex gap-3 mt-3 pt-3 border-t border-zinc-800">
-            <Link href={`/channels${activeChannelId && activeChannelId !== "all" ? `?select=${activeChannelId}` : ""}`} className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors">Edit Channel</Link>
-            <span className="text-zinc-700 text-sm select-none">·</span>
-            <Link href="/channel-history" className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors">Channel History</Link>
-          </div>
         </div>
 
         </div>

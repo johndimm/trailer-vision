@@ -3,26 +3,22 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { applyFactoryBootstrap, hasNoChannelsPersisted } from "../lib/factoryChannels";
-import { mergeNewChannelFormPrefill, NEW_CHANNEL_PREFILL_KEY } from "../lib/channelFromPrompt";
+import { NEW_CHANNEL_PREFILL_KEY } from "../lib/channelFromPrompt";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import ChannelEditorForm from "../components/ChannelEditorForm";
+import type { ChannelEditorValues } from "../components/ChannelEditorForm";
+import {
+  TRAILER_CHANNEL_EDITOR_CONFIG,
+  channelToEditorValues,
+  editorValuesToChannel,
+  emptyTrailerEditorValues,
+  prefillToEditorValues,
+} from "../lib/channelEditorConfig";
+import type { ChannelMedium, MovieChannel as Channel } from "../lib/movieChannel";
 
-/** What kinds of titles this channel should surface (empty = no extra format filter beyond app settings). */
-export type ChannelMedium = "movie" | "tv";
+export type { ChannelMedium, Channel };
 
 const VALID_MEDIUMS = new Set<ChannelMedium>(["movie", "tv"]);
-
-export interface Channel {
-  id: string;
-  name: string;
-  /** Feature films and/or episodic TV. Empty = any format. */
-  mediums: ChannelMedium[];
-  genres: string[];
-  timePeriods: string[];
-  language: string;
-  artists: string;
-  freeText: string;
-  popularity: number;
-}
 
 /** Ensure persisted channels (pre–mediums field) get a valid `mediums` array; drop legacy `region`. */
 export function normalizeChannel(c: Channel & { region?: string }): Channel {
@@ -34,75 +30,8 @@ export function normalizeChannel(c: Channel & { region?: string }): Channel {
   return { ...rest, mediums };
 }
 
-export function channelToFormInitial(ch: Channel): Omit<Channel, "id"> {
-  const { id: _id, ...rest } = normalizeChannel(ch);
-  return rest;
-}
-
 export const CHANNELS_KEY = "movie-recs-channels";
 export const ACTIVE_CHANNEL_KEY = "movie-recs-active-channel";
-
-const SETTINGS_KEY = "movie-recs-settings";
-function readLlmFromLocalSettings(): string {
-  try {
-    const s = localStorage.getItem(SETTINGS_KEY);
-    if (!s) return "deepseek";
-    const o = JSON.parse(s) as { llm?: string };
-    return o.llm ?? "deepseek";
-  } catch {
-    return "deepseek";
-  }
-}
-
-/** Cache LLM artist suggestions by filter signature (same tab + reload via sessionStorage). */
-const ARTIST_SUGGEST_CACHE_STORAGE = "movie-recs-artist-suggestions-v1";
-const artistSuggestMemCache = new Map<string, string[]>();
-
-function stableArtistSuggestKey(
-  channelName: string,
-  genres: string[],
-  timePeriods: string[],
-  language: string,
-  freeText: string,
-  llm: string,
-): string {
-  return JSON.stringify({
-    n: channelName.trim(),
-    g: [...genres].sort(),
-    t: [...timePeriods].sort(),
-    l: language.trim(),
-    f: freeText.trim(),
-    m: llm,
-  });
-}
-
-function getArtistSuggestCached(key: string): string[] | undefined {
-  if (artistSuggestMemCache.has(key)) return artistSuggestMemCache.get(key)!;
-  try {
-    const raw = sessionStorage.getItem(ARTIST_SUGGEST_CACHE_STORAGE);
-    if (!raw) return undefined;
-    const all = JSON.parse(raw) as Record<string, string[]>;
-    if (!Object.prototype.hasOwnProperty.call(all, key)) return undefined;
-    const arr = all[key];
-    if (!Array.isArray(arr)) return undefined;
-    artistSuggestMemCache.set(key, arr);
-    return arr;
-  } catch {
-    return undefined;
-  }
-}
-
-function setArtistSuggestCached(key: string, artists: string[]) {
-  artistSuggestMemCache.set(key, artists);
-  try {
-    const raw = sessionStorage.getItem(ARTIST_SUGGEST_CACHE_STORAGE);
-    const all = raw ? (JSON.parse(raw) as Record<string, string[]>) : {};
-    all[key] = artists;
-    sessionStorage.setItem(ARTIST_SUGGEST_CACHE_STORAGE, JSON.stringify(all));
-  } catch {
-    /* quota */
-  }
-}
 
 export const ALL_CHANNEL: Channel = {
   id: "all",
@@ -116,349 +45,6 @@ export const ALL_CHANNEL: Channel = {
   popularity: 50,
 };
 
-const GENRE_OPTIONS = [
-  "Action", "Adventure", "Animation", "Comedy", "Crime",
-  "Documentary", "Drama", "Fantasy", "Horror", "Musical",
-  "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western",
-];
-
-const TIME_OPTIONS = [
-  "pre-1940s", "1940s", "1950s", "1960s", "1970s",
-  "1980s", "1990s", "2000s", "2010s", "2020s",
-];
-
-const MEDIUM_OPTIONS: { id: ChannelMedium; label: string; hint: string }[] = [
-  { id: "movie", label: "Movies", hint: "Theatrical feature films" },
-  { id: "tv", label: "TV series", hint: "Episodic / ongoing TV series" },
-];
-
-const LANGUAGE_OPTIONS = [
-  "English", "French", "Italian", "Spanish", "German", "Japanese",
-  "Korean", "Mandarin", "Cantonese", "Hindi", "Portuguese", "Russian",
-  "Arabic", "Persian", "Swedish", "Danish", "Norwegian", "Finnish",
-  "Polish", "Greek", "Turkish", "Hebrew",
-];
-
-function csvToArray(csv: string): string[] {
-  return csv.split(",").map((s) => s.trim()).filter(Boolean);
-}
-
-function toggleCsv(csv: string, val: string): string {
-  const items = csvToArray(csv);
-  return items.includes(val)
-    ? items.filter((x) => x !== val).join(", ")
-    : [...items, val].join(", ");
-}
-
-export function popularityLabel(n: number): string {
-  if (n <= 15) return "Hidden gems only";
-  if (n <= 35) return "Mostly obscure";
-  if (n <= 45) return "Lean obscure";
-  if (n <= 55) return "Balanced";
-  if (n <= 65) return "Lean mainstream";
-  if (n <= 85) return "Mostly mainstream";
-  return "Mainstream only";
-}
-
-const EMPTY: Omit<Channel, "id"> = {
-  name: "",
-  mediums: [],
-  genres: [],
-  timePeriods: [],
-  language: "",
-  artists: "",
-  freeText: "",
-  popularity: 50,
-};
-
-// ── Components ─────────────────────────────────────────────────────────────────
-
-function ChipRow({
-  options,
-  selected,
-  onToggle,
-}: {
-  options: string[];
-  selected: string[];
-  onToggle: (val: string) => void;
-}) {
-  return (
-    <div className="mt-2 flex flex-wrap gap-2">
-      {options.map((opt) => (
-        <button
-          key={opt}
-          type="button"
-          onClick={() => onToggle(opt)}
-          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-            selected.includes(opt)
-              ? "bg-indigo-600 text-white"
-              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
-          }`}
-        >
-          {opt}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-type Suggestions = { artists: string[] };
-
-const EMPTY_SUGGESTIONS: Suggestions = { artists: [] };
-
-function ChannelForm({
-  initial,
-  onSave,
-  onCancel,
-}: {
-  initial: Omit<Channel, "id">;
-  onSave: (data: Omit<Channel, "id">) => void;
-  onCancel?: () => void;
-}) {
-  const [form, setForm] = useState(initial);
-  const formRef = useRef(form);
-  formRef.current = form;
-  const [suggestions, setSuggestions] = useState<Suggestions>(EMPTY_SUGGESTIONS);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-
-  const toggleArr = (arr: string[], val: string) =>
-    arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
-
-  const toggleMedium = (arr: ChannelMedium[], val: ChannelMedium) =>
-    arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
-
-  const field = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
-    setForm((f) => ({ ...f, [k]: v }));
-
-  const hasSelections =
-    form.name.trim() !== "" ||
-    form.genres.length > 0 ||
-    form.timePeriods.length > 0 ||
-    form.language.trim() !== "" ||
-    form.freeText.trim() !== "";
-
-  const llmChoice = readLlmFromLocalSettings();
-  const artistSuggestKey = useMemo(
-    () =>
-      stableArtistSuggestKey(
-        form.name,
-        form.genres,
-        form.timePeriods,
-        form.language,
-        form.freeText,
-        llmChoice,
-      ),
-    [form.name, form.genres.join(","), form.timePeriods.join(","), form.language, form.freeText, llmChoice],
-  );
-
-  useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
-    }
-    abortRef.current?.abort();
-
-    if (!hasSelections) {
-      setSuggestions(EMPTY_SUGGESTIONS);
-      setLoadingSuggestions(false);
-      return;
-    }
-
-    const cached = getArtistSuggestCached(artistSuggestKey);
-    if (cached !== undefined) {
-      setSuggestions({ artists: cached });
-      setLoadingSuggestions(false);
-      return;
-    }
-
-    const scheduleKey = artistSuggestKey;
-    debounceRef.current = setTimeout(async () => {
-      const f = formRef.current;
-      const llm = readLlmFromLocalSettings();
-      const bodyKey = stableArtistSuggestKey(
-        f.name,
-        f.genres,
-        f.timePeriods,
-        f.language,
-        f.freeText,
-        llm,
-      );
-      if (bodyKey !== scheduleKey) return;
-
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-      setLoadingSuggestions(true);
-      try {
-        const res = await fetch("/api/suggest-artists", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            channelName: f.name,
-            genres: f.genres,
-            timePeriods: f.timePeriods,
-            language: f.language,
-            freeText: f.freeText,
-            llm,
-          }),
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        const after = stableArtistSuggestKey(
-          formRef.current.name,
-          formRef.current.genres,
-          formRef.current.timePeriods,
-          formRef.current.language,
-          formRef.current.freeText,
-          readLlmFromLocalSettings(),
-        );
-        if (after !== bodyKey) return;
-        if (res.ok) {
-          const data = (await res.json()) as Suggestions;
-          const artists = Array.isArray(data.artists) ? data.artists : [];
-          setArtistSuggestCached(bodyKey, artists);
-          setSuggestions({ artists });
-        }
-      } catch (e) {
-        if ((e as { name?: string }).name !== "AbortError") console.error("[suggest-artists]", e);
-      }
-      if (!controller.signal.aborted) setLoadingSuggestions(false);
-    }, 600);
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-        debounceRef.current = null;
-      }
-    };
-  }, [hasSelections, artistSuggestKey]);
-
-  const artistOptions = hasSelections && suggestions.artists.length > 0
-    ? [...new Set([...suggestions.artists, ...csvToArray(form.artists)])]
-    : csvToArray(form.artists);
-
-  return (
-    <div className="space-y-4 py-4 border-t border-zinc-100">
-      <div className="rounded-2xl border border-indigo-200/60 bg-indigo-50/40 p-3 sm:p-4">
-        <label className="text-xs font-bold text-indigo-900/90 uppercase tracking-wider">What you want</label>
-        <p className="mt-1 text-xs text-zinc-600 leading-relaxed">
-          Describe the kinds of movies or shows you want in this channel—mood, scope, subgenres, or examples. The app uses this as the main signal to line up
-          the format, genres, time periods, and language in the sections below. This is not an extra &quot;hint&quot;; it drives those choices.
-        </p>
-        <textarea
-          value={form.freeText}
-          onChange={(e) => field("freeText", e.target.value)}
-          placeholder="E.g. slow-burn Euro crime from the 70s, morally gray leads, not big franchise IP…"
-          rows={4}
-          className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-y min-h-[4.5rem]"
-        />
-        <p className="mt-1.5 text-[11px] text-zinc-500">
-          Don’t repeat the channel name here—that belongs in the next field. The name and this description are both sent to the model.
-        </p>
-      </div>
-
-      <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Channel name</label>
-        <p className="mt-1 text-xs text-zinc-500 leading-relaxed">
-          Short label shown on the home screen. Give it a clear, specific title—no need to paste it again in the description above.
-        </p>
-        <input
-          type="text"
-          value={form.name}
-          onChange={(e) => field("name", e.target.value)}
-          placeholder="e.g. 70s paranoid thrillers, cozy British mysteries"
-          className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-        />
-      </div>
-
-      <div className="space-y-4 border-t border-zinc-100 pt-4">
-        <p className="text-xs text-zinc-500 leading-relaxed">
-          <span className="font-semibold text-zinc-600">Refine: </span>
-          use the checkboxes to match the description, or set them by hand. You can add more in the main text if needed; you don’t need to restate the channel name there.
-        </p>
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Medium</label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {MEDIUM_OPTIONS.map(({ id, label, hint }) => (
-              <button
-                key={id}
-                type="button"
-                title={hint}
-                onClick={() => field("mediums", toggleMedium(form.mediums, id))}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${form.mediums.includes(id) ? "bg-indigo-600 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-      <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Genres</label>
-        <ChipRow options={GENRE_OPTIONS} selected={form.genres} onToggle={(g) => field("genres", toggleArr(form.genres, g))} />
-      </div>
-
-      <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Time periods</label>
-        <ChipRow options={TIME_OPTIONS} selected={form.timePeriods} onToggle={(t) => field("timePeriods", toggleArr(form.timePeriods, t))} />
-      </div>
-
-      <div>
-        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Language</label>
-        <ChipRow options={LANGUAGE_OPTIONS} selected={csvToArray(form.language)} onToggle={(l) => field("language", toggleCsv(form.language, l))} />
-      </div>
-
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Directors / Actors</label>
-          {loadingSuggestions && <span className="text-xs text-zinc-400">updating…</span>}
-        </div>
-        {artistOptions.length > 0
-          ? <ChipRow options={artistOptions} selected={csvToArray(form.artists)} onToggle={(a) => field("artists", toggleCsv(form.artists, a))} />
-          : (
-            <p className="mt-1 text-xs text-zinc-400">
-              {hasSelections
-                ? "No suggestions yet — add a little more in the description or try genres / era / language."
-                : "Add a title, a description, or a filter in the sections on this form to see director and actor ideas."}
-            </p>
-          )
-        }
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Popularity</label>
-          <span className="text-xs text-indigo-600 font-medium">{popularityLabel(form.popularity)}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-zinc-400 w-20 text-right shrink-0">Hidden gems</span>
-          <input type="range" min={0} max={100} value={form.popularity}
-            onChange={(e) => field("popularity", Number(e.target.value))}
-            className="flex-1 accent-indigo-600" />
-          <span className="text-xs text-zinc-400 w-20 shrink-0">Mainstream</span>
-        </div>
-      </div>
-    </div>
-
-      <div className="flex justify-end gap-2 pt-1">
-        {onCancel && (
-          <button type="button" onClick={onCancel}
-            className="px-4 py-1.5 rounded-lg border border-zinc-200 text-zinc-600 text-sm font-medium hover:bg-zinc-50 transition-colors">
-            Cancel
-          </button>
-        )}
-        <button type="button" onClick={() => { if (form.name.trim()) onSave(form); }}
-          disabled={!form.name.trim()}
-          className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-40">
-          Save
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function ChannelsPage() {
@@ -467,7 +53,9 @@ export default function ChannelsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   /** Initial values for the “new channel” form (from home prefill or blank). */
-  const [newChannelFormInitial, setNewChannelFormInitial] = useState<Omit<Channel, "id">>(EMPTY);
+  const [newChannelFormInitial, setNewChannelFormInitial] = useState<ChannelEditorValues>(
+    emptyTrailerEditorValues()
+  );
   const [newChannelFormKey, setNewChannelFormKey] = useState(0);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
@@ -502,12 +90,11 @@ export default function ChannelsPage() {
     window.history.replaceState({}, "", "/channels");
     if (newParam === "1" || newParam === "true") {
       queueMicrotask(() => {
-        let next: Omit<Channel, "id"> = EMPTY;
+        let next = emptyTrailerEditorValues();
         try {
           const raw = sessionStorage.getItem(NEW_CHANNEL_PREFILL_KEY);
           if (raw) {
-            const parsed = JSON.parse(raw) as unknown;
-            next = { ...mergeNewChannelFormPrefill(parsed) } as Omit<Channel, "id">;
+            next = prefillToEditorValues(JSON.parse(raw) as unknown);
             sessionStorage.removeItem(NEW_CHANNEL_PREFILL_KEY);
           }
         } catch {
@@ -533,17 +120,17 @@ export default function ChannelsPage() {
     setChannels(normalized);
   };
 
-  const createChannel = (data: Omit<Channel, "id">) => {
-    const ch: Channel = { ...data, id: crypto.randomUUID() };
+  const createChannel = (values: ChannelEditorValues) => {
+    const ch = editorValuesToChannel(crypto.randomUUID(), values);
     const next = [...channels, ch];
     saveChannels(next);
     localStorage.setItem(ACTIVE_CHANNEL_KEY, ch.id);
-    setNewChannelFormInitial(EMPTY);
+    setNewChannelFormInitial(emptyTrailerEditorValues());
     router.push("/");
   };
 
-  const updateChannel = (id: string, data: Omit<Channel, "id">) => {
-    saveChannels(channels.map((c) => (c.id === id ? { ...data, id } : c)));
+  const updateChannel = (id: string, values: ChannelEditorValues) => {
+    saveChannels(channels.map((c) => (c.id === id ? editorValuesToChannel(id, values) : c)));
     localStorage.setItem(ACTIVE_CHANNEL_KEY, id);
     router.push("/");
   };
@@ -603,7 +190,7 @@ export default function ChannelsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setNewChannelFormInitial(EMPTY);
+                  setNewChannelFormInitial(emptyTrailerEditorValues());
                   setShowNew(false);
                 }}
                 className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
@@ -639,7 +226,7 @@ export default function ChannelsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setNewChannelFormInitial(EMPTY);
+                  setNewChannelFormInitial(emptyTrailerEditorValues());
                   setNewChannelFormKey((k) => k + 1);
                   setShowNew(true);
                 }}
@@ -659,7 +246,7 @@ export default function ChannelsPage() {
             <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Channels</span>
             <button
               onClick={() => {
-                setNewChannelFormInitial(EMPTY);
+                setNewChannelFormInitial(emptyTrailerEditorValues());
                 setNewChannelFormKey((k) => k + 1);
                 setShowNew(true);
               }}
@@ -695,12 +282,13 @@ export default function ChannelsPage() {
           {showNew && (
             <div className="p-4 sm:p-6">
               <p className="text-sm font-semibold text-zinc-700 mb-0">New channel</p>
-              <ChannelForm
+              <ChannelEditorForm
                 key={`new-channel-${newChannelFormKey}`}
                 initial={newChannelFormInitial}
+                config={TRAILER_CHANNEL_EDITOR_CONFIG}
                 onSave={createChannel}
                 onCancel={() => {
-                  setNewChannelFormInitial(EMPTY);
+                  setNewChannelFormInitial(emptyTrailerEditorValues());
                   setShowNew(false);
                 }}
               />
@@ -722,10 +310,11 @@ export default function ChannelsPage() {
                       Delete channel
                     </button>
                   </div>
-                  <ChannelForm
+                  <ChannelEditorForm
                     key={selected.id}
-                    initial={channelToFormInitial(selected)}
-                    onSave={(data) => updateChannel(selected.id, data)}
+                    initial={channelToEditorValues(selected)}
+                    config={TRAILER_CHANNEL_EDITOR_CONFIG}
+                    onSave={(values) => updateChannel(selected.id, values)}
                   />
                 </div>
               )}

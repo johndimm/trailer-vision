@@ -3,15 +3,13 @@
 import {
   FullPageConstellations,
   FullPageConstellationsHostLoading,
-  newChannelFromGraphNode,
   useFullPageConstellationsHost,
 } from "@johndimm/constellations/host";
 import { takeEmbedHandoffForInitialState } from "@johndimm/constellations/sessionHandoff";
 import type { GraphNode } from "@johndimm/constellations/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-
-const PENDING_CHANNEL_KEY = "movie-recs-pending-constellations-new-channel";
+import { queueNewChannelFromGraphNode } from "../lib/newChannelFromGraphNode";
 
 export default function TrailerVisionConstellationsClient() {
   const router = useRouter();
@@ -42,12 +40,7 @@ export default function TrailerVisionConstellationsClient() {
       nowPlayingKey={nowPlayingKey}
       initialSession={embedHandoff}
       onNewChannelFromNode={(node: GraphNode) =>
-        newChannelFromGraphNode(node, {
-          sessionStorageKey: PENDING_CHANNEL_KEY,
-          navigate: (path) => router.push(path),
-          path: "/",
-          logLabel: "trailer-vision-constellations",
-        })
+        queueNewChannelFromGraphNode(node, (path) => router.push(path))
       }
     />
   );
