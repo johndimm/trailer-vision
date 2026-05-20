@@ -357,7 +357,7 @@ const StarRow = memo(function StarRow({
 
   const starSizeClass =
     compact && careerNavTight
-      ? "text-3xl sm:text-4xl"
+      ? "text-2xl sm:text-4xl"
       : compact
         ? "text-5xl sm:text-6xl"
         : "text-3xl";
@@ -408,17 +408,25 @@ const StarRow = memo(function StarRow({
   );
 });
 
+/** Auto-hide fullscreen chrome after idle (YouTube-style). */
+const FULLSCREEN_CONTROLS_HIDE_MS = 4000;
+
 /** Compact Interest / Rating toggle for fullscreen toolbar (film-and-music style). */
 const SeenModeSegment = memo(function SeenModeSegment({
   value,
   onChange,
+  ghost = false,
 }: {
   value: "unseen" | null;
   onChange: (v: "unseen" | null) => void;
+  /** Transparent overlay styling for fullscreen video. */
+  ghost?: boolean;
 }) {
   return (
     <div
-      className="inline-flex shrink-0 overflow-hidden rounded-lg border border-zinc-600"
+      className={`inline-flex shrink-0 overflow-hidden rounded-lg border shadow-lg ${
+        ghost ? "border-zinc-500 bg-black/80" : "border-zinc-600"
+      }`}
       role="group"
       aria-label="Have you seen this title?"
     >
@@ -426,10 +434,14 @@ const SeenModeSegment = memo(function SeenModeSegment({
         type="button"
         onPointerDown={(e) => e.preventDefault()}
         onClick={() => onChange("unseen")}
-        className={`px-3 py-1.5 text-sm font-semibold transition-colors touch-manipulation ${
+        className={`px-3 py-1.5 text-sm font-semibold transition-colors touch-manipulation min-h-[44px] ${
           value === "unseen"
-            ? "bg-blue-600 text-white"
-            : "bg-transparent text-zinc-500 hover:text-zinc-300"
+            ? ghost
+              ? "bg-blue-600 text-white"
+              : "bg-blue-600 text-white"
+            : ghost
+              ? "bg-zinc-800/90 text-zinc-200 hover:bg-zinc-700"
+              : "bg-transparent text-zinc-500 hover:text-zinc-300"
         }`}
       >
         Interest
@@ -438,10 +450,16 @@ const SeenModeSegment = memo(function SeenModeSegment({
         type="button"
         onPointerDown={(e) => e.preventDefault()}
         onClick={() => onChange(null)}
-        className={`border-l border-zinc-600 px-3 py-1.5 text-sm font-semibold transition-colors touch-manipulation ${
+        className={`border-l px-3 py-1.5 text-sm font-semibold transition-colors touch-manipulation min-h-[44px] ${
+          ghost ? "border-zinc-500" : "border-zinc-600"
+        } ${
           value === null
-            ? "bg-red-600 text-white"
-            : "bg-transparent text-zinc-500 hover:text-zinc-300"
+            ? ghost
+              ? "bg-red-600 text-white"
+              : "bg-red-600 text-white"
+            : ghost
+              ? "bg-zinc-800/90 text-zinc-200 hover:bg-zinc-700"
+              : "bg-transparent text-zinc-500 hover:text-zinc-300"
         }`}
       >
         Rating
@@ -461,6 +479,8 @@ const PassNextButton = memo(function PassNextButton({
   prominent = false,
   /** Trailer strip: next to star row — larger than compact, emerald (not indigo poster Next) */
   muted = false,
+  /** Fullscreen overlay: text-only ghost on transparent background */
+  ghost = false,
   /** Poster / career: match Prev/Next as mirrored pair (icon on outer side). */
   direction = "next",
   disabled = false,
@@ -470,31 +490,38 @@ const PassNextButton = memo(function PassNextButton({
   /** Larger, hero-style — use when Next is the primary control above the rating row */
   prominent?: boolean;
   muted?: boolean;
+  ghost?: boolean;
   direction?: "next" | "prev";
   /** Kept enabled for layout; no-op at start of list (e.g. career first film). */
   disabled?: boolean;
 }) {
   const isPrev = direction === "prev";
-  const sizing = prominent
-    ? "gap-2 rounded-xl px-8 py-3.5 text-base font-semibold shadow-lg sm:px-10 sm:py-4 sm:text-lg"
-    : compact
-      ? "gap-1 rounded-lg px-2.5 py-1.5 text-xs shadow-md"
-      : muted
-        ? "gap-2 rounded-xl px-5 py-2.5 text-base font-semibold shadow-md sm:px-6 sm:py-3 sm:text-base"
-        : "gap-2 rounded-xl px-5 py-3 text-sm font-bold shadow-lg sm:px-6 sm:py-3.5 sm:text-base";
+  const sizing = ghost
+    ? "gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium min-h-[44px] min-w-[5rem] sm:min-w-[5.5rem] sm:px-5"
+    : prominent
+      ? "gap-2 rounded-xl px-8 py-3.5 text-base font-semibold shadow-lg sm:px-10 sm:py-4 sm:text-lg min-h-[44px] min-w-[5rem]"
+      : compact
+        ? "gap-1 rounded-lg px-3 py-2 text-xs shadow-md min-h-[44px] min-w-[4.5rem]"
+        : muted
+          ? "gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium shadow-sm min-h-[36px] min-w-[3.25rem] sm:rounded-xl sm:gap-2 sm:px-5 sm:py-2 sm:text-base sm:min-h-[44px] sm:min-w-[4.5rem]"
+          : "gap-2 rounded-xl px-5 py-3 text-sm font-bold shadow-lg sm:px-6 sm:py-3.5 sm:text-base min-h-[44px] min-w-[5rem]";
   const iconClass = prominent
     ? "h-5 w-5 sm:h-6 sm:w-6"
     : compact
-      ? "h-3.5 w-3.5"
-      : muted
+      ? "h-4 w-4"
+      : ghost
         ? "h-5 w-5"
-        : "h-5 w-5";
-  const surface = compact
-    ? "border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900"
-    : muted
-      ? "border-2 border-emerald-300/50 bg-emerald-600 text-white shadow-lg shadow-emerald-950/30 hover:border-emerald-200/80 hover:bg-emerald-500 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
-      : "border-2 border-indigo-200/90 bg-indigo-600 text-white shadow-lg shadow-indigo-950/40 hover:border-white/90 hover:bg-indigo-500 hover:shadow-xl active:scale-[0.98] active:brightness-95 focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900";
-  const iconColor = muted ? "text-zinc-200" : "text-white";
+        : muted
+          ? "h-5 w-5"
+          : "h-5 w-5";
+  const surface = ghost
+    ? "border border-zinc-500 bg-zinc-900/95 text-white shadow-lg hover:bg-zinc-800 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-0 focus-visible:ring-offset-black"
+    : compact
+      ? "border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900"
+      : muted
+        ? "border border-emerald-400/40 bg-emerald-600/90 text-white shadow-sm hover:bg-emerald-500 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+        : "border-2 border-indigo-200/90 bg-indigo-600 text-white shadow-lg shadow-indigo-950/40 hover:border-white/90 hover:bg-indigo-500 hover:shadow-xl active:scale-[0.98] active:brightness-95 focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900";
+  const iconColor = ghost ? "text-white" : muted ? "text-zinc-200" : "text-white";
   const icon = (
     <svg className={`${iconColor} ${iconClass}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
       <path fillRule="evenodd" d={isPrev ? chevronPathPrev : chevronPathNext} clipRule="evenodd" />
@@ -1022,7 +1049,7 @@ const ShareButton = memo(function ShareButton({ onClick, toast }: { onClick: () 
       type="button"
       onClick={onClick}
       disabled={toast === "copying"}
-      className="shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors disabled:opacity-50"
+      className="shrink-0 flex items-center gap-1.5 rounded-lg border border-zinc-600 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-100 hover:bg-zinc-700 hover:text-white transition-colors disabled:opacity-50"
       title="Share this title"
     >
       {toast === "copied" ? (
@@ -1032,6 +1059,40 @@ const ShareButton = memo(function ShareButton({ onClick, toast }: { onClick: () 
       )}
       {toast === "copied" ? "Copied!" : "Share"}
     </button>
+  );
+});
+
+/** Fullscreen + share — sits directly under the video (or poster hero). */
+const TrailerMediaActions = memo(function TrailerMediaActions({
+  onFullscreen,
+  onShare,
+  shareToast,
+  showFullscreen = true,
+}: {
+  onFullscreen: () => void;
+  onShare: () => void;
+  shareToast: "copying" | "copied" | null;
+  showFullscreen?: boolean;
+}) {
+  return (
+    <div className="flex w-full shrink-0 items-center justify-end gap-1.5 border-b border-zinc-700 bg-zinc-900 px-3 py-2 sm:gap-2 sm:px-4">
+      {showFullscreen && (
+        <button
+          type="button"
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={onFullscreen}
+          className="flex items-center gap-1.5 rounded-lg border border-zinc-600 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700 hover:text-white"
+          title="Enter fullscreen"
+          aria-label="Enter fullscreen"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+          Fullscreen
+        </button>
+      )}
+      <ShareButton onClick={onShare} toast={shareToast} />
+    </div>
   );
 });
 
@@ -1250,7 +1311,7 @@ const PosterMovieTop = memo(function PosterMovieTop({
 
 /** Trailer: directly under the video, above title row — border separates from metadata. */
 const TRAILER_BAR_OUTER =
-  "w-full border-b border-zinc-800/90 bg-zinc-950/60 py-2.5 sm:py-3";
+  "w-full border-b border-zinc-800/90 bg-zinc-950/60 py-2 sm:py-3";
 
 const MovieRatingBlock = memo(function MovieRatingBlock({
   passCurrentCardStable,
@@ -1266,6 +1327,8 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   layout = "card",
   prevNav = null,
   careerNextDisabled = false,
+  controlsVisible = true,
+  onControlActivity,
 }: {
   passCurrentCardStable: () => void;
   onRate: (stars: number, mode: "seen" | "unseen") => void;
@@ -1283,6 +1346,10 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   prevNav?: { onPass: () => void; disabled: boolean } | null;
   /** Career mode: disable Next on last film in filmography (passCurrentCard is a no-op there). */
   careerNextDisabled?: boolean;
+  /** Fullscreen: fade toolbar when idle. */
+  controlsVisible?: boolean;
+  /** Fullscreen: reset auto-hide timer on control use. */
+  onControlActivity?: () => void;
 }) {
   const seenRadioGroupName = useId();
   const hasPrev = previousRating !== undefined && previousRating > 0;
@@ -1334,58 +1401,60 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
 
   const navPair = navPairTight;
 
+  const bumpControlActivity = useCallback(() => {
+    onControlActivity?.();
+  }, [onControlActivity]);
+
   const navRow = (
     <div
       className={
         isTrailerStrip
-          ? "flex w-full min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-2 sm:gap-x-3"
+          ? "flex w-full min-w-0 flex-nowrap items-center gap-x-1 sm:gap-x-2"
           : navPair
-            ? "grid w-full min-w-0 grid-cols-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center gap-x-2 gap-y-2 sm:gap-y-0 sm:gap-x-3"
+            ? "flex w-full min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-2 sm:flex-nowrap sm:gap-x-3"
             : `flex min-w-0 flex-wrap items-center justify-center gap-x-4 gap-y-3 sm:gap-x-5 ${
                 showNextInRating ? "" : "justify-center"
               }`
       }
     >
       {prevNav && (
-        <div
-          className={
-            isTrailerStrip
-              ? "shrink-0 self-center"
-              : "shrink-0 max-sm:col-start-1 max-sm:row-start-1 sm:col-start-1 sm:row-start-1 self-center"
-          }
-        >
+        <div className="shrink-0 self-center">
           <PassNextButton
-            onPass={prevNav.onPass}
+            onPass={() => {
+              bumpControlActivity();
+              prevNav.onPass();
+            }}
             disabled={prevNav.disabled}
             direction="prev"
+            compact={!isTrailerStrip && layout !== "fullscreenOverlay"}
             muted={isTrailerStrip}
-            prominent={!isTrailerStrip}
+            prominent={false}
+            ghost={layout === "fullscreenOverlay"}
           />
         </div>
       )}
       <div
         className={
           isTrailerStrip
-            ? "flex min-w-0 flex-1 justify-center"
+            ? "flex min-w-0 flex-1 justify-center overflow-hidden"
             : navPair
-              ? "min-w-0 w-full max-sm:col-span-2 max-sm:row-start-2 sm:col-start-2 sm:row-start-1 flex justify-center"
+              ? "flex min-w-0 flex-1 justify-center sm:flex-initial"
               : "min-w-0 flex shrink"
         }
       >
         {starBlock}
       </div>
       {showNextInRating && (
-        <div
-          className={
-            isTrailerStrip
-              ? "shrink-0 self-center"
-              : "shrink-0 max-sm:col-start-2 max-sm:row-start-1 sm:col-start-3 self-center"
-          }
-        >
+        <div className="shrink-0 self-center">
           <PassNextButton
-            onPass={passCurrentCardStable}
+            onPass={() => {
+              bumpControlActivity();
+              passCurrentCardStable();
+            }}
+            compact={!isTrailerStrip && layout !== "fullscreenOverlay"}
             muted={isTrailerStrip}
-            prominent={!isTrailerStrip}
+            prominent={false}
+            ghost={layout === "fullscreenOverlay"}
             disabled={careerNextDisabled}
           />
         </div>
@@ -1394,7 +1463,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   );
 
   const ratingBody = (
-    <div className="flex min-w-0 flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-2 sm:gap-3">
       <SeenOrNotRadios name={seenRadioGroupName} value={seenStatus} onChange={onSeenStatusChange} />
       {navRow}
     </div>
@@ -1419,33 +1488,55 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
         color={seenStatus === null ? "red" : "blue"}
         label={seenStatus === null ? "Rating" : "Interest"}
         onRate={(v) => {
+          bumpControlActivity();
           setUserLocked(true);
           setLockedValue(v);
           onRate(v, seenStatus === null ? "seen" : "unseen");
         }}
       />
     );
+    const fsVisible = controlsVisible;
     return (
       <div
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center bg-gradient-to-t from-black/80 to-transparent px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-10"
+        className={`pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center bg-gradient-to-t from-black/95 via-black/75 to-transparent px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-12 transition-opacity duration-300 ${
+          fsVisible ? "opacity-100" : "opacity-0"
+        }`}
         role="region"
         aria-label="Rating controls"
+        aria-hidden={!fsVisible}
       >
-        <div className="pointer-events-auto flex w-full max-w-3xl min-w-0 flex-wrap items-center justify-center gap-2 sm:gap-3">
+        <div
+          className={`flex w-full max-w-3xl min-w-0 flex-wrap items-center justify-center gap-2 rounded-xl border border-zinc-600/90 bg-black/85 px-3 py-2.5 shadow-2xl backdrop-blur-sm sm:gap-3 ${
+            fsVisible ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+        >
           {prevNav && (
             <PassNextButton
-              onPass={prevNav.onPass}
+              onPass={() => {
+                bumpControlActivity();
+                prevNav.onPass();
+              }}
               disabled={prevNav.disabled}
               direction="prev"
-              prominent
+              ghost
             />
           )}
-          <SeenModeSegment value={seenStatus} onChange={onSeenStatusChange} />
-          <div className="rounded-lg border border-zinc-600 px-1.5 py-0.5">{fsStars}</div>
+          <SeenModeSegment
+            value={seenStatus}
+            onChange={(v) => {
+              bumpControlActivity();
+              onSeenStatusChange(v);
+            }}
+            ghost
+          />
+          <div className="rounded-lg border border-zinc-600 bg-zinc-900/90 px-2 py-1 shadow-md">{fsStars}</div>
           {showNextInRating && (
             <PassNextButton
-              onPass={passCurrentCardStable}
-              prominent
+              onPass={() => {
+                bumpControlActivity();
+                passCurrentCardStable();
+              }}
+              ghost
               disabled={careerNextDisabled}
             />
           )}
@@ -1485,20 +1576,52 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
   prevNav: { onPass: () => void; disabled: boolean } | null;
   careerNextDisabled: boolean;
 }) {
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const bumpControlsVisible = useCallback(() => {
+    setControlsVisible(true);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => setControlsVisible(false), FULLSCREEN_CONTROLS_HIDE_MS);
+  }, []);
+
+  useEffect(() => {
+    bumpControlsVisible();
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [bumpControlsVisible, movieTitle]);
+
+  useEffect(() => {
+    const onActivity = () => bumpControlsVisible();
+    window.addEventListener("mousemove", onActivity, { passive: true });
+    window.addEventListener("touchstart", onActivity, { passive: true });
+    window.addEventListener("click", onActivity);
+    return () => {
+      window.removeEventListener("mousemove", onActivity);
+      window.removeEventListener("touchstart", onActivity);
+      window.removeEventListener("click", onActivity);
+    };
+  }, [bumpControlsVisible, movieTitle]);
+
   return (
     <>
       <button
         type="button"
         onPointerDown={(e) => e.preventDefault()}
-        onClick={onExit}
-        className="fixed top-5 left-5 z-[60] inline-flex items-center gap-2 rounded-xl border border-zinc-600/80 bg-black/70 px-3 py-2 text-sm font-medium text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/90 select-none"
-        title="Leave fullscreen and return to normal view"
-        aria-label="Exit fullscreen — normal view"
+        onClick={() => {
+          bumpControlsVisible();
+          onExit();
+        }}
+        className={`fixed z-[60] inline-flex h-11 w-11 items-center justify-center rounded-full border border-zinc-500 bg-black/85 p-0 text-white shadow-lg backdrop-blur-sm transition-opacity duration-300 hover:bg-black select-none touch-manipulation top-[max(0.75rem,env(safe-area-inset-top))] right-[max(0.75rem,env(safe-area-inset-right))] ${
+          controlsVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        title="Exit fullscreen"
+        aria-label="Exit fullscreen"
       >
-        <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9L4 4m0 0v4m0-4h4M15 9l5-5m0 0v4m0-4h-4M9 15l-5 5m0 0v-4m0 4h4M15 15l5 5m0 0v-4m0 4h-4" />
+        <svg className="h-7 w-7 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
-        Normal view
       </button>
       <MovieRatingBlock
         layout="fullscreenOverlay"
@@ -1512,6 +1635,8 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
         previousMode={previousMode}
         prevNav={prevNav}
         careerNextDisabled={careerNextDisabled}
+        controlsVisible={controlsVisible}
+        onControlActivity={bumpControlsVisible}
       />
     </>
   );
@@ -3177,16 +3302,16 @@ export default function Home() {
   return (
     <div className="flex min-h-screen w-full flex-col bg-black px-3 py-3 sm:px-4 sm:py-5 lg:px-8 lg:py-6">
       <div className="mx-auto flex w-full max-w-[min(100%,90rem)] flex-col gap-4 lg:grid lg:grid-cols-[minmax(14rem,22rem)_minmax(0,1fr)] lg:items-start lg:gap-x-8 lg:gap-y-0 xl:grid-cols-[minmax(15rem,24rem)_minmax(0,1fr)] xl:gap-x-12">
-        <aside className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-11 lg:z-10 lg:max-h-[calc(100dvh-3.5rem)] lg:self-start lg:pr-1">
+        <aside className="flex min-w-0 flex-col gap-2 sm:gap-3 lg:sticky lg:top-11 lg:z-10 lg:max-h-[calc(100dvh-3.5rem)] lg:self-start lg:pr-1">
           <p className="hidden text-[11px] font-semibold uppercase tracking-wide text-zinc-500 lg:block">
             Channels
           </p>
-          <div className="shrink-0 rounded-2xl border border-zinc-800/90 bg-zinc-950/80 p-2.5 sm:p-3">
-            <label htmlFor="channel-what-you-want" className="mb-1.5 block text-xs font-medium text-zinc-400">
+          <div className="shrink-0 rounded-xl border border-zinc-800/90 bg-zinc-950/80 p-2 sm:rounded-2xl sm:p-3">
+            <label htmlFor="channel-what-you-want" className="mb-1 hidden text-xs font-medium text-zinc-400 sm:block">
               New channel
             </label>
-            <div className="flex flex-col gap-2">
-              <div className="relative w-full min-w-0">
+            <div className="flex flex-row items-stretch gap-1.5 sm:flex-col sm:gap-2">
+              <div className="relative min-w-0 flex-1">
                 <textarea
                   id="channel-what-you-want"
                   autoComplete="off"
@@ -3201,14 +3326,14 @@ export default function Home() {
                     setNewChannelText("");
                   }}
                   placeholder="Genres, era, directors…"
-                  className="min-h-9 w-full resize-y rounded-lg border border-zinc-600 bg-zinc-900 px-2.5 py-2 pr-8 text-sm leading-snug text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 sm:px-3 sm:pr-9"
+                  className="min-h-8 max-h-16 w-full resize-none rounded-lg border border-zinc-600 bg-zinc-900 px-2 py-1.5 pr-7 text-xs leading-snug text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 sm:min-h-9 sm:max-h-none sm:resize-y sm:px-3 sm:py-2 sm:pr-9 sm:text-sm"
                 />
                 {newChannelText.length > 0 && (
                   <button
                     type="button"
                     onPointerDown={(e) => e.preventDefault()}
                     onClick={() => setNewChannelText("")}
-                    className="absolute right-1.5 top-2 z-10 flex h-7 w-7 items-center justify-center rounded text-base leading-none text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+                    className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded text-sm leading-none text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200 sm:right-1.5 sm:top-1.5 sm:h-7 sm:w-7 sm:text-base"
                     title="Clear"
                     aria-label="Clear"
                   >
@@ -3224,9 +3349,10 @@ export default function Home() {
                 }}
                 disabled={!newChannelText.trim()}
                 title="Create a new channel with this text"
-                className="h-10 w-full shrink-0 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-40"
+                className="h-8 shrink-0 self-stretch rounded-lg bg-indigo-600 px-2.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-40 sm:h-10 sm:w-full sm:px-3 sm:text-sm"
               >
-                Create channel
+                <span className="sm:hidden">Add</span>
+                <span className="hidden sm:inline">Create channel</span>
               </button>
             </div>
           </div>
@@ -3332,35 +3458,15 @@ export default function Home() {
                           />
                         </div>
                       ) : (
-                        <div className="border-b border-zinc-800/80 bg-zinc-950">
-                          <div className="flex min-w-0 items-start justify-between gap-3 p-4 sm:p-6">
-                            <div className="min-w-0 flex-1">
-                              <PosterMovieTop
-                                movie={current}
-                                onOpenPoster={openPosterLightbox}
-                                onPersonClick={enterCareerMode}
-                                onCreateChannelFromMovie={openNewChannelFromMovie}
-                                careerPersonName={careerMode?.personName ?? null}
-                                detailsLoading={careerLoading}
-                              />
-                            </div>
-                            <div className="flex shrink-0 flex-col items-end gap-1 pt-0.5">
-                              <button
-                                type="button"
-                                onPointerDown={(e) => e.preventDefault()}
-                                onClick={() => void enterTrailerFullscreen()}
-                                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
-                                title="Enter fullscreen — rating controls stay on screen"
-                                aria-label="Enter fullscreen"
-                              >
-                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                                </svg>
-                                Fullscreen
-                              </button>
-                              <ShareButton onClick={handleShare} toast={shareToast} />
-                            </div>
-                          </div>
+                        <div className="border-b border-zinc-800/80 bg-zinc-950 p-4 sm:p-6">
+                          <PosterMovieTop
+                            movie={current}
+                            onOpenPoster={openPosterLightbox}
+                            onPersonClick={enterCareerMode}
+                            onCreateChannelFromMovie={openNewChannelFromMovie}
+                            careerPersonName={careerMode?.personName ?? null}
+                            detailsLoading={careerLoading}
+                          />
                         </div>
                       )}
                       {trailerFsUi && (
@@ -3385,6 +3491,13 @@ export default function Home() {
                       </div>
                     </div>
                   )}
+                  {!trailerFsUi && (current.trailerKey || current.posterUrl) && (
+                    <TrailerMediaActions
+                      onFullscreen={() => void enterTrailerFullscreen()}
+                      onShare={handleShare}
+                      shareToast={shareToast}
+                    />
+                  )}
                   {!trailerFsUi && (
                     <MovieRatingBlock
                       layout="trailerBar"
@@ -3404,34 +3517,12 @@ export default function Home() {
                   <>
                   <div className="flex flex-col gap-4 p-4 sm:pb-6 sm:p-6">
                     {current.trailerKey && (
-                      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-                        <div className="min-w-0 w-full sm:flex-1 sm:pr-1">
-                          <TrailerMetadata
-                            movie={current}
-                            onPersonClick={enterCareerMode}
-                            onCreateChannelFromMovie={openNewChannelFromMovie}
-                            careerPersonName={careerMode?.personName ?? null}
-                          />
-                        </div>
-                        <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 sm:pt-0.5">
-                          {!trailerFsUi && (
-                            <button
-                              type="button"
-                              onPointerDown={(e) => e.preventDefault()}
-                              onClick={() => void enterTrailerFullscreen()}
-                              className="shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-                              title="Enter fullscreen — Next button available in fullscreen"
-                              aria-label="Enter fullscreen"
-                            >
-                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                              </svg>
-                              Fullscreen
-                            </button>
-                          )}
-                          <ShareButton onClick={handleShare} toast={shareToast} />
-                        </div>
-                      </div>
+                      <TrailerMetadata
+                        movie={current}
+                        onPersonClick={enterCareerMode}
+                        onCreateChannelFromMovie={openNewChannelFromMovie}
+                        careerPersonName={careerMode?.personName ?? null}
+                      />
                     )}
                     {!current.trailerKey && !current.posterUrl && (
                       <div className="flex justify-end">
