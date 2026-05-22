@@ -1554,6 +1554,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
 
 /** Normal-view exit + bottom toolbar when trailer or poster is fullscreen. */
 const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
+  children,
   onExit,
   passCurrentCardStable,
   onRate,
@@ -1565,6 +1566,7 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
   prevNav,
   careerNextDisabled,
 }: {
+  children: React.ReactNode;
   onExit: () => void;
   passCurrentCardStable: () => void;
   onRate: (stars: number, mode: "seen" | "unseen") => void;
@@ -1585,6 +1587,15 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
     hideTimerRef.current = setTimeout(() => setControlsVisible(false), FULLSCREEN_CONTROLS_HIDE_MS);
   }, []);
 
+  const wakeControls = useCallback(
+    (e: React.SyntheticEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      bumpControlsVisible();
+    },
+    [bumpControlsVisible]
+  );
+
   useEffect(() => {
     bumpControlsVisible();
     return () => {
@@ -1594,18 +1605,35 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
 
   useEffect(() => {
     const onActivity = () => bumpControlsVisible();
-    window.addEventListener("mousemove", onActivity, { passive: true });
-    window.addEventListener("touchstart", onActivity, { passive: true });
-    window.addEventListener("click", onActivity);
+    const opts: AddEventListenerOptions = { capture: true, passive: true };
+    document.addEventListener("mousemove", onActivity, opts);
+    document.addEventListener("pointermove", onActivity, opts);
+    document.addEventListener("touchstart", onActivity, opts);
+    document.addEventListener("touchend", onActivity, opts);
     return () => {
-      window.removeEventListener("mousemove", onActivity);
-      window.removeEventListener("touchstart", onActivity);
-      window.removeEventListener("click", onActivity);
+      document.removeEventListener("mousemove", onActivity, opts);
+      document.removeEventListener("pointermove", onActivity, opts);
+      document.removeEventListener("touchstart", onActivity, opts);
+      document.removeEventListener("touchend", onActivity, opts);
     };
-  }, [bumpControlsVisible, movieTitle]);
+  }, [bumpControlsVisible]);
 
   return (
     <>
+      <div className="relative flex min-h-0 flex-1 flex-col w-full bg-black">
+        {children}
+        {/* Above the YouTube iframe (cross-origin — no events reach document). */}
+        {!controlsVisible && (
+          <div
+            className="absolute inset-0 z-[45] touch-manipulation cursor-pointer"
+            aria-hidden
+            onPointerDown={wakeControls}
+            onTouchStart={wakeControls}
+            onTouchEnd={wakeControls}
+            onClick={wakeControls}
+          />
+        )}
+      </div>
       <button
         type="button"
         onPointerDown={(e) => e.preventDefault()}
@@ -3419,13 +3447,7 @@ export default function Home() {
                         pseudoTrailerFullscreen ? "fixed inset-0 z-[70] overflow-y-auto overscroll-y-contain" : "relative"
                       }`}
                     >
-                      <TrailerPlayer
-                        videoId={current.trailerKey}
-                        onProgress={setWatchFrac}
-                        onPlaybackError={handleTrailerPlaybackError}
-                        resumeFromFraction={trailerResumeByChannel[activeChannelId]?.[canonicalTitleKey(current.title)]}
-                      />
-                      {trailerFsUi && (
+                      {trailerFsUi ? (
                         <TrailerFullscreenChrome
                           onExit={() => void exitTrailerFullscreen()}
                           passCurrentCardStable={passCurrentCardStable}
@@ -3437,6 +3459,20 @@ export default function Home() {
                           previousMode={historyRef.current.find((e) => e.title === current.title)?.ratingMode}
                           prevNav={prevNav}
                           careerNextDisabled={careerAtLastFilm}
+                        >
+                          <TrailerPlayer
+                            videoId={current.trailerKey}
+                            onProgress={setWatchFrac}
+                            onPlaybackError={handleTrailerPlaybackError}
+                            resumeFromFraction={trailerResumeByChannel[activeChannelId]?.[canonicalTitleKey(current.title)]}
+                          />
+                        </TrailerFullscreenChrome>
+                      ) : (
+                        <TrailerPlayer
+                          videoId={current.trailerKey}
+                          onProgress={setWatchFrac}
+                          onPlaybackError={handleTrailerPlaybackError}
+                          resumeFromFraction={trailerResumeByChannel[activeChannelId]?.[canonicalTitleKey(current.title)]}
                         />
                       )}
                     </div>
@@ -3448,28 +3484,6 @@ export default function Home() {
                       }`}
                     >
                       {trailerFsUi ? (
-                        <div className="relative flex min-h-0 flex-1 items-center justify-center bg-black px-4 pb-36 pt-16">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={current.posterUrl}
-                            alt={`${current.title} poster`}
-                            referrerPolicy="no-referrer"
-                            className="max-h-full max-w-full object-contain"
-                          />
-                        </div>
-                      ) : (
-                        <div className="border-b border-zinc-800/80 bg-zinc-950 p-4 sm:p-6">
-                          <PosterMovieTop
-                            movie={current}
-                            onOpenPoster={openPosterLightbox}
-                            onPersonClick={enterCareerMode}
-                            onCreateChannelFromMovie={openNewChannelFromMovie}
-                            careerPersonName={careerMode?.personName ?? null}
-                            detailsLoading={careerLoading}
-                          />
-                        </div>
-                      )}
-                      {trailerFsUi && (
                         <TrailerFullscreenChrome
                           onExit={() => void exitTrailerFullscreen()}
                           passCurrentCardStable={passCurrentCardStable}
@@ -3481,7 +3495,28 @@ export default function Home() {
                           previousMode={historyRef.current.find((e) => e.title === current.title)?.ratingMode}
                           prevNav={prevNav}
                           careerNextDisabled={careerAtLastFilm}
-                        />
+                        >
+                          <div className="relative flex min-h-0 flex-1 items-center justify-center bg-black px-4 pb-36 pt-16">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={current.posterUrl}
+                              alt={`${current.title} poster`}
+                              referrerPolicy="no-referrer"
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </div>
+                        </TrailerFullscreenChrome>
+                      ) : (
+                        <div className="border-b border-zinc-800/80 bg-zinc-950 p-4 sm:p-6">
+                          <PosterMovieTop
+                            movie={current}
+                            onOpenPoster={openPosterLightbox}
+                            onPersonClick={enterCareerMode}
+                            onCreateChannelFromMovie={openNewChannelFromMovie}
+                            careerPersonName={careerMode?.personName ?? null}
+                            detailsLoading={careerLoading}
+                          />
+                        </div>
                       )}
                     </div>
                   ) : (

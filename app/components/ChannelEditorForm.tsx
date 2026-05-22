@@ -1,6 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  channelNameAsArtistHint,
+  findArtistMatchingChannelName,
+  mergeChannelNameArtistMatch,
+} from '@/app/lib/artistHintsFromNotes'
 
 export type ChannelEditorValues = {
   name: string
@@ -268,14 +273,32 @@ export default function ChannelEditorForm({
     for (const a of llmSuggestions) push(a)
     for (const a of staticOptions) push(a)
     for (const a of form.artists) push(a)
+    const nameHint = channelNameAsArtistHint(form.name)
+    if (nameHint) push(nameHint)
     return out
-  }, [llmSuggestions, staticOptions, form.artists])
+  }, [llmSuggestions, staticOptions, form.artists, form.name])
 
   const toggleArtist = (name: string) => {
     field(
       'artists',
       form.artists.includes(name) ? form.artists.filter(x => x !== name) : [...form.artists, name]
     )
+  }
+
+  useEffect(() => {
+    const match = findArtistMatchingChannelName(form.name, artistOptions)
+    if (!match) return
+    setForm(f => {
+      if (f.artists.some(a => a.trim().toLowerCase() === match.trim().toLowerCase())) return f
+      return { ...f, artists: [...f.artists, match] }
+    })
+  }, [form.name, artistOptions])
+
+  const handleSave = () => {
+    onSave({
+      ...form,
+      artists: mergeChannelNameArtistMatch(form.name, form.artists, artistOptions),
+    })
   }
 
   return (
@@ -444,7 +467,7 @@ export default function ChannelEditorForm({
         <button
           type="button"
           onClick={() => {
-            if (form.name.trim()) onSave(form)
+            if (form.name.trim()) handleSave()
           }}
           disabled={!form.name.trim()}
           className="px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-40"
