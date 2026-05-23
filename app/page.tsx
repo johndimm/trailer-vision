@@ -17,6 +17,8 @@ import { clampStarRating, migrateRatingValue } from "./lib/ratingScale";
 import {
   LEGACY_PREFETCH_QUEUE_KEY,
   prefetchQueueStorageKey,
+  currentMovieStorageKey,
+  clearChannelPersistedData,
 } from "./lib/storageKeys";
 import {
   applyFactoryBootstrap,
@@ -288,6 +290,28 @@ function MovieTitleChannelLink({
       </span>
     </h2>
   );
+}
+
+function loadCurrentMovieForChannel(channelId: string): CurrentMovie | null {
+  try {
+    const raw = localStorage.getItem(currentMovieStorageKey(channelId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CurrentMovie;
+    return parsed?.title ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistCurrentMovieForChannel(channelId: string, movie: CurrentMovie | null): void {
+  if (!channelId?.trim()) return;
+  try {
+    const key = currentMovieStorageKey(channelId);
+    if (movie?.title) localStorage.setItem(key, JSON.stringify(movie));
+    else localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
 }
 
 const STORAGE_KEY = "movie-recs-history";
@@ -1012,12 +1036,21 @@ const TrailerPlayer = memo(function TrailerPlayer({
   useEffect(() => {
     const p = playerRef.current;
     if (!p) return;
+    resumeDoneKeyRef.current = null;
     try {
       p.loadVideoById(videoId);
+      window.setTimeout(() => tryApplyResume(p), 500);
     } catch {
       /* ignore */
     }
   }, [videoId]);
+
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    resumeDoneKeyRef.current = null;
+    tryApplyResume(p);
+  }, [resumeFromFraction]);
 
   // When returning to the tab, resume playback if the player stalled (state 2=paused, -1=unstarted, 5=cued).
   useEffect(() => {
@@ -2719,14 +2752,25 @@ export default function Home() {
         } catch {}
       }
 
+      const restored = loadCurrentMovieForChannel(activeForPrefetch);
+      if (restored) {
+        setCurrent(restored);
+        setInitialLoading(false);
+        replenish({ mediaType, llm });
+        return;
+      }
+
       fetchNextRef.current({ mediaType, llm }, true);
     })();
     // Mount once: this effect also called fetchNext(…, true) at the end. Including fetchNext
     // in the dependency array re-ran the whole effect when fetchNext was recreated, popping an extra title.
   }, []) /* eslint-disable-line react-hooks/exhaustive-deps -- explicit single hydration + initial pick */;
 
-
-  // Reset pending rating when a new card loads
+  // Persist the active channel's current card so switching away and back restores the same title.
+  useEffect(() => {
+    if (!activeChannelId) return;
+    persistCurrentMovieForChannel(activeChannelId, current);
+  }, [activeChannelId, current]);
   useEffect(() => {
     setPendingRating((p) => (p == null ? p : null));
   }, [current?.title]);
@@ -2818,6 +2862,9 @@ export default function Home() {
           return next;
         });
       }
+      if (leaving?.title) {
+        persistCurrentMovieForChannel(prev, leaving);
+      }
       replenishGenRef.current += 1;
       replenishGenInFlight.current = 0;
       try {
@@ -2832,13 +2879,19 @@ export default function Home() {
       batchYieldRef.current = [];
       zeroYieldStreakRef.current = 0;
       savedPrefetchChannelRef.current = activeChannelId;
-      // Show the first saved title for this channel (or wait / fetch if the queue is empty).
-      const hasQueued = prefetchRef.current.length > 0;
-      void fetchNext({ mediaType, llm }, hasQueued);
+      const restored = loadCurrentMovieForChannel(activeChannelId);
+      if (restored?.title) {
+        setCurrent(restored);
+        setInitialLoading(false);
+        replenish({ mediaType, llm });
+      } else {
+        const hasQueued = prefetchRef.current.length > 0;
+        void fetchNext({ mediaType, llm }, hasQueued);
+      }
       return;
     }
     savedPrefetchChannelRef.current = activeChannelId;
-  }, [activeChannelId, mediaType, llm, fetchNext, loadPrefetchIntoRefForChannel, persistPrefetchQueue]);
+  }, [activeChannelId, mediaType, llm, fetchNext, loadPrefetchIntoRefForChannel, persistPrefetchQueue, replenish]);
 
   const confirmDeleteChannelFromHome = useCallback(() => {
     const ch = channelPendingDelete;
@@ -2847,12 +2900,8 @@ export default function Home() {
       return;
     }
     const id = ch.id;
+    clearChannelPersistedData(id);
     const next = channels.filter((c) => c.id !== id);
-    try {
-      localStorage.removeItem(prefetchQueueStorageKey(id));
-    } catch {
-      /* ignore */
-    }
     localStorage.setItem(CHANNELS_KEY, JSON.stringify(next));
     setChannels(next);
 

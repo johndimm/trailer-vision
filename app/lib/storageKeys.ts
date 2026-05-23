@@ -2,6 +2,33 @@
 export const LEGACY_PREFETCH_QUEUE_KEY = "movie-recs-prefetch-queue";
 
 const PREFETCH_QUEUE_PREFIX = "movie-recs-prefetch-queue";
+const CURRENT_MOVIE_PREFIX = "movie-recs-current";
+
+/** Per-channel currently displayed title card (restored when switching back to the channel). */
+export function currentMovieStorageKey(channelId: string): string {
+  const id = channelId?.trim() ? channelId.trim() : "all";
+  return `${CURRENT_MOVIE_PREFIX}:${id}`;
+}
+
+export function isCurrentMovieStorageKey(key: string): boolean {
+  return key.startsWith(`${CURRENT_MOVIE_PREFIX}:`);
+}
+
+export function clearChannelPersistedData(channelId: string): void {
+  if (typeof window === "undefined") return;
+  const id = channelId?.trim();
+  if (!id || id === "all") return;
+  try {
+    localStorage.removeItem(prefetchQueueStorageKey(id));
+    localStorage.removeItem(currentMovieStorageKey(id));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearChannelsPersistedData(ids: Iterable<string>): void {
+  for (const id of ids) clearChannelPersistedData(id);
+}
 
 /** Per-channel prefetch queue in localStorage (JSON array of title cards). */
 export function prefetchQueueStorageKey(channelId: string): string {

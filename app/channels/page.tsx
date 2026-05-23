@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { applyFactoryBootstrap, hasNoChannelsPersisted } from "../lib/factoryChannels";
 import { NEW_CHANNEL_PREFILL_KEY } from "../lib/channelFromPrompt";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import ChannelEditorForm from "../components/ChannelEditorForm";
 import type { ChannelEditorValues } from "../components/ChannelEditorForm";
+import {
+  countCustomChannels,
+  deleteChannelsByIds,
+  sortChannelsAlpha,
+} from "../lib/channelBulkActions";
+import { clearChannelPersistedData, clearChannelsPersistedData } from "../lib/storageKeys";
 import {
   TRAILER_CHANNEL_EDITOR_CONFIG,
   channelToEditorValues,
@@ -58,6 +64,8 @@ export default function ChannelsPage() {
   );
   const [newChannelFormKey, setNewChannelFormKey] = useState(0);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -70,8 +78,9 @@ export default function ChannelsPage() {
         // Ensure All channel is always present and first
         if (!chs.find((c) => c.id === "all")) {
           chs = [ALL_CHANNEL, ...chs];
-          localStorage.setItem(CHANNELS_KEY, JSON.stringify(chs));
         }
+        chs = sortChannelsAlpha(chs);
+        localStorage.setItem(CHANNELS_KEY, JSON.stringify(chs));
         setChannels(chs);
         const activeId = localStorage.getItem(ACTIVE_CHANNEL_KEY);
         const initialId = activeId && chs.find((c) => c.id === activeId) ? activeId : chs[0].id;
@@ -115,7 +124,7 @@ export default function ChannelsPage() {
   const saveChannels = (chs: Channel[]) => {
     // All channel is always first and immutable
     const withAll = chs.find((c) => c.id === "all") ? chs : [ALL_CHANNEL, ...chs];
-    const normalized = withAll.map(normalizeChannel);
+    const normalized = sortChannelsAlpha(withAll.map(normalizeChannel));
     localStorage.setItem(CHANNELS_KEY, JSON.stringify(normalized));
     setChannels(normalized);
   };
@@ -140,11 +149,42 @@ export default function ChannelsPage() {
     if (!id) return;
     const active = localStorage.getItem(ACTIVE_CHANNEL_KEY);
     if (active === id) localStorage.removeItem(ACTIVE_CHANNEL_KEY);
+    clearChannelPersistedData(id);
     const next = channels.filter((c) => c.id !== id);
     saveChannels(next);
     setSelectedId(next.length > 0 ? next[0].id : null);
     setPendingDeleteId(null);
   };
+
+  const deleteSelected = () => {
+    const ids = [...checkedIds];
+    clearChannelsPersistedData(ids);
+    const active = localStorage.getItem(ACTIVE_CHANNEL_KEY);
+    if (active && checkedIds.has(active)) localStorage.removeItem(ACTIVE_CHANNEL_KEY);
+    const next = deleteChannelsByIds(channels, ids);
+    saveChannels(next);
+    setCheckedIds(new Set());
+    if (selectedId && checkedIds.has(selectedId)) {
+      setSelectedId(next[0]?.id ?? null);
+    }
+    setBulkDeleteConfirm(false);
+  };
+
+  const toggleChecked = (id: string, on: boolean) => {
+    if (id === "all") return;
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const selectAllCustom = () => {
+    setCheckedIds(new Set(channels.filter((c) => c.id !== "all").map((c) => c.id)));
+  };
+
+  const clearSelection = () => setCheckedIds(new Set());
 
   /** Sidebar / picker: switch channel + keep app active channel in sync with the player. */
   const selectChannel = (id: string) => {
@@ -159,9 +199,103 @@ export default function ChannelsPage() {
 
   const selected = channels.find((c) => c.id === selectedId) ?? null;
   const pendingDeleteChannel = pendingDeleteId ? channels.find((c) => c.id === pendingDeleteId) : null;
+  const customCount = countCustomChannels(channels);
+  const selectedDeleteCount = checkedIds.size;
+  const deletableIds = channels.filter((c) => c.id !== "all").map((c) => c.id);
+  const allCustomSelected =
+    deletableIds.length > 0 && deletableIds.every((id) => checkedIds.has(id));
+
+  const channelListRow = (ch: Channel) => {
+    const isActive = selectedId === ch.id && !showNew;
+    const canCheck = ch.id !== "all";
+    const isChecked = checkedIds.has(ch.id);
+    return (
+      <div
+        key={ch.id}
+        className={`flex items-center gap-2 ${
+          isActive ? "bg-zinc-100" : "hover:bg-zinc-50"
+        } rounded-lg transition-colors`}
+      >
+        {canCheck ? (
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={(e) => toggleChecked(ch.id, e.target.checked)}
+            className="ml-2 h-4 w-4 shrink-0 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+            aria-label={`Select ${ch.name} for deletion`}
+          />
+        ) : (
+          <span className="ml-2 w-4 shrink-0" aria-hidden />
+        )}
+        <button
+          type="button"
+          onClick={() => selectChannel(ch.id)}
+          className={`min-w-0 flex-1 text-left py-2.5 pr-3 text-sm font-medium transition-colors ${
+            isActive ? "text-zinc-900" : "text-zinc-600 hover:text-zinc-900"
+          }`}
+        >
+          <span className="block truncate">{ch.name}</span>
+        </button>
+      </div>
+    );
+  };
+
+  const bulkActionsBar = (className = "") => (
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        <button
+          type="button"
+          onClick={selectAllCustom}
+          disabled={deletableIds.length === 0 || allCustomSelected}
+          className="text-zinc-500 hover:text-zinc-800 disabled:opacity-40 disabled:hover:text-zinc-500"
+        >
+          Select all
+        </button>
+        <button
+          type="button"
+          onClick={clearSelection}
+          disabled={selectedDeleteCount === 0}
+          className="text-zinc-500 hover:text-zinc-800 disabled:opacity-40 disabled:hover:text-zinc-500"
+        >
+          Clear
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={() => selectedDeleteCount > 0 && setBulkDeleteConfirm(true)}
+        disabled={selectedDeleteCount === 0}
+        className="w-full text-left text-xs text-red-600 hover:text-red-700 disabled:opacity-40 disabled:hover:text-red-600 transition-colors"
+      >
+        Delete selected{selectedDeleteCount > 0 ? ` (${selectedDeleteCount})` : ""}…
+      </button>
+    </div>
+  );
 
   return (
     <>
+    <ConfirmDialog
+      open={bulkDeleteConfirm}
+      title="Delete selected channels?"
+      tone="danger"
+      confirmLabel={`Delete ${selectedDeleteCount}`}
+      cancelLabel="Cancel"
+      onCancel={() => setBulkDeleteConfirm(false)}
+      onConfirm={deleteSelected}
+    >
+      <>
+        Removes {selectedDeleteCount} channel{selectedDeleteCount !== 1 ? "s" : ""} and their prefetch
+        queues. The <span className="font-medium text-zinc-800">All</span> channel cannot be deleted.
+        <ul className="mt-3 max-h-40 overflow-y-auto space-y-1 text-sm text-zinc-600">
+          {channels
+            .filter((c) => checkedIds.has(c.id))
+            .map((c) => (
+              <li key={c.id} className="truncate">
+                {c.name}
+              </li>
+            ))}
+        </ul>
+      </>
+    </ConfirmDialog>
     <ConfirmDialog
       open={pendingDeleteId !== null}
       title="Delete channel"
@@ -200,7 +334,10 @@ export default function ChannelsPage() {
               <span className="text-sm font-semibold text-zinc-800">New channel</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-2.5">
+            <div className="space-y-2 px-3 py-2.5">
+              <div className="max-h-40 overflow-y-auto">{channels.map((ch) => channelListRow(ch))}</div>
+              {customCount > 0 && bulkActionsBar("pt-2 border-t border-zinc-100")}
+              <div className="flex items-center gap-2 pt-1">
               <label htmlFor="channel-select-mobile" className="sr-only">
                 Channel
               </label>
@@ -236,6 +373,7 @@ export default function ChannelsPage() {
               >
                 +
               </button>
+              </div>
             </div>
           )}
         </div>
@@ -254,25 +392,15 @@ export default function ChannelsPage() {
               title="New channel"
             >+</button>
           </div>
-          <div className="flex-1 overflow-y-auto py-1 min-h-0">
-            {channels.map((ch) => (
-              <button
-                key={ch.id}
-                type="button"
-                onClick={() => selectChannel(ch.id)}
-                className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${
-                  selectedId === ch.id
-                    ? "bg-zinc-100 text-zinc-900"
-                    : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
-                }`}
-              >
-                {ch.name}
-              </button>
-            ))}
+          <div className="flex-1 overflow-y-auto py-1 min-h-0 px-1">
+            {channels.map((ch) => channelListRow(ch))}
             {channels.length === 0 && (
               <p className="px-4 py-3 text-xs text-zinc-400">No channels yet.</p>
             )}
           </div>
+          {customCount > 0 && (
+            <div className="border-t border-zinc-100 p-3">{bulkActionsBar()}</div>
+          )}
         </div>
 
         {/* ── Main panel ── */}
