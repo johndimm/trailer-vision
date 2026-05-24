@@ -39,31 +39,31 @@ export function ConfirmDialog({
 
   const confirmBtn =
     tone === "danger"
-      ? "rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2"
-      : "rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2";
+      ? "rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+      : "rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800";
 
   const cancelBtn =
-    "rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300 focus-visible:ring-offset-2";
+    "rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50";
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
     >
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/45"
-        aria-label="Dismiss"
-        onClick={onCancel}
-      />
-      <div className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl">
-        <h2 id="confirm-dialog-title" className="text-base font-semibold text-zinc-900">
+      <div
+        className="bg-white border border-zinc-200 rounded-xl p-6 max-w-md w-full shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="confirm-dialog-title" className="text-base font-semibold text-black mb-2">
           {title}
         </h2>
-        <div className="mt-2 text-sm leading-relaxed text-zinc-600">{children}</div>
-        <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <div className="text-sm text-zinc-500">{children}</div>
+        <div className="mt-6 flex justify-end gap-3">
           {showCancel && (
             <button type="button" className={cancelBtn} onClick={onCancel}>
               {cancelLabel}

@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useId, useMemo, memo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import type { Channel } from "./channels/page";
 import { ALL_CHANNEL, normalizeChannel, CHANNELS_KEY, ACTIVE_CHANNEL_KEY } from "./channels/page";
+import { insertChannelAfterAll, hydrateChannelsOnLoad } from "./lib/channelBulkActions";
 import { channelDraftFromPrompt } from "./lib/channelFromPrompt";
 import { queueNewChannelFromGraphNode } from "./lib/newChannelFromGraphNode";
 import {
@@ -296,8 +297,12 @@ function loadCurrentMovieForChannel(channelId: string): CurrentMovie | null {
   try {
     const raw = localStorage.getItem(currentMovieStorageKey(channelId));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as CurrentMovie;
-    return parsed?.title ? parsed : null;
+    const parsed = JSON.parse(raw) as CurrentMovie & { savedForChannelId?: string };
+    if (!parsed?.title) return null;
+    // Drop entries from before channel tagging, or cross-saved by the old persist-on-switch bug.
+    if (parsed.savedForChannelId !== channelId) return null;
+    const { savedForChannelId: _tag, ...movie } = parsed;
+    return movie;
   } catch {
     return null;
   }
@@ -307,8 +312,11 @@ function persistCurrentMovieForChannel(channelId: string, movie: CurrentMovie | 
   if (!channelId?.trim()) return;
   try {
     const key = currentMovieStorageKey(channelId);
-    if (movie?.title) localStorage.setItem(key, JSON.stringify(movie));
-    else localStorage.removeItem(key);
+    if (movie?.title) {
+      localStorage.setItem(key, JSON.stringify({ ...movie, savedForChannelId: channelId }));
+    } else {
+      localStorage.removeItem(key);
+    }
   } catch {
     /* ignore */
   }
@@ -1971,6 +1979,31 @@ async function exitFullscreenPolyfill(): Promise<void> {
 
 export default function Home() {
   const router = useRouter();
+  const pathname = usePathname();
+
+  const syncChannelsFromStorage = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(CHANNELS_KEY);
+      if (raw) {
+        let chs = (JSON.parse(raw) as Channel[]).map(normalizeChannel);
+        if (!chs.some((c) => c.id === "all")) {
+          chs = [ALL_CHANNEL, ...chs];
+        }
+        channelsRef.current = chs;
+        setChannels(chs);
+      }
+      const active = localStorage.getItem(ACTIVE_CHANNEL_KEY);
+      if (active && active !== activeChannelIdRef.current) {
+        setActiveChannelId(active);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (pathname === "/") syncChannelsFromStorage();
+  }, [pathname, syncChannelsFromStorage]);
   /** Persisted lists — refs only on this page (nothing in the tree reads them for render). Updates skip full-tree re-renders. */
   const historyRef = useRef<RatingEntry[]>([]);
   const skippedRef = useRef<string[]>([]);
@@ -2302,12 +2335,12 @@ export default function Home() {
       let loadedChannels: Channel[] = [];
       const storedChannels = localStorage.getItem(CHANNELS_KEY);
       if (storedChannels) {
-        loadedChannels = (JSON.parse(storedChannels) as Channel[]).map(normalizeChannel);
-        // Seed All channel if missing
-        if (!loadedChannels.find((c) => c.id === "all")) {
-          loadedChannels = [ALL_CHANNEL, ...loadedChannels];
-          localStorage.setItem(CHANNELS_KEY, JSON.stringify(loadedChannels));
-        }
+        loadedChannels = hydrateChannelsOnLoad(
+          JSON.parse(storedChannels) as Channel[],
+          ALL_CHANNEL,
+          normalizeChannel,
+        );
+        localStorage.setItem(CHANNELS_KEY, JSON.stringify(loadedChannels));
         setChannels(loadedChannels);
         // Before the next useEffect runs fetchNext, React state is still stale — sync ref now so /api/next-movie gets activeChannel.
         channelsRef.current = loadedChannels;
@@ -2702,7 +2735,6 @@ export default function Home() {
               localStorage.setItem(ACTIVE_CHANNEL_KEY, activeId);
               setActiveChannelId(activeId);
               activeChannelIdRef.current = activeId;
-              savedPrefetchChannelRef.current = activeId;
             } else {
               const raw = localStorage.getItem(CHANNELS_KEY);
               if (raw) {
@@ -2766,11 +2798,12 @@ export default function Home() {
     // in the dependency array re-ran the whole effect when fetchNext was recreated, popping an extra title.
   }, []) /* eslint-disable-line react-hooks/exhaustive-deps -- explicit single hydration + initial pick */;
 
-  // Persist the active channel's current card so switching away and back restores the same title.
+  // Persist the active channel's current card (same channel only — not on channel switch).
   useEffect(() => {
-    if (!activeChannelId) return;
-    persistCurrentMovieForChannel(activeChannelId, current);
-  }, [activeChannelId, current]);
+    const chId = activeChannelIdRef.current;
+    if (!chId || !current?.title) return;
+    persistCurrentMovieForChannel(chId, current);
+  }, [current]);
   useEffect(() => {
     setPendingRating((p) => (p == null ? p : null));
   }, [current?.title]);
@@ -2907,29 +2940,11 @@ export default function Home() {
 
     if (activeChannelId === id) {
       const fallback = next[0]?.id ?? "all";
-      replenishGenRef.current += 1;
-      replenishGenInFlight.current = 0;
-      savedPrefetchChannelRef.current = fallback;
-      loadPrefetchIntoRefForChannel(fallback);
-      persistPrefetchQueue();
-      batchYieldRef.current = [];
-      zeroYieldStreakRef.current = 0;
       localStorage.setItem(ACTIVE_CHANNEL_KEY, fallback);
       setActiveChannelId(fallback);
-      activeChannelIdRef.current = fallback;
-      void fetchNext({ mediaType, llm }, prefetchRef.current.length > 0);
     }
     setChannelPendingDelete(null);
-  }, [
-    channelPendingDelete,
-    channels,
-    activeChannelId,
-    mediaType,
-    llm,
-    loadPrefetchIntoRefForChannel,
-    persistPrefetchQueue,
-    fetchNext,
-  ]);
+  }, [channelPendingDelete, channels, activeChannelId]);
 
   const mergeStartersKeepActive = useCallback(() => {
     mergeFactoryChannelsAndQueues();
@@ -2960,20 +2975,12 @@ export default function Home() {
       setChannels(next);
       const firstNonAll = next.find((c) => c.id !== "all");
       const active = firstNonAll?.id ?? next[0]?.id ?? "all";
-      activeChannelIdRef.current = active;
+      localStorage.setItem(ACTIVE_CHANNEL_KEY, active);
       setActiveChannelId(active);
-      replenishGenRef.current += 1;
-      replenishGenInFlight.current = 0;
-      savedPrefetchChannelRef.current = active;
-      loadPrefetchIntoRefForChannel(active);
-      persistPrefetchQueue();
-      batchYieldRef.current = [];
-      zeroYieldStreakRef.current = 0;
-      void fetchNext({ mediaType, llm }, prefetchRef.current.length > 0);
     } catch {
       /* ignore */
     }
-  }, [loadPrefetchIntoRefForChannel, persistPrefetchQueue, fetchNext, mediaType, llm]);
+  }, []);
 
   const handleRate = (rating: number, ratingMode: "seen" | "unseen" = "seen") => {
     rating = clampStarRating(rating);
@@ -3338,7 +3345,7 @@ export default function Home() {
     }
     const data = channelDraftFromPrompt(t);
     const ch = normalizeChannel({ ...data, id: crypto.randomUUID() });
-    const next = [...list, ch];
+    const next = insertChannelAfterAll(list, ch);
     try {
       localStorage.setItem(CHANNELS_KEY, JSON.stringify(next));
     } catch {
@@ -3348,24 +3355,7 @@ export default function Home() {
     channelsRef.current = next;
     localStorage.setItem(ACTIVE_CHANNEL_KEY, ch.id);
     setActiveChannelId(ch.id);
-    activeChannelIdRef.current = ch.id;
-    savedPrefetchChannelRef.current = ch.id;
-    replenishGenRef.current += 1;
-    replenishGenInFlight.current = 0;
-    loadPrefetchIntoRefForChannel(ch.id);
-    prefetchRef.current = [];
-    persistPrefetchQueue();
-    batchYieldRef.current = [];
-    zeroYieldStreakRef.current = 0;
-    void fetchNext({ mediaType, llm }, true);
-  }, [
-    getChannelPromptForSave,
-    loadPrefetchIntoRefForChannel,
-    persistPrefetchQueue,
-    fetchNext,
-    mediaType,
-    llm,
-  ]);
+  }, []);
 
   const openNewChannelFromMovie = useCallback(
     (movie: MovieChannelSeedInput) => {

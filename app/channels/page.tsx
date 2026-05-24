@@ -10,7 +10,8 @@ import type { ChannelEditorValues } from "../components/ChannelEditorForm";
 import {
   countCustomChannels,
   deleteChannelsByIds,
-  sortChannelsAlpha,
+  hydrateChannelsOnLoad,
+  insertChannelAfterAll,
 } from "../lib/channelBulkActions";
 import { clearChannelPersistedData, clearChannelsPersistedData } from "../lib/storageKeys";
 import {
@@ -75,11 +76,7 @@ export default function ChannelsPage() {
         }
         const s = localStorage.getItem(CHANNELS_KEY);
         let chs: Channel[] = s ? (JSON.parse(s) as Channel[]).map(normalizeChannel) : [];
-        // Ensure All channel is always present and first
-        if (!chs.find((c) => c.id === "all")) {
-          chs = [ALL_CHANNEL, ...chs];
-        }
-        chs = sortChannelsAlpha(chs);
+        chs = hydrateChannelsOnLoad(chs, ALL_CHANNEL, normalizeChannel);
         localStorage.setItem(CHANNELS_KEY, JSON.stringify(chs));
         setChannels(chs);
         const activeId = localStorage.getItem(ACTIVE_CHANNEL_KEY);
@@ -122,16 +119,16 @@ export default function ChannelsPage() {
   }, []);
 
   const saveChannels = (chs: Channel[]) => {
-    // All channel is always first and immutable
+    // All channel is always first; preserve list order during the session (alpha on load/reload).
     const withAll = chs.find((c) => c.id === "all") ? chs : [ALL_CHANNEL, ...chs];
-    const normalized = sortChannelsAlpha(withAll.map(normalizeChannel));
+    const normalized = withAll.map(normalizeChannel);
     localStorage.setItem(CHANNELS_KEY, JSON.stringify(normalized));
     setChannels(normalized);
   };
 
   const createChannel = (values: ChannelEditorValues) => {
     const ch = editorValuesToChannel(crypto.randomUUID(), values);
-    const next = [...channels, ch];
+    const next = insertChannelAfterAll(channels, ch);
     saveChannels(next);
     localStorage.setItem(ACTIVE_CHANNEL_KEY, ch.id);
     setNewChannelFormInitial(emptyTrailerEditorValues());
