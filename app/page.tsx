@@ -30,7 +30,7 @@ import {
 import { canonicalTitleKey } from "./lib/canonicalTitleKey";
 import { filmWorkSearchTerm } from "./lib/filmWorkSearchTerm";
 import TrailerVisionConstellationsEmbed from "./components/TrailerVisionConstellationsEmbed";
-import { pushUnseenInterestEntry, type UnseenInterestEntry } from "./lib/unseenInterestLog";
+import { pushUnseenInterestEntry, loadUnseenInterestLog, type UnseenInterestEntry } from "./lib/unseenInterestLog";
 
 function migrateRatingEntry(e: RatingEntry): RatingEntry {
   const u = migrateRatingValue(e.userRating);
@@ -181,6 +181,41 @@ export interface RatingEntry {
   channelId?: string;
   posterUrl?: string | null;
   ratingMode?: "seen" | "unseen";
+}
+
+function getHistoryEntryForTitle(hist: RatingEntry[], title: string): RatingEntry | undefined {
+  const key = canonicalTitleKey(title);
+  for (let i = hist.length - 1; i >= 0; i--) {
+    if (canonicalTitleKey(hist[i]!.title) === key) return hist[i];
+  }
+  return undefined;
+}
+
+type DisplayRating = { stars: number; mode: "seen" | "unseen" };
+
+function getDisplayRatingForTitle(
+  title: string,
+  hist: RatingEntry[],
+  session: Record<string, DisplayRating>,
+  unseenLog: UnseenInterestEntry[],
+): DisplayRating | undefined {
+  const key = canonicalTitleKey(title);
+  const fromHist = getHistoryEntryForTitle(hist, title);
+  if (fromHist?.userRating != null && fromHist.userRating > 0) {
+    return {
+      stars: fromHist.userRating,
+      mode: fromHist.ratingMode === "unseen" ? "unseen" : "seen",
+    };
+  }
+  const fromSession = session[key];
+  if (fromSession && fromSession.stars > 0) return fromSession;
+  for (let i = unseenLog.length - 1; i >= 0; i--) {
+    const e = unseenLog[i]!;
+    if (canonicalTitleKey(e.title) === key && e.interestStars > 0) {
+      return { stars: e.interestStars, mode: "unseen" };
+    }
+  }
+  return undefined;
 }
 
 interface CurrentMovie {
@@ -1363,6 +1398,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   defaultSeen = false,
   previousRating,
   previousMode,
+  ratingResetKey,
   showNextInRating = true,
   /** Under video vs poster: same inner controls; wrapper only (strip vs rounded card). */
   layout = "card",
@@ -1381,6 +1417,8 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   /** Pre-existing rating from history — locks stars immediately, no auto-progress. */
   previousRating?: number;
   previousMode?: "seen" | "unseen";
+  /** Bumps when the card title changes so local star state resets from history. */
+  ratingResetKey?: string;
   showNextInRating?: boolean;
   layout?: "card" | "trailerBar" | "fullscreenOverlay";
   /** Prev control — career filmography index or playback back stack. */
@@ -1398,16 +1436,31 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   const [seenStatus, setSeenStatus] = useState<"unseen" | null>(() => initialSeen);
   const [userLocked, setUserLocked] = useState(() => hasPrev);
   const [lockedValue, setLockedValue] = useState(() => hasPrev ? previousRating! : 0);
-  /** Only re-sync "seen" / lock state when the **title** changes — not on unrelated parent re-renders. */
-  const lastResetMovieTitleRef = useRef<string | undefined>(undefined);
+  const lastTitleRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (lastResetMovieTitleRef.current === movieTitle) return;
-    lastResetMovieTitleRef.current = movieTitle;
-    const prev = previousRating !== undefined && previousRating > 0;
-    setSeenStatus(prev ? (previousMode === "unseen" ? "unseen" : null) : (defaultSeen ? null : "unseen"));
-    setUserLocked(prev);
-    setLockedValue(prev ? previousRating! : 0);
-  }, [movieTitle, defaultSeen, previousRating, previousMode]);
+    const titleChanged = lastTitleRef.current !== movieTitle;
+    if (titleChanged) lastTitleRef.current = movieTitle;
+
+    const hasHistoryRating = previousRating !== undefined && previousRating > 0;
+
+    if (titleChanged) {
+      setSeenStatus(
+        hasHistoryRating ? (previousMode === "unseen" ? "unseen" : null) : defaultSeen ? null : "unseen"
+      );
+      if (!hasHistoryRating) {
+        setUserLocked(false);
+        setLockedValue(0);
+      }
+    }
+
+    if (hasHistoryRating) {
+      setUserLocked(true);
+      setLockedValue(previousRating!);
+      if (titleChanged) {
+        setSeenStatus(previousMode === "unseen" ? "unseen" : null);
+      }
+    }
+  }, [movieTitle, defaultSeen, previousRating, previousMode, ratingResetKey]);
   const onSeenStatusChange = useCallback((v: "unseen" | null) => {
     setSeenStatus(v);
   }, []);
@@ -1604,10 +1657,12 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
   defaultSeen,
   previousRating,
   previousMode,
+  ratingResetKey,
   prevNav,
   careerNextDisabled,
 }: {
-  children: React.ReactNode;
+  /** Poster-only fullscreen still wraps content; trailer video stays mounted as a sibling. */
+  children?: React.ReactNode;
   onExit: () => void;
   passCurrentCardStable: () => void;
   onRate: (stars: number, mode: "seen" | "unseen") => void;
@@ -1616,6 +1671,7 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
   defaultSeen: boolean;
   previousRating?: number;
   previousMode?: "seen" | "unseen";
+  ratingResetKey?: string;
   prevNav: { onPass: () => void; disabled: boolean } | null;
   careerNextDisabled: boolean;
 }) {
@@ -1659,22 +1715,28 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
     };
   }, [bumpControlsVisible]);
 
+  const wakeOverlay = !controlsVisible ? (
+    <div
+      className={`${children ? "absolute" : "fixed"} inset-0 z-[45] touch-manipulation cursor-pointer`}
+      aria-hidden
+      onPointerDown={wakeControls}
+      onTouchStart={wakeControls}
+      onTouchEnd={wakeControls}
+      onClick={wakeControls}
+    />
+  ) : null;
+
   return (
     <>
-      <div className="relative flex min-h-0 flex-1 flex-col w-full bg-black">
-        {children}
-        {/* Above the YouTube iframe (cross-origin — no events reach document). */}
-        {!controlsVisible && (
-          <div
-            className="absolute inset-0 z-[45] touch-manipulation cursor-pointer"
-            aria-hidden
-            onPointerDown={wakeControls}
-            onTouchStart={wakeControls}
-            onTouchEnd={wakeControls}
-            onClick={wakeControls}
-          />
-        )}
-      </div>
+      {children ? (
+        <div className="relative flex min-h-0 flex-1 flex-col w-full bg-black">
+          {children}
+          {/* Above the YouTube iframe (cross-origin — no events reach document). */}
+          {wakeOverlay}
+        </div>
+      ) : (
+        wakeOverlay
+      )}
       <button
         type="button"
         onPointerDown={(e) => e.preventDefault()}
@@ -1693,6 +1755,7 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
         </svg>
       </button>
       <MovieRatingBlock
+        key={ratingResetKey ?? movieTitle}
         layout="fullscreenOverlay"
         passCurrentCardStable={passCurrentCardStable}
         onRate={onRate}
@@ -1702,6 +1765,7 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
         defaultSeen={defaultSeen}
         previousRating={previousRating}
         previousMode={previousMode}
+        ratingResetKey={ratingResetKey}
         prevNav={prevNav}
         careerNextDisabled={careerNextDisabled}
         controlsVisible={controlsVisible}
@@ -2006,6 +2070,12 @@ export default function Home() {
   }, [pathname, syncChannelsFromStorage]);
   /** Persisted lists — refs only on this page (nothing in the tree reads them for render). Updates skip full-tree re-renders. */
   const historyRef = useRef<RatingEntry[]>([]);
+  const [historyRevision, setHistoryRevision] = useState(0);
+  /** In-tab star picks before/until Next — keyed by canonical title. */
+  const sessionRatingsRef = useRef<Record<string, DisplayRating>>({});
+  const [sessionRatingsRevision, setSessionRatingsRevision] = useState(0);
+  const [unseenLogRevision, setUnseenLogRevision] = useState(0);
+  const [cardNavSeq, setCardNavSeq] = useState(0);
   const skippedRef = useRef<string[]>([]);
   const passedRef = useRef<string[]>([]);
   const watchlistRef = useRef<WatchlistEntry[]>([]);
@@ -2223,6 +2293,11 @@ export default function Home() {
         if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
         passCurrentCardRef.current();
       }
+      if (e.key === "ArrowLeft") {
+        const active = document.activeElement;
+        if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
+        goToPreviousCardRef.current();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -2356,6 +2431,7 @@ export default function Home() {
   const saveHistory = (h: RatingEntry[]) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(h));
     historyRef.current = h;
+    setHistoryRevision((n) => n + 1);
   };
 
   /** Fire-and-forget: ask the LLM to summarize taste. Called after ratings hit 1, 5, 10, 15 ... */
@@ -2806,6 +2882,7 @@ export default function Home() {
   }, [current]);
   useEffect(() => {
     setPendingRating((p) => (p == null ? p : null));
+    setCardNavSeq((n) => n + 1);
   }, [current?.title]);
 
   // Submit pending rating on unmount (Next.js client-side navigation) or page unload
@@ -2982,30 +3059,42 @@ export default function Home() {
     }
   }, []);
 
-  const handleRate = (rating: number, ratingMode: "seen" | "unseen" = "seen") => {
+  const writeSeenRating = useCallback((
+    movie: CurrentMovie,
+    rating: number,
+    ratingMode: "seen" | "unseen" = "seen",
+    opts?: { replenish?: boolean },
+  ) => {
     rating = clampStarRating(rating);
-    if (!current) return;
-    const predicted = migrateRatingValue(current.predictedRating);
+    const predicted = migrateRatingValue(movie.predictedRating);
     const error = Math.abs(rating - predicted);
     const channelId = activeChannelIdRef.current || undefined;
     const entry: RatingEntry = {
-      title: current.title,
-      type: current.type,
+      title: movie.title,
+      type: movie.type,
       userRating: rating,
       predictedRating: predicted,
       error,
-      rtScore: current.rtScore,
+      rtScore: movie.rtScore,
       channelId,
-      posterUrl: current.posterUrl,
+      posterUrl: movie.posterUrl,
       ratingMode,
     };
-    const newHistory = [...historyRef.current, entry];
+    const titleKey = canonicalTitleKey(movie.title);
+    const newHistory = [...historyRef.current];
+    const lastIdx = newHistory.findLastIndex((e) => canonicalTitleKey(e.title) === titleKey);
+    if (lastIdx >= 0) newHistory[lastIdx] = entry;
+    else newHistory.push(entry);
     saveHistory(newHistory);
-    zeroYieldStreakRef.current = 0; // new exclusion may unblock the LLM
-    // Update taste profile after 1st rating, then every 5 (1, 5, 10, 15 …)
+    zeroYieldStreakRef.current = 0;
     const n = newHistory.length;
     if (n === 1 || n % 5 === 0) updateTasteSummary(newHistory, llm);
-    if (!careerModeRef.current) replenish({ mediaType, llm });
+    if (opts?.replenish !== false && !careerModeRef.current) replenish({ mediaType, llm });
+  }, [llm, mediaType, replenish, updateTasteSummary]);
+
+  const handleRate = (rating: number, ratingMode: "seen" | "unseen" = "seen") => {
+    if (!current) return;
+    writeSeenRating(current, rating, ratingMode);
   };
 
   /** Single entry point for all star clicks. Red = seen (goes to history). Blue = unseen (4-5 → watchlist, 1-3 → not-interested). */
@@ -3023,8 +3112,19 @@ export default function Home() {
     clearAdvanceAfterRating();
     const p = pendingRatingRef.current;
     if (p) {
-      submitRatingRef.current(p.stars, p.mode);
-      setPendingRating((x) => (x == null ? x : null));
+      if (p.mode === "seen") {
+        const saved = getHistoryEntryForTitle(historyRef.current, current.title);
+        const starsNorm = clampStarRating(p.stars);
+        if (!saved || saved.userRating !== starsNorm) {
+          writeSeenRating(current, p.stars, "seen");
+        } else if (!careerModeRef.current) {
+          replenish({ mediaType, llm });
+        }
+      } else {
+        submitRatingRef.current(p.stars, p.mode);
+      }
+      pendingRatingRef.current = null;
+      setPendingRating(null);
     } else {
       const autoStars = WATCH_PROGRESS_AUTO_RATING ? progressToStars(watchFracRef.current) : 0;
       if (autoStars > 0) {
@@ -3106,6 +3206,7 @@ export default function Home() {
       at: new Date().toISOString(),
     };
     pushUnseenInterestEntry(logRow);
+    setUnseenLogRevision((n) => n + 1);
 
     const newSkipped = [...skippedRef.current, snapshot.title];
     localStorage.setItem(SKIPPED_KEY, JSON.stringify(newSkipped));
@@ -3128,8 +3229,18 @@ export default function Home() {
   const submitRatingRef = useRef(submitRating);
   submitRatingRef.current = submitRating;
   const handlePendingChange = useCallback((stars: number, mode: "seen" | "unseen") => {
-    setPendingRating({ stars, mode });
-  }, []);
+    const next = { stars, mode };
+    pendingRatingRef.current = next;
+    setPendingRating(next);
+    const movie = currentRef.current;
+    if (!movie) return;
+    const key = canonicalTitleKey(movie.title);
+    sessionRatingsRef.current = { ...sessionRatingsRef.current, [key]: next };
+    setSessionRatingsRevision((n) => n + 1);
+    if (mode === "seen") {
+      writeSeenRating(movie, stars, "seen", { replenish: false });
+    }
+  }, [writeSeenRating]);
 
   const passCurrentCardRef = useRef(passCurrentCard);
   passCurrentCardRef.current = passCurrentCard;
@@ -3212,6 +3323,9 @@ export default function Home() {
     suppressNavPushRef.current = false;
   }, [handleCareerPrev, persistPrefetchQueue]);
 
+  const goToPreviousCardRef = useRef(goToPreviousCard);
+  goToPreviousCardRef.current = goToPreviousCard;
+
   const prevNav = useMemo((): { onPass: () => void; disabled: boolean } => {
     if (careerMode) {
       return { onPass: handleCareerPrev, disabled: careerMode.index === 0 };
@@ -3223,6 +3337,21 @@ export default function Home() {
     () => Boolean(careerMode && careerMode.films.length > 0 && careerMode.index === careerMode.films.length - 1),
     [careerMode],
   );
+
+  const currentDisplayRating = useMemo(
+    () =>
+      current?.title
+        ? getDisplayRatingForTitle(
+            current.title,
+            historyRef.current,
+            sessionRatingsRef.current,
+            loadUnseenInterestLog(),
+          )
+        : undefined,
+    [current?.title, historyRevision, sessionRatingsRevision, unseenLogRevision],
+  );
+
+  const ratingCardKey = current ? `${current.title}:${cardNavSeq}` : "";
 
   const enterCareerMode = useCallback(async (name: string, role: "actor" | "director") => {
     setCareerLoading((s) => (s ? s : true));
@@ -3486,7 +3615,21 @@ export default function Home() {
                         pseudoTrailerFullscreen ? "fixed inset-0 z-[70] overflow-y-auto overscroll-y-contain" : "relative"
                       }`}
                     >
-                      {trailerFsUi ? (
+                      <div
+                        className={`relative flex min-h-0 flex-col w-full bg-black ${
+                          trailerFsUi ? "min-h-0 flex-1" : ""
+                        }`}
+                      >
+                        <TrailerPlayer
+                          videoId={current.trailerKey}
+                          onProgress={setWatchFrac}
+                          onPlaybackError={handleTrailerPlaybackError}
+                          resumeFromFraction={
+                            trailerResumeByChannel[activeChannelId]?.[canonicalTitleKey(current.title)]
+                          }
+                        />
+                      </div>
+                      {trailerFsUi && (
                         <TrailerFullscreenChrome
                           onExit={() => void exitTrailerFullscreen()}
                           passCurrentCardStable={passCurrentCardStable}
@@ -3494,24 +3637,11 @@ export default function Home() {
                           movieTitle={current.title}
                           watchFrac={watchFrac}
                           defaultSeen={activeChannelId === "all"}
-                          previousRating={historyRef.current.find((e) => e.title === current.title)?.userRating}
-                          previousMode={historyRef.current.find((e) => e.title === current.title)?.ratingMode}
+                          previousRating={currentDisplayRating?.stars}
+                          previousMode={currentDisplayRating?.mode}
+                          ratingResetKey={ratingCardKey}
                           prevNav={prevNav}
                           careerNextDisabled={careerAtLastFilm}
-                        >
-                          <TrailerPlayer
-                            videoId={current.trailerKey}
-                            onProgress={setWatchFrac}
-                            onPlaybackError={handleTrailerPlaybackError}
-                            resumeFromFraction={trailerResumeByChannel[activeChannelId]?.[canonicalTitleKey(current.title)]}
-                          />
-                        </TrailerFullscreenChrome>
-                      ) : (
-                        <TrailerPlayer
-                          videoId={current.trailerKey}
-                          onProgress={setWatchFrac}
-                          onPlaybackError={handleTrailerPlaybackError}
-                          resumeFromFraction={trailerResumeByChannel[activeChannelId]?.[canonicalTitleKey(current.title)]}
                         />
                       )}
                     </div>
@@ -3530,8 +3660,9 @@ export default function Home() {
                           movieTitle={current.title}
                           watchFrac={watchFrac}
                           defaultSeen={activeChannelId === "all"}
-                          previousRating={historyRef.current.find((e) => e.title === current.title)?.userRating}
-                          previousMode={historyRef.current.find((e) => e.title === current.title)?.ratingMode}
+                          previousRating={currentDisplayRating?.stars}
+                          previousMode={currentDisplayRating?.mode}
+                          ratingResetKey={ratingCardKey}
                           prevNav={prevNav}
                           careerNextDisabled={careerAtLastFilm}
                         >
@@ -3574,6 +3705,7 @@ export default function Home() {
                   )}
                   {!trailerFsUi && (
                     <MovieRatingBlock
+                      key={ratingCardKey}
                       layout="trailerBar"
                       passCurrentCardStable={passCurrentCardStable}
                       onRate={handlePendingChange}
@@ -3581,8 +3713,9 @@ export default function Home() {
                       starKeyPrefix="tr"
                       watchFrac={watchFrac}
                       defaultSeen={activeChannelId === "all"}
-                      previousRating={historyRef.current.find((e) => e.title === current.title)?.userRating}
-                      previousMode={historyRef.current.find((e) => e.title === current.title)?.ratingMode}
+                      previousRating={currentDisplayRating?.stars}
+                      previousMode={currentDisplayRating?.mode}
+                      ratingResetKey={ratingCardKey}
                       prevNav={prevNav}
                       careerNextDisabled={careerAtLastFilm}
                     />
@@ -3675,13 +3808,15 @@ export default function Home() {
                   )}
 
                   <MovieRatingBlock
+                    key={ratingCardKey}
                     passCurrentCardStable={passCurrentCardStable}
                     onRate={handlePendingChange}
                     movieTitle={current.title}
                     starKeyPrefix="po"
                     defaultSeen={activeChannelId === "all"}
-                    previousRating={historyRef.current.find(e => e.title === current.title)?.userRating}
-                    previousMode={historyRef.current.find(e => e.title === current.title)?.ratingMode}
+                    previousRating={currentDisplayRating?.stars}
+                    previousMode={currentDisplayRating?.mode}
+                    ratingResetKey={ratingCardKey}
                     prevNav={prevNav}
                     careerNextDisabled={careerAtLastFilm}
                   />
