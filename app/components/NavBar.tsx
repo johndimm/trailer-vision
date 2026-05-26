@@ -9,7 +9,6 @@ const LINKS = [
   { href: "/channels", label: "Channels" },
   { href: "/history", label: "History" },
   { href: "/watchlist", label: "Watchlist" },
-  { href: "/constellations", label: "Graph" },
   { href: "/settings", label: "Settings" },
   { href: "/help", label: "Help" },
 ];
