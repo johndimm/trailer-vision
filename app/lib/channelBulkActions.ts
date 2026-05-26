@@ -2,24 +2,39 @@ import type { MovieChannel as Channel } from "./movieChannel";
 
 export const ALL_CHANNEL_ID = "all";
 
+export function createAllChannel(): Channel {
+  return {
+    id: ALL_CHANNEL_ID,
+    name: "All",
+    mediums: [],
+    genres: [],
+    timePeriods: [],
+    language: "",
+    artists: "",
+    freeText: "",
+    popularity: 50,
+  };
+}
+
+/** Always includes the All channel; never returns an empty list. */
+export function normalizeChannelList(channels: readonly Channel[] | null | undefined): Channel[] {
+  const list = Array.isArray(channels) ? [...channels] : [];
+  const all = list.find((c) => c.id === ALL_CHANNEL_ID);
+  const rest = list.filter((c) => c.id !== ALL_CHANNEL_ID);
+  return [all ?? createAllChannel(), ...rest];
+}
+
 export function ensureAllChannel(channels: Channel[]): Channel[] {
-  const all = channels.find((c) => c.id === ALL_CHANNEL_ID);
-  const rest = channels.filter((c) => c.id !== ALL_CHANNEL_ID);
-  if (all) return [all, ...rest];
-  return rest;
+  return normalizeChannelList(channels);
 }
 
 /** Delete every channel whose id is in `ids` (All is never deleted). */
 export function deleteChannelsByIds(channels: Channel[], ids: Iterable<string>): Channel[] {
   const drop = new Set(ids);
   drop.delete(ALL_CHANNEL_ID);
-  if (drop.size === 0) return ensureAllChannel(channels);
+  if (drop.size === 0) return normalizeChannelList(channels);
   const remaining = channels.filter((c) => !drop.has(c.id));
-  if (remaining.length === 0) {
-    const allOnly = channels.find((c) => c.id === ALL_CHANNEL_ID);
-    return allOnly ? [allOnly] : [];
-  }
-  return ensureAllChannel(remaining);
+  return normalizeChannelList(remaining);
 }
 
 export function countCustomChannels(channels: readonly { id: string }[]): number {

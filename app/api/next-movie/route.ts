@@ -42,6 +42,8 @@ import {
   normalizePredictedRating,
   rtTomatometerPercentToStars,
 } from "../../lib/ratingScale";
+import { fetchTmdbAssets, resolveMovieFromTmdbByTitle } from "../../lib/tmdbAssets";
+import { directTitlePromptFromRequest, directTitleConstraintLine, llmTitlePrefixCandidates, parseDirectTitleRequest, sanitizeLlmMovieTitle, type DirectTitleRequest } from "../../lib/parseDirectTitleRequest";
 
 /**
  * Items per LLM response. Client may request up to MAX_BATCH; larger responses need more output budget below.
@@ -57,195 +59,6 @@ const LOW_RT_THRESHOLD = 60; // want-to-watch: RT below this is a strong signal
 const HIGH_RT_THRESHOLD = 70; // not interested: RT at/above this is a strong signal
 /** Scales with batch size (8 titles × short JSON + reasons). */
 const LLM_OUTPUT_MAX_TOKENS = 2200;
-
-function getYoutubeDataApiKey(): string | undefined {
-  return process.env.YOUTUBE_API_KEY || process.env.YOUTUBE_DATA_API_KEY;
-}
-
-/**
- * No API key: YouTube oEmbed returns 404 for many removed / blocked / unembeddable URLs.
- * Fails open (returns null) on network or unexpected status so a transient failure does not drop all trailers.
- */
-async function youtubeOembedLooksOk(videoId: string): Promise<boolean | null> {
-  try {
-    const u = new URL("https://www.youtube.com/oembed");
-    u.searchParams.set("url", `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`);
-    u.searchParams.set("format", "json");
-    const res = await fetch(u.toString(), {
-      headers: { "User-Agent": "movie-recs/1.0 (trailer oEmbed check)" },
-    });
-    if (res.status === 404 || res.status === 401 || res.status === 403) return false;
-    if (res.status >= 200 && res.status < 300) return true;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Use oEmbed (no key) to skip obviously-bad videos; optionally YouTube Data API (requires
- * {@link getYoutubeDataApiKey}) for embed/age gating. On API or oEmbed indeterminate errors we fail
- * open for that layer so a bad key or outage does not strip every trailer.
- */
-async function youtubeVideoIsEmbeddableForSite(videoId: string): Promise<boolean> {
-  const oembed = await youtubeOembedLooksOk(videoId);
-  if (oembed === false) return false;
-
-  const key = getYoutubeDataApiKey();
-  if (!key) {
-    // No Data API: oEmbed already rejected (false) above; here true|null => allow.
-    return true;
-  }
-  try {
-    const url = new URL("https://www.googleapis.com/youtube/v3/videos");
-    url.searchParams.set("part", "status,contentDetails");
-    url.searchParams.set("id", videoId);
-    url.searchParams.set("key", key);
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-      console.warn("[next-movie] YouTube Data API HTTP", res.status);
-      return true;
-    }
-    const data = (await res.json()) as {
-      items?: Array<{
-        status?: { embeddable?: boolean };
-        contentDetails?: { contentRating?: { ytRating?: string } };
-      }>;
-    };
-    const item = data.items?.[0];
-    if (!item) return false;
-    if (item.status?.embeddable === false) return false;
-    if (item.contentDetails?.contentRating?.ytRating === "ytAgeRestricted") return false;
-    return true;
-  } catch (e) {
-    console.warn("[next-movie] YouTube Data API check failed", e);
-    return true;
-  }
-}
-
-/** Prefer official trailers, then other trailers, then any YouTube clip TMDB listed. */
-function orderedYoutubeCandidateKeys(
-  ytVideos: { key: string; site: string; type: string; official?: boolean }[]
-): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  const add = (k: string | undefined) => {
-    if (!k || seen.has(k)) return;
-    seen.add(k);
-    out.push(k);
-  };
-  const trailers = ytVideos.filter((v) => v.type === "Trailer");
-  trailers.sort((a, b) => Number(!!b.official) - Number(!!a.official));
-  for (const v of trailers) add(v.key);
-  for (const v of ytVideos) add(v.key);
-  return out;
-}
-
-/** Official poster + YouTube trailer key via TMDB — one search + one videos call per title. */
-async function fetchTmdbAssets(
-  title: string,
-  type: "movie" | "tv",
-  year: number | null
-): Promise<{ posterUrl: string | null; trailerKey: string | null }> {
-  const apiKey = process.env.TMDB_API_KEY;
-  if (!apiKey) return { posterUrl: null, trailerKey: null };
-  const base = "https://api.themoviedb.org/3";
-  const path = type === "tv" ? "search/tv" : "search/movie";
-  try {
-    const params = new URLSearchParams({ api_key: apiKey, query: title });
-    if (year !== null && year !== undefined) {
-      if (type === "tv") params.set("first_air_date_year", String(year));
-      else params.set("year", String(year));
-    }
-    let res = await fetch(`${base}/${path}?${params.toString()}`);
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => "");
-      console.error("[next-movie] TMDB search HTTP", res.status, errBody.slice(0, 200));
-      return { posterUrl: null, trailerKey: null };
-    }
-    let data = (await res.json()) as { results?: { id?: number; poster_path?: string | null }[] };
-    let results = data.results ?? [];
-    if (results.length === 0 && year !== null) {
-      const p2 = new URLSearchParams({ api_key: apiKey, query: title });
-      res = await fetch(`${base}/${path}?${p2.toString()}`);
-      if (res.ok) {
-        data = (await res.json()) as { results?: { id?: number; poster_path?: string | null }[] };
-        results = data.results ?? [];
-      }
-    }
-    const hit = results.find((r) => r.poster_path) ?? results[0] ?? null;
-    const posterUrl = hit?.poster_path ? `https://image.tmdb.org/t/p/w500${hit.poster_path}` : null;
-    const tmdbId = hit?.id ?? null;
-
-    let trailerKey: string | null = null;
-    if (tmdbId !== null) {
-      try {
-        const videoPath = type === "tv" ? `tv/${tmdbId}/videos` : `movie/${tmdbId}/videos`;
-        const vRes = await fetch(`${base}/${videoPath}?api_key=${apiKey}`);
-        if (vRes.ok) {
-          const vData = (await vRes.json()) as {
-            results?: { key: string; site: string; type: string; official?: boolean }[];
-          };
-          const ytVideos = (vData.results ?? []).filter((v) => v.site === "YouTube");
-          const candidateKeys = orderedYoutubeCandidateKeys(ytVideos);
-          for (const key of candidateKeys) {
-            if (await youtubeVideoIsEmbeddableForSite(key)) {
-              trailerKey = key;
-              break;
-            }
-          }
-        }
-      } catch (e) {
-        console.error("[next-movie] TMDB videos fetch failed:", e);
-      }
-    }
-
-    return { posterUrl, trailerKey };
-  } catch (e) {
-    console.error("[next-movie] TMDB assets fetch failed:", e);
-    return { posterUrl: null, trailerKey: null };
-  }
-}
-
-/** Google Images via Serper — optional fallback when TMDB has no match or no TMDB key. */
-async function fetchPosterFromSerper(title: string, type: "movie" | "tv", year: number | null): Promise<string | null> {
-  if (!process.env.SERPER_API_KEY) return null;
-  const yearStr = year ? ` ${year}` : "";
-  const query = `${title}${yearStr} ${type === "tv" ? "TV series" : "film"} official poster`;
-  try {
-    const res = await fetch("https://google.serper.dev/images", {
-      method: "POST",
-      headers: {
-        "X-API-KEY": process.env.SERPER_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ q: query, num: 3 }),
-    });
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => "");
-      console.error("[next-movie] Serper images HTTP", res.status, errBody.slice(0, 200));
-      return null;
-    }
-    const data = await res.json() as { images?: { imageUrl: string; width?: number; height?: number }[] };
-    const images = data.images ?? [];
-    const portrait = images.find((img) => !img.width || !img.height || img.height >= img.width);
-    const url = (portrait ?? images[0])?.imageUrl ?? null;
-    return url ? url.replace(/^http:\/\//i, "https://") : null;
-  } catch (e) {
-    console.error("[next-movie] Serper images fetch failed:", e);
-    return null;
-  }
-}
-
-/** Serper-only fallback used when TMDB_API_KEY is absent — returns poster only, no trailer. */
-async function fetchPosterFallback(title: string, type: "movie" | "tv", year: number | null): Promise<string | null> {
-  const serper = await fetchPosterFromSerper(title, type, year);
-  if (serper) return serper;
-  if (!process.env.SERPER_API_KEY) {
-    console.warn("[next-movie] Set TMDB_API_KEY (recommended) or SERPER_API_KEY — poster lookup disabled");
-  }
-  return null;
-}
 
 function stripMarkdownJsonFence(text: string): string {
   return text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
@@ -469,13 +282,17 @@ function buildMediumsConstraintLine(mediums: ChannelPayload["mediums"]): string 
   return `- Format / medium: Only recommend titles that fit: ${parts.join(" OR ")}.`;
 }
 
-function buildChannelConstraint(ch: ChannelPayload): string {
+function buildChannelConstraint(ch: ChannelPayload, mediaType: "movie" | "tv" | "both"): string {
   const lines: string[] = [];
   const mediumLine = buildMediumsConstraintLine(ch.mediums);
   if (mediumLine) lines.push(mediumLine);
-  if (ch.freeText.trim()) {
+  const freeText = ch.freeText.trim();
+  const directTitle = freeText ? parseDirectTitleRequest(freeText, mediaType) : null;
+  if (directTitle) {
+    lines.push(`- ${directTitleConstraintLine(directTitle)}`);
+  } else if (freeText) {
     lines.push(
-      `- What they want (primary — align genres/era/etc. below with this): ${ch.freeText.trim()}`,
+      `- What they want (primary — align genres/era/etc. below with this): ${freeText}`,
     );
   }
   if (ch.genres.length) lines.push(`- Genres: ${ch.genres.join(", ")}`);
@@ -527,9 +344,9 @@ export async function POST(request: Request) {
   const diversityLens = raw.diversityLens?.trim() || null;
   const userRequest = raw.userRequest?.trim() || null;
   const activeChannel = raw.activeChannel ?? null;
-  // "all" is the special no-filter channel — treat it like no channel so the diversity lens applies
-  const channelConstraint = (activeChannel && activeChannel.id !== "all") ? buildChannelConstraint(activeChannel) : null;
   const mediaType = raw.mediaType ?? "both";
+  // "all" is the special no-filter channel — treat it like no channel so the diversity lens applies
+  const channelConstraint = (activeChannel && activeChannel.id !== "all") ? buildChannelConstraint(activeChannel, mediaType) : null;
   const llm = raw.llm ?? "deepseek";
   const countRaw = raw.count;
 
@@ -552,6 +369,50 @@ export async function POST(request: Request) {
 
   const ratedTitles = history.map((h) => h.title);
   const allExcluded = [...new Set([...ratedTitles, ...skipped, ...watchlistTitles])];
+
+  const directPrompt = directTitlePromptFromRequest({ userRequest, activeChannel });
+  let directTitleAlreadySeen: DirectTitleRequest | null = null;
+  if (directPrompt) {
+    const channelMedium =
+      activeChannel?.mediums?.length === 1 ? activeChannel.mediums[0] : null;
+    const lookupMediaType = channelMedium ?? mediaType;
+    const parsed = parseDirectTitleRequest(directPrompt, lookupMediaType);
+    if (parsed) {
+      const typeOk =
+        mediaType === "both" ||
+        (mediaType === "movie" && parsed.type === "movie") ||
+        (mediaType === "tv" && parsed.type === "tv");
+      if (typeOk) {
+        const resolved = await resolveMovieFromTmdbByTitle(parsed.title, parsed.type, parsed.year);
+        if (resolved) {
+          const excluded = new Set(allExcluded.map((t) => t.toLowerCase()));
+          if (!excluded.has(resolved.title.toLowerCase())) {
+            const movie: NextMovieResponse = {
+              title: resolved.title,
+              type: resolved.type,
+              year: resolved.year,
+              director: resolved.director,
+              predictedRating: 3,
+              actors: resolved.actors,
+              plot: resolved.plot,
+              posterUrl: resolved.posterUrl,
+              trailerKey: resolved.trailerKey,
+              rtScore: null,
+              reason: null,
+              streaming: [],
+            };
+            console.log(
+              `[next-movie] direct TMDB lookup for "${directPrompt}" → "${resolved.title}" (trailer=${resolved.trailerKey ? "yes" : "no"})`,
+            );
+            return Response.json({ movies: [movie] });
+          }
+          directTitleAlreadySeen = parsed;
+        }
+      }
+    }
+  }
+
+  const titlePrefixCandidates = llmTitlePrefixCandidates({ activeChannel, userRequest, mediaType });
 
   // --- Informative taste-signal sections (token-efficient; full exclusion lists not sent) ---
 
@@ -603,10 +464,26 @@ export async function POST(request: Request) {
 
   const mediaConstraint =
     mediaType === "movie"
-      ? '\nIMPORTANT: Every item must be a movie only (not TV). Each "type" field must be "movie".'
+      ? 'IMPORTANT: Every item must be a movie only (not TV). Each "type" field must be "movie".'
       : mediaType === "tv"
-        ? '\nIMPORTANT: Every item must be a TV series only (not movies). Each "type" field must be "tv".'
+        ? 'IMPORTANT: Every item must be a TV series only (not movies). Each "type" field must be "tv".'
         : "";
+
+  const systemPromptContextParts: string[] = [];
+  if (mediaConstraint) systemPromptContextParts.push(mediaConstraint);
+  if (channelConstraint) systemPromptContextParts.push(channelConstraint);
+  if (userRequest) {
+    const directUserTitle = parseDirectTitleRequest(userRequest, mediaType);
+    if (directUserTitle && !channelConstraint) {
+      systemPromptContextParts.push(directTitleConstraintLine(directUserTitle));
+    } else if (!directUserTitle) {
+      systemPromptContextParts.push(
+        `USER REQUEST — ADDITIONAL HARD CONSTRAINT: The user has also asked for "${userRequest}". Every item must satisfy BOTH the channel requirements above AND this request.`,
+      );
+    }
+  }
+  const systemPromptContext =
+    systemPromptContextParts.length > 0 ? systemPromptContextParts.join("\n\n") : null;
 
   const systemPrompt = `You are calibrating a movie/TV recommendation system to a specific user's taste.
 
@@ -626,13 +503,19 @@ Rules:
 - Return exactly ${batchCount} objects in "items" (unless absolutely impossible — then return as many distinct valid picks as you can)
 - Avoid duplicate titles within "items". Do not worry about overlap with the user's full past list — the app enforces that separately
 - "type" must be exactly "movie" or "tv"
+- "title" must be the exact official release name only — never a sentence, channel label, or "description: title" format
 - "year" is a number; "director" is the creator/showrunner for TV
 - "predicted_rating" is a number from 0.5 to 5 in steps of 0.5 (half stars) — never use 0–100
 - "rt_score" is the Tomatometer percentage (e.g. "94%") or null if unknown
 - All string values must be on a single line — no newline characters inside strings
 - Vary genres, eras, and (if media allows) movie vs TV to calibrate faster
 - Predict honestly — vary predictions; the midpoint is not always 3
-- Taste data below is intentionally small: high-divergence ratings, low-RT wants, high-RT dismissals. Full exclusion is not listed.${mediaConstraint}${channelConstraint ? `\n\n${channelConstraint}` : ""}${userRequest ? `\nUSER REQUEST — ADDITIONAL HARD CONSTRAINT: The user has also asked for "${userRequest}". Every item must satisfy BOTH the channel requirements above AND this request.` : !channelConstraint && diversityLens ? `\nDIVERSITY LENS FOR THIS BATCH: ${diversityLens}. Every item must fit this lens. This is how the app explores beyond the obvious — treat it as a hard constraint.` : ""}`;
+- Taste data below is intentionally small: high-divergence ratings, low-RT wants, high-RT dismissals. Full exclusion is not listed.`;
+
+  const diversityLensSection =
+    diversityLens && !channelConstraint && !userRequest
+      ? `DIVERSITY LENS FOR THIS BATCH (hard constraint): ${diversityLens}. Every item must fit this lens.\n\n`
+      : "";
 
   const tasteSummarySection = existingTasteSummary
     ? `RUNNING TASTE PROFILE (your summary from the previous session — treat as primary signal, refine it):
@@ -641,7 +524,11 @@ ${existingTasteSummary}
 `
     : "";
 
-  const userMessage = `${tasteSummarySection}RATED TITLES — selected for largest |user−RT| divergence, plus most recent (most informative per token):
+  const directTitleNote = directTitleAlreadySeen
+    ? `The user asked specifically for "${directTitleAlreadySeen.title}"${directTitleAlreadySeen.year ? ` (${directTitleAlreadySeen.year})` : ""}, which they have already seen. Suggest ${batchCount} similar titles instead. Each "title" must be the exact official name only.\n\n`
+    : "";
+
+  const userMessage = `${diversityLensSection}${directTitleNote}${tasteSummarySection}RATED TITLES — selected for largest |user−RT| divergence, plus most recent (most informative per token):
 ${historyText}
 ${historyNote}
 
@@ -663,14 +550,20 @@ ${history.length === 0 && allExcluded.length === 0
     console.log(
       `[next-movie] LLM submit (${llm}): ${batchCount} titles requested. sync=${raw.historySync ?? "legacy"} rated=${ratedTitles.length} promptLines=${informativeHistory.length} skipped=${skipped.length} watchlist=${watchlistTitles.length} notInterested=${notInterestedItems.length} excluded=${allExcluded.length}`
     );
-    console.log("[next-movie] --- system prompt ---\n" + systemPrompt);
+    console.log("[next-movie] --- system prompt (base) ---\n" + systemPrompt);
+    if (systemPromptContext) {
+      console.log("[next-movie] --- system prompt (context) ---\n" + systemPromptContext);
+    }
     console.log("[next-movie] --- user message ---\n" + userMessage);
   }
 
   let text: string;
   const llmStart = Date.now();
   try {
-    text = await callLLM(llm, systemPrompt, userMessage, { maxTokens: LLM_OUTPUT_MAX_TOKENS });
+    text = await callLLM(llm, systemPrompt, userMessage, {
+      maxTokens: LLM_OUTPUT_MAX_TOKENS,
+      systemPromptContext,
+    });
     const llmMs = Date.now() - llmStart;
     console.log(`[next-movie] LLM done (${llm}) in ${(llmMs / 1000).toFixed(1)}s — output ${text.length} chars`);
   } catch (err) {
@@ -700,12 +593,14 @@ ${history.length === 0 && allExcluded.length === 0
 
   for (const raw of rawItems) {
     if (!raw?.title || (raw.type !== "movie" && raw.type !== "tv")) continue;
-    const key = raw.title.toLowerCase();
+    const cleanedTitle = sanitizeLlmMovieTitle(raw.title, titlePrefixCandidates);
+    if (!cleanedTitle) continue;
+    const key = cleanedTitle.toLowerCase();
     if (seenKeys.has(key)) continue;
     seenKeys.add(key);
 
     normalized.push({
-      title: raw.title,
+      title: cleanedTitle,
       type: raw.type,
       year: raw.year ?? null,
       director: raw.director ?? null,
@@ -728,13 +623,7 @@ ${history.length === 0 && allExcluded.length === 0
   }
 
   const assets = await Promise.all(
-    normalized.map(async (m) => {
-      if (process.env.TMDB_API_KEY) {
-        return fetchTmdbAssets(m.title, m.type, m.year);
-      }
-      const posterUrl = await fetchPosterFallback(m.title, m.type, m.year);
-      return { posterUrl, trailerKey: null };
-    })
+    normalized.map((m) => fetchTmdbAssets(m.title, m.type, m.year, m.director)),
   );
   for (let i = 0; i < normalized.length; i++) {
     normalized[i] = { ...normalized[i], posterUrl: assets[i].posterUrl, trailerKey: assets[i].trailerKey };

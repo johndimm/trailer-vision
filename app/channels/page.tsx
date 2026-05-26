@@ -9,9 +9,11 @@ import ChannelEditorForm from "../components/ChannelEditorForm";
 import type { ChannelEditorValues } from "../components/ChannelEditorForm";
 import {
   countCustomChannels,
+  createAllChannel,
   deleteChannelsByIds,
   hydrateChannelsOnLoad,
   insertChannelAfterAll,
+  normalizeChannelList,
 } from "../lib/channelBulkActions";
 import { clearChannelPersistedData, clearChannelsPersistedData } from "../lib/storageKeys";
 import {
@@ -40,17 +42,7 @@ export function normalizeChannel(c: Channel & { region?: string }): Channel {
 export const CHANNELS_KEY = "movie-recs-channels";
 export const ACTIVE_CHANNEL_KEY = "movie-recs-active-channel";
 
-export const ALL_CHANNEL: Channel = {
-  id: "all",
-  name: "All",
-  mediums: [],
-  genres: [],
-  timePeriods: [],
-  language: "",
-  artists: "",
-  freeText: "",
-  popularity: 50,
-};
+export const ALL_CHANNEL: Channel = createAllChannel();
 
 // ── Main page ──────────────────────────────────────────────────────────────────
 
@@ -119,9 +111,7 @@ export default function ChannelsPage() {
   }, []);
 
   const saveChannels = (chs: Channel[]) => {
-    // All channel is always first; preserve list order during the session (alpha on load/reload).
-    const withAll = chs.find((c) => c.id === "all") ? chs : [ALL_CHANNEL, ...chs];
-    const normalized = withAll.map(normalizeChannel);
+    const normalized = normalizeChannelList(chs).map(normalizeChannel);
     localStorage.setItem(CHANNELS_KEY, JSON.stringify(normalized));
     setChannels(normalized);
   };

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import type { Channel } from "./channels/page";
 import { ALL_CHANNEL, normalizeChannel, CHANNELS_KEY, ACTIVE_CHANNEL_KEY } from "./channels/page";
-import { insertChannelAfterAll, hydrateChannelsOnLoad } from "./lib/channelBulkActions";
+import { insertChannelAfterAll, hydrateChannelsOnLoad, normalizeChannelList } from "./lib/channelBulkActions";
 import { channelDraftFromPrompt } from "./lib/channelFromPrompt";
 import { queueNewChannelFromGraphNode } from "./lib/newChannelFromGraphNode";
 import {
@@ -1906,13 +1906,59 @@ const ChannelsToolbar = memo(function ChannelsToolbar({
   onSelectChannel: (id: string) => void;
   onRequestDeleteChannel: (ch: Channel) => void;
 }) {
+  const list = normalizeChannelList(channels);
+  const customChannels = list.filter((c) => c.id !== "all");
+  const allChannel = list.find((c) => c.id === "all");
+
+  const renderChannelButton = (ch: Channel) => {
+    const deletable = ch.id !== "all";
+    return (
+      <div key={ch.id} className="group relative shrink-0 lg:w-full lg:min-w-0">
+        <button
+          type="button"
+          onClick={() => onSelectChannel(ch.id)}
+          aria-pressed={activeChannelId === ch.id}
+          aria-current={activeChannelId === ch.id ? "true" : undefined}
+          className={`max-w-[240px] rounded-full py-1.5 pl-3.5 text-left text-sm font-semibold transition-colors lg:flex lg:max-w-none lg:w-full lg:items-center lg:rounded-xl lg:py-2 lg:pl-3 ${
+            deletable ? "pr-9" : "pr-3.5"
+          } ${
+            activeChannelId === ch.id
+              ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400/90 ring-offset-2 ring-offset-black lg:ring-offset-zinc-950"
+              : "border border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800"
+          }`}
+        >
+          <span className="block truncate">{ch.name}</span>
+        </button>
+        {deletable && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onRequestDeleteChannel(ch);
+            }}
+            className={`absolute right-1 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-sm leading-none opacity-100 transition-opacity sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100 lg:pointer-events-auto lg:opacity-100 ${
+              activeChannelId === ch.id
+                ? "text-zinc-300 hover:bg-white/10 hover:text-red-300"
+                : "text-zinc-500 hover:bg-red-900/30 hover:text-red-400"
+            }`}
+            aria-label={`Delete channel ${ch.name}`}
+          >
+            ×
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div
       className="flex flex-nowrap items-center gap-2 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-color:rgba(63,63,70,0.65)_transparent] [scrollbar-width:thin] lg:flex-col lg:items-stretch lg:overflow-y-auto lg:overflow-x-visible lg:pb-0 lg:[scrollbar-width:auto] lg:max-h-[min(72vh,560px)]"
       role="toolbar"
       aria-label="Channels"
     >
-      {!channels.some((ch) => ch.id !== "all") ? (
+      {allChannel ? renderChannelButton(allChannel) : null}
+      {customChannels.length === 0 ? (
         <>
           <button
             type="button"
@@ -1942,46 +1988,7 @@ const ChannelsToolbar = memo(function ChannelsToolbar({
               Merge starter pack
             </button>
           )}
-          {channels.map((ch) => {
-            const deletable = ch.id !== "all";
-            return (
-              <div key={ch.id} className="group relative shrink-0 lg:w-full lg:min-w-0">
-                <button
-                  type="button"
-                  onClick={() => onSelectChannel(ch.id)}
-                  aria-pressed={activeChannelId === ch.id}
-                  aria-current={activeChannelId === ch.id ? "true" : undefined}
-                  className={`max-w-[240px] rounded-full py-1.5 pl-3.5 text-left text-sm font-semibold transition-colors lg:flex lg:max-w-none lg:w-full lg:items-center lg:rounded-xl lg:py-2 lg:pl-3 ${
-                    deletable ? "pr-9" : "pr-3.5"
-                  } ${
-                    activeChannelId === ch.id
-                      ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400/90 ring-offset-2 ring-offset-black lg:ring-offset-zinc-950"
-                      : "border border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800"
-                  }`}
-                >
-                  <span className="block truncate">{ch.name}</span>
-                </button>
-                {deletable && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onRequestDeleteChannel(ch);
-                    }}
-                    className={`absolute right-1 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-sm leading-none opacity-100 transition-opacity sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100 lg:pointer-events-auto lg:opacity-100 ${
-                      activeChannelId === ch.id
-                        ? "text-zinc-300 hover:bg-white/10 hover:text-red-300"
-                        : "text-zinc-500 hover:bg-red-900/30 hover:text-red-400"
-                    }`}
-                    aria-label={`Delete channel ${ch.name}`}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            );
-          })}
+          {customChannels.map(renderChannelButton)}
           <Link
             href="/channels?new=1"
             className="flex size-8 shrink-0 items-center justify-center rounded-full border border-dashed border-zinc-700 bg-zinc-900 text-lg font-light leading-none text-zinc-400 transition-colors hover:border-indigo-500 hover:bg-indigo-950 hover:text-indigo-400 lg:size-9 lg:shrink-0 lg:self-center"
@@ -2048,16 +2055,17 @@ export default function Home() {
   const syncChannelsFromStorage = useCallback(() => {
     try {
       const raw = localStorage.getItem(CHANNELS_KEY);
-      if (raw) {
-        let chs = (JSON.parse(raw) as Channel[]).map(normalizeChannel);
-        if (!chs.some((c) => c.id === "all")) {
-          chs = [ALL_CHANNEL, ...chs];
-        }
-        channelsRef.current = chs;
-        setChannels(chs);
-      }
+      const parsed = raw ? (JSON.parse(raw) as Channel[]) : [];
+      const chs = normalizeChannelList(parsed).map(normalizeChannel);
+      localStorage.setItem(CHANNELS_KEY, JSON.stringify(chs));
+      channelsRef.current = chs;
+      setChannels(chs);
       const active = localStorage.getItem(ACTIVE_CHANNEL_KEY);
-      if (active && active !== activeChannelIdRef.current) {
+      const fallback = chs[0]?.id ?? "all";
+      if (!active || !chs.some((c) => c.id === active)) {
+        localStorage.setItem(ACTIVE_CHANNEL_KEY, fallback);
+        setActiveChannelId(fallback);
+      } else if (active !== activeChannelIdRef.current) {
         setActiveChannelId(active);
       }
     } catch {
@@ -2122,6 +2130,8 @@ export default function Home() {
   const [prefetchQueueUi, setPrefetchQueueUi] = useState<CurrentMovie[]>([]);
   /** Titles the user left via Next / queue pick — Prev walks back through this stack. */
   const navBackStackRef = useRef<CurrentMovie[]>([]);
+  /** Main-card titles already shown this channel session — excluded from upcoming UI. */
+  const viewedTitleKeysRef = useRef<Set<string>>(new Set());
   const suppressNavPushRef = useRef(false);
   const [navBackDepth, setNavBackDepth] = useState(0);
   const replenishGenRef = useRef(0);
@@ -2255,6 +2265,13 @@ export default function Home() {
     }
   }, []);
 
+  const getUpcomingQueueForDisplay = useCallback((): CurrentMovie[] => {
+    const hidden = new Set(viewedTitleKeysRef.current);
+    const cur = currentRef.current;
+    if (cur?.title) hidden.add(canonicalTitleKey(cur.title));
+    return prefetchRef.current.filter((m) => !hidden.has(canonicalTitleKey(m.title)));
+  }, []);
+
   const persistPrefetchQueue = useCallback(() => {
     const ch = activeChannelIdRef.current?.trim() || "all";
     try {
@@ -2262,8 +2279,15 @@ export default function Home() {
     } catch {
       /* ignore quota */
     }
-    setPrefetchQueueUi([...prefetchRef.current]);
-  }, []);
+    setPrefetchQueueUi(getUpcomingQueueForDisplay());
+  }, [getUpcomingQueueForDisplay]);
+
+  useEffect(() => {
+    if (current?.title) {
+      viewedTitleKeysRef.current.add(canonicalTitleKey(current.title));
+    }
+    setPrefetchQueueUi(getUpcomingQueueForDisplay());
+  }, [current?.title, getUpcomingQueueForDisplay]);
 
   const pushNavBack = useCallback((leaving: CurrentMovie | null) => {
     if (suppressNavPushRef.current || !leaving || careerModeRef.current) return;
@@ -2411,15 +2435,16 @@ export default function Home() {
       const storedChannels = localStorage.getItem(CHANNELS_KEY);
       if (storedChannels) {
         loadedChannels = hydrateChannelsOnLoad(
-          JSON.parse(storedChannels) as Channel[],
+          normalizeChannelList(JSON.parse(storedChannels) as Channel[]),
           ALL_CHANNEL,
           normalizeChannel,
         );
-        localStorage.setItem(CHANNELS_KEY, JSON.stringify(loadedChannels));
-        setChannels(loadedChannels);
-        // Before the next useEffect runs fetchNext, React state is still stale — sync ref now so /api/next-movie gets activeChannel.
-        channelsRef.current = loadedChannels;
+      } else {
+        loadedChannels = normalizeChannelList([]).map(normalizeChannel);
       }
+      localStorage.setItem(CHANNELS_KEY, JSON.stringify(loadedChannels));
+      setChannels(loadedChannels);
+      channelsRef.current = loadedChannels;
       const storedActiveChannel = localStorage.getItem(ACTIVE_CHANNEL_KEY);
       const defaultChannelId = loadedChannels.length > 0 ? loadedChannels[0].id : "all";
       const activeId = storedActiveChannel || defaultChannelId;
@@ -2554,6 +2579,11 @@ export default function Home() {
         ...passedRef.current,
         ...extraRetrySkips,
         ...prefetchRef.current.map((m) => m.title),
+        ...navBackStackRef.current.map((m) => m.title),
+        ...(currentRef.current?.title ? [currentRef.current.title] : []),
+        ...prefetchRef.current
+          .filter((m) => viewedTitleKeysRef.current.has(canonicalTitleKey(m.title)))
+          .map((m) => m.title),
       ];
 
       const movies = await fetchMovieBatch({
@@ -2575,6 +2605,9 @@ export default function Home() {
         for (const p of passedRef.current) excluded.add(canonicalTitleKey(p));
         for (const w of watchlistRef.current) excluded.add(canonicalTitleKey(w.title));
         for (const m of prefetchRef.current) excluded.add(canonicalTitleKey(m.title));
+        for (const key of viewedTitleKeysRef.current) excluded.add(key);
+        const cur = currentRef.current;
+        if (cur?.title) excluded.add(canonicalTitleKey(cur.title));
 
         for (const movie of movies) {
           if (prefetchRef.current.length >= HIGH_WATER_MARK) break;
@@ -2694,10 +2727,14 @@ export default function Home() {
   useEffect(() => () => clearAdvanceAfterRating(), [clearAdvanceAfterRating]);
 
   const removeFromPrefetchQueue = useCallback(
-    (index: number) => {
-      const q = prefetchRef.current;
-      if (index < 0 || index >= q.length) return;
-      prefetchRef.current = q.filter((_, i) => i !== index);
+    (displayIndex: number) => {
+      const movie = getUpcomingQueueForDisplay()[displayIndex];
+      if (!movie) return;
+      const actualIndex = prefetchRef.current.findIndex(
+        (m) => canonicalTitleKey(m.title) === canonicalTitleKey(movie.title),
+      );
+      if (actualIndex < 0) return;
+      prefetchRef.current = prefetchRef.current.filter((_, i) => i !== actualIndex);
       persistPrefetchQueue();
       if (
         prefetchRef.current.length < HIGH_WATER_MARK &&
@@ -2707,19 +2744,23 @@ export default function Home() {
         replenish({ mediaType, llm });
       }
     },
-    [mediaType, llm, replenish, persistPrefetchQueue]
+    [mediaType, llm, replenish, persistPrefetchQueue, getUpcomingQueueForDisplay]
   );
 
   const playPrefetchAtIndex = useCallback(
-    (index: number) => {
+    (displayIndex: number) => {
+      const movie = getUpcomingQueueForDisplay()[displayIndex];
+      if (!movie) return;
       const q = prefetchRef.current;
-      if (index < 0 || index >= q.length) return;
-      const movie = q[index];
+      const actualIndex = q.findIndex(
+        (m) => canonicalTitleKey(m.title) === canonicalTitleKey(movie.title),
+      );
+      if (actualIndex < 0) return;
       if (current && canonicalTitleKey(movie.title) === canonicalTitleKey(current.title)) return;
       clearAdvanceAfterRating();
       replenishGenRef.current += 1;
       replenishGenInFlight.current = 0;
-      prefetchRef.current = q.filter((_, i) => i !== index);
+      prefetchRef.current = q.filter((_, i) => i !== actualIndex);
       persistPrefetchQueue();
       pushNavBack(currentRef.current);
       setCurrent(movie);
@@ -2734,7 +2775,7 @@ export default function Home() {
         replenish({ mediaType, llm });
       }
     },
-    [mediaType, llm, replenish, persistPrefetchQueue, pushNavBack, current]
+    [mediaType, llm, replenish, persistPrefetchQueue, pushNavBack, current, getUpcomingQueueForDisplay]
   );
 
   useEffect(() => {
@@ -2985,6 +3026,7 @@ export default function Home() {
       loadPrefetchIntoRefForChannel(activeChannelId);
       persistPrefetchQueue();
       navBackStackRef.current = [];
+      viewedTitleKeysRef.current = new Set();
       setNavBackDepth(0);
       batchYieldRef.current = [];
       zeroYieldStreakRef.current = 0;
@@ -3011,9 +3053,10 @@ export default function Home() {
     }
     const id = ch.id;
     clearChannelPersistedData(id);
-    const next = channels.filter((c) => c.id !== id);
+    const next = normalizeChannelList(channels.filter((c) => c.id !== id)).map(normalizeChannel);
     localStorage.setItem(CHANNELS_KEY, JSON.stringify(next));
     setChannels(next);
+    channelsRef.current = next;
 
     if (activeChannelId === id) {
       const fallback = next[0]?.id ?? "all";
@@ -3027,12 +3070,8 @@ export default function Home() {
     mergeFactoryChannelsAndQueues();
     try {
       const raw = localStorage.getItem(CHANNELS_KEY);
-      if (!raw) return;
-      let next: Channel[] = (JSON.parse(raw) as Channel[]).map(normalizeChannel);
-      if (!next.some((c) => c.id === "all")) {
-        next = [ALL_CHANNEL, ...next];
-        localStorage.setItem(CHANNELS_KEY, JSON.stringify(next));
-      }
+      const next = normalizeChannelList(raw ? (JSON.parse(raw) as Channel[]) : []).map(normalizeChannel);
+      localStorage.setItem(CHANNELS_KEY, JSON.stringify(next));
       setChannels(next);
       channelsRef.current = next;
     } catch {
@@ -3044,12 +3083,10 @@ export default function Home() {
     mergeFactoryChannelsAndQueues();
     try {
       const raw = localStorage.getItem(CHANNELS_KEY);
-      let next: Channel[] = raw ? (JSON.parse(raw) as Channel[]).map(normalizeChannel) : [];
-      if (!next.some((c) => c.id === "all")) {
-        next = [ALL_CHANNEL, ...next];
-        localStorage.setItem(CHANNELS_KEY, JSON.stringify(next));
-      }
+      const next = normalizeChannelList(raw ? (JSON.parse(raw) as Channel[]) : []).map(normalizeChannel);
+      localStorage.setItem(CHANNELS_KEY, JSON.stringify(next));
       setChannels(next);
+      channelsRef.current = next;
       const firstNonAll = next.find((c) => c.id !== "all");
       const active = firstNonAll?.id ?? next[0]?.id ?? "all";
       localStorage.setItem(ACTIVE_CHANNEL_KEY, active);
@@ -3371,6 +3408,7 @@ export default function Home() {
       replenishGenInFlight.current = 0;
       prefetchRef.current = [];
       navBackStackRef.current = [];
+      viewedTitleKeysRef.current = new Set();
       setNavBackDepth(0);
       batchYieldRef.current = [];
       zeroYieldStreakRef.current = 0;

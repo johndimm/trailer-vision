@@ -10,6 +10,7 @@ import {
 } from "../lib/storageKeys";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { mergeFactoryChannelsAndQueues } from "../lib/factoryChannels";
+import { normalizeChannelList } from "../lib/channelBulkActions";
 
 export const SETTINGS_KEY = "movie-recs-settings";
 
@@ -172,7 +173,7 @@ export default function SettingsPage() {
   const handleRemoveAll = () => {
     DATA_KEYS.forEach((k) => localStorage.removeItem(k));
     clearAllPrefetchQueueKeys();
-    localStorage.setItem(CHANNELS_KEY, JSON.stringify([ALL_CHANNEL]));
+    localStorage.setItem(CHANNELS_KEY, JSON.stringify(normalizeChannelList([ALL_CHANNEL])));
     localStorage.setItem(ACTIVE_CHANNEL_KEY, "all");
     setConfirm(null);
     router.push("/");
