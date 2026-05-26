@@ -31,6 +31,7 @@ import { canonicalTitleKey } from "./lib/canonicalTitleKey";
 import { filmWorkSearchTerm } from "./lib/filmWorkSearchTerm";
 import TrailerVisionConstellationsEmbed from "./components/TrailerVisionConstellationsEmbed";
 import { pushUnseenInterestEntry, loadUnseenInterestLog, type UnseenInterestEntry } from "./lib/unseenInterestLog";
+import { safeSetItem } from "./lib/storageKeys";
 
 function migrateRatingEntry(e: RatingEntry): RatingEntry {
   const u = migrateRatingValue(e.userRating);
@@ -2454,7 +2455,7 @@ export default function Home() {
   }, []);
 
   const saveHistory = (h: RatingEntry[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(h));
+    if (!safeSetItem(STORAGE_KEY, JSON.stringify(h))) return;
     historyRef.current = h;
     setHistoryRevision((n) => n + 1);
   };

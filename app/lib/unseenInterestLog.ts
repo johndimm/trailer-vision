@@ -1,3 +1,5 @@
+import { safeGetItem, safeSetItem } from "./storageKeys";
+
 export { canonicalTitleKey } from "./canonicalTitleKey";
 
 export const UNSEEN_INTEREST_LOG_KEY = "movie-recs-unseen-interest-log";
@@ -17,7 +19,7 @@ export type UnseenInterestEntry = {
   at: string;
 };
 
-function isValidEntry(x: unknown): x is UnseenInterestEntry {
+function isValidEntry(x: unknown): x is Omit<UnseenInterestEntry, "channelId"> & { channelId?: string } {
   if (!x || typeof x !== "object") return false;
   const o = x as Record<string, unknown>;
   if (typeof o.title !== "string" || !o.title) return false;
@@ -25,18 +27,25 @@ function isValidEntry(x: unknown): x is UnseenInterestEntry {
   if (typeof o.interestStars !== "number" || !Number.isFinite(o.interestStars)) return false;
   if (o.kind !== "want" && o.kind !== "skip") return false;
   if (typeof o.at !== "string") return false;
-  if (typeof o.channelId !== "string") return false;
   return true;
+}
+
+function normalizeEntry(x: unknown): UnseenInterestEntry | null {
+  if (!isValidEntry(x)) return null;
+  return {
+    ...x,
+    channelId: typeof x.channelId === "string" && x.channelId ? x.channelId : "all",
+  };
 }
 
 export function loadUnseenInterestLog(): UnseenInterestEntry[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(UNSEEN_INTEREST_LOG_KEY);
+    const raw = safeGetItem(UNSEEN_INTEREST_LOG_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isValidEntry);
+    return parsed.map(normalizeEntry).filter((e): e is UnseenInterestEntry => e != null);
   } catch {
     return [];
   }
@@ -45,7 +54,11 @@ export function loadUnseenInterestLog(): UnseenInterestEntry[] {
 export function pushUnseenInterestEntry(entry: UnseenInterestEntry): void {
   const cur = loadUnseenInterestLog();
   cur.push(entry);
-  localStorage.setItem(UNSEEN_INTEREST_LOG_KEY, JSON.stringify(cur));
+  safeSetItem(UNSEEN_INTEREST_LOG_KEY, JSON.stringify(cur));
+}
+
+export function saveUnseenInterestLog(entries: UnseenInterestEntry[]): void {
+  safeSetItem(UNSEEN_INTEREST_LOG_KEY, JSON.stringify(entries));
 }
 
 export function entryMatchesChannel(entry: UnseenInterestEntry, channelId: string): boolean {

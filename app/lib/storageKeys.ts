@@ -1,5 +1,41 @@
+import { migrateRatingValue, normalizePredictedRating } from "./ratingScale";
+
 /** Legacy single-queue key; migrated to per-channel keys on read. */
 export const LEGACY_PREFETCH_QUEUE_KEY = "movie-recs-prefetch-queue";
+
+export const RATING_HISTORY_KEY = "movie-recs-history";
+
+/** True when localStorage read/write works in this browsing context. */
+export function canUseLocalStorage(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const probe = "__tv_ls_probe__";
+    localStorage.setItem(probe, "1");
+    localStorage.removeItem(probe);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function safeGetItem(key: string): string | null {
+  if (!canUseLocalStorage()) return null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function safeSetItem(key: string, value: string): boolean {
+  if (!canUseLocalStorage()) return false;
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const PREFETCH_QUEUE_PREFIX = "movie-recs-prefetch-queue";
 const CURRENT_MOVIE_PREFIX = "movie-recs-current";
@@ -55,4 +91,70 @@ export function clearAllPrefetchQueueKeys(): void {
   for (const k of listPrefetchQueueStorageKeys()) {
     localStorage.removeItem(k);
   }
+}
+
+// ── Rating history (movie-recs-history) ─────────────────────────────────────
+
+export interface StoredRatingEntry {
+  title: string;
+  type: "movie" | "tv";
+  userRating: number;
+  predictedRating: number;
+  error: number;
+  rtScore?: string | null;
+  channelId?: string;
+  posterUrl?: string | null;
+  ratingMode?: "seen" | "unseen";
+}
+
+function toRatingNumber(raw: unknown): number | null {
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string" && raw.trim()) {
+    const n = Number(raw);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function parseRatingEntry(x: unknown): StoredRatingEntry | null {
+  if (!x || typeof x !== "object") return null;
+  const o = x as Record<string, unknown>;
+  if (typeof o.title !== "string" || !o.title.trim()) return null;
+
+  const userRaw = toRatingNumber(o.userRating);
+  if (userRaw == null) return null;
+
+  const predRaw = toRatingNumber(o.predictedRating);
+  const u = migrateRatingValue(userRaw);
+  const p = predRaw != null ? migrateRatingValue(predRaw) : normalizePredictedRating(undefined);
+
+  return {
+    title: o.title.trim(),
+    type: o.type === "tv" ? "tv" : "movie",
+    userRating: u,
+    predictedRating: p,
+    error: Math.abs(u - p),
+    rtScore: typeof o.rtScore === "string" || o.rtScore === null ? (o.rtScore as string | null) : undefined,
+    channelId: typeof o.channelId === "string" ? o.channelId : undefined,
+    posterUrl: typeof o.posterUrl === "string" || o.posterUrl === null ? (o.posterUrl as string | null) : undefined,
+    ratingMode: o.ratingMode === "unseen" ? "unseen" : o.ratingMode === "seen" ? "seen" : undefined,
+  };
+}
+
+/** Read and normalize seen ratings from localStorage. Returns [] on missing or corrupt data. */
+export function loadRatingHistory(): StoredRatingEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = safeGetItem(RATING_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(parseRatingEntry).filter((e): e is StoredRatingEntry => e != null);
+  } catch {
+    return [];
+  }
+}
+
+export function saveRatingHistory(entries: StoredRatingEntry[]): void {
+  safeSetItem(RATING_HISTORY_KEY, JSON.stringify(entries));
 }

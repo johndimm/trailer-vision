@@ -13,6 +13,7 @@ import {
   loadUnseenInterestLog,
   type UnseenInterestEntry,
 } from "../lib/unseenInterestLog";
+import { loadRatingHistory, saveRatingHistory } from "../lib/storageKeys";
 import {
   Channel,
   normalizeChannel,
@@ -21,7 +22,6 @@ import {
   ACTIVE_CHANNEL_KEY,
 } from "../channels/page";
 
-const STORAGE_KEY = "movie-recs-history";
 const RECONSIDER_KEY = "movie-recs-reconsider";
 const WATCHLIST_KEY = "movie-recs-watchlist";
 const SKIPPED_KEY = "movie-recs-skipped";
@@ -68,8 +68,7 @@ export default function ChannelHistoryPage() {
           : chs[0]?.id ?? null;
         setSelectedId(id);
 
-        const h = localStorage.getItem(STORAGE_KEY);
-        if (h) setHistory(JSON.parse(h));
+        setHistory(loadRatingHistory());
         setUnseenLog(loadUnseenInterestLog());
       } catch {}
     });
@@ -114,7 +113,7 @@ export default function ChannelHistoryPage() {
   const deleteHistoryEntries = useCallback((rowIndices: number[]) => {
     const toRemove = new Set(rowIndices.map((r) => historyIndicesForSorted[r]).filter((i) => i >= 0));
     const next = history.filter((_, i) => !toRemove.has(i));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    saveRatingHistory(next);
     setHistory(next);
     setSelectedRows((prev) => {
       const updated = new Set(prev);
