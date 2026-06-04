@@ -34,6 +34,7 @@ import { pushUnseenInterestEntry, loadUnseenInterestLog, type UnseenInterestEntr
 import { safeSetItem } from "./lib/storageKeys";
 
 function migrateRatingEntry(e: RatingEntry): RatingEntry {
+  if (e.userRating === null) return e;
   const u = migrateRatingValue(e.userRating);
   const p = migrateRatingValue(e.predictedRating);
   return { ...e, userRating: u, predictedRating: p, error: Math.abs(u - p) };
@@ -175,13 +176,16 @@ function buildHistorySyncPayload(hist: RatingEntry[]): Record<string, unknown> {
 export interface RatingEntry {
   title: string;
   type: "movie" | "tv";
-  userRating: number;
+  /** null = presented but not yet rated */
+  userRating: number | null;
   predictedRating: number;
   error: number;
   rtScore?: string | null;
   channelId?: string;
   posterUrl?: string | null;
   ratingMode?: "seen" | "unseen";
+  watchFrac?: number;
+  presentedAt?: string;
 }
 
 function getHistoryEntryForTitle(hist: RatingEntry[], title: string): RatingEntry | undefined {
@@ -2391,6 +2395,30 @@ export default function Home() {
     setWatchFrac((w) => (w === 0 ? w : 0));
   }, [currentTrailerKey, current?.title]);
 
+  // Record every presented title card in ratingHistory (userRating: null until rated).
+  const currentTitle = current?.title;
+  useEffect(() => {
+    if (!currentTitle || !current) return;
+    const alreadyInHistory = historyRef.current.some(
+      (e) => canonicalTitleKey(e.title) === canonicalTitleKey(currentTitle)
+    );
+    if (alreadyInHistory) return;
+    const entry: RatingEntry = {
+      title: currentTitle,
+      type: current.type,
+      userRating: null,
+      predictedRating: migrateRatingValue(current.predictedRating),
+      error: 0,
+      rtScore: current.rtScore,
+      channelId: activeChannelIdRef.current?.trim() || undefined,
+      posterUrl: current.posterUrl,
+      watchFrac: 0,
+      presentedAt: new Date().toISOString(),
+    };
+    saveHistory([...historyRef.current, entry]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTitle]);
+
   useLayoutEffect(() => {
     if (!careerMode || displayMode !== "trailers" || careerLoading || trailerFsUi) return;
     const el = careerTrailerBlockRef.current;
@@ -3107,6 +3135,10 @@ export default function Home() {
     const predicted = migrateRatingValue(movie.predictedRating);
     const error = Math.abs(rating - predicted);
     const channelId = activeChannelIdRef.current || undefined;
+    const titleKey2 = canonicalTitleKey(movie.title);
+    const existingEntry = historyRef.current.findLast(
+      (e) => canonicalTitleKey(e.title) === titleKey2
+    );
     const entry: RatingEntry = {
       title: movie.title,
       type: movie.type,
@@ -3117,6 +3149,8 @@ export default function Home() {
       channelId,
       posterUrl: movie.posterUrl,
       ratingMode,
+      watchFrac: watchFracRef.current > 0 ? watchFracRef.current : existingEntry?.watchFrac,
+      presentedAt: existingEntry?.presentedAt ?? new Date().toISOString(),
     };
     const titleKey = canonicalTitleKey(movie.title);
     const newHistory = [...historyRef.current];
@@ -3169,6 +3203,15 @@ export default function Home() {
         submitRatingRef.current(autoStars, "seen");
       } else {
         const t = current.title;
+        if (watchFracRef.current > 0) {
+          const tk = canonicalTitleKey(t);
+          const idx = historyRef.current.findLastIndex((e) => canonicalTitleKey(e.title) === tk);
+          if (idx >= 0) {
+            const updated = [...historyRef.current];
+            updated[idx] = { ...updated[idx], watchFrac: watchFracRef.current };
+            saveHistory(updated);
+          }
+        }
         const newPassed = [...passedRef.current, t];
         localStorage.setItem(PASSED_KEY, JSON.stringify(newPassed));
         passedRef.current = newPassed;
@@ -3229,6 +3272,17 @@ export default function Home() {
     notSeenRef.current = newNotSeen;
     localStorage.setItem(NOTSEEN_KEY, JSON.stringify(newNotSeen));
 
+    // Remove the null-rating (presented) entry from ratingHistory if present
+    const snapKey = canonicalTitleKey(snapshot.title);
+    const histWithoutPresented = historyRef.current.filter(
+      (e) => !(canonicalTitleKey(e.title) === snapKey && e.userRating === null)
+    );
+    if (histWithoutPresented.length !== historyRef.current.length) {
+      saveHistory(histWithoutPresented);
+    }
+    const existingWatchFrac = historyRef.current.find(
+      (e) => canonicalTitleKey(e.title) === snapKey
+    )?.watchFrac;
     const logRow: UnseenInterestEntry = {
       title: snapshot.title,
       type: snapshot.type,
@@ -3242,6 +3296,7 @@ export default function Home() {
       kind,
       channelId: chId,
       at: new Date().toISOString(),
+      watchFrac: watchFracRef.current > 0 ? watchFracRef.current : existingWatchFrac,
     };
     pushUnseenInterestEntry(logRow);
     setUnseenLogRevision((n) => n + 1);

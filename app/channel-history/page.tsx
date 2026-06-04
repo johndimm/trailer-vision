@@ -87,9 +87,9 @@ export default function ChannelHistoryPage() {
   const sortedChannelRatings = useMemo(() => {
     const copy = [...channelRatings];
     if (seenSort === "user") {
-      copy.sort((a, b) => migrateRatingValue(b.userRating) - migrateRatingValue(a.userRating));
+      copy.sort((a, b) => migrateRatingValue(b.userRating ?? 0) - migrateRatingValue(a.userRating ?? 0));
     } else {
-      copy.sort((a, b) => starDelta(b.userRating, b.predictedRating) - starDelta(a.userRating, a.predictedRating));
+      copy.sort((a, b) => starDelta(b.userRating ?? 0, b.predictedRating) - starDelta(a.userRating ?? 0, a.predictedRating));
     }
     return copy;
   }, [channelRatings, seenSort]);
@@ -359,10 +359,11 @@ export default function ChannelHistoryPage() {
                     </div>
                     <div className="divide-y divide-zinc-50">
                       {sortedChannelRatings.map((e, i) => {
-                        const d = starDelta(e.userRating, e.predictedRating);
+                        const isRated = e.userRating !== null;
+                        const d = starDelta(e.userRating ?? 0, e.predictedRating);
                         return (
                           <div
-                            key={`${e.title}-${e.userRating}-${e.predictedRating}-${i}`}
+                            key={`${e.title}-${e.userRating ?? "null"}-${e.predictedRating}-${i}`}
                             className={`flex items-center gap-3 py-2 px-3 transition-colors ${selectedRows.has(i) ? "bg-indigo-50" : "hover:bg-zinc-50"}`}
                           >
                             <input
@@ -406,15 +407,21 @@ export default function ChannelHistoryPage() {
                               <span className="ml-2 text-xs text-zinc-400">{e.type === "tv" ? "TV" : "Film"}</span>
                             </div>
                             <div className="flex items-center justify-end gap-2 shrink-0">
-                              <span
-                                className={`w-12 shrink-0 text-right tabular-nums text-sm font-semibold ${d > 0 ? "text-emerald-700" : d < 0 ? "text-rose-700" : "text-zinc-500"}`}
-                                title="Your rating minus audience rating (stars)"
-                              >
-                                {formatStarDelta(d)}
-                              </span>
-                              <div className="w-20 shrink-0 flex justify-end">
-                                <StaticStars rating={migrateRatingValue(e.userRating)} color="red" />
-                              </div>
+                              {isRated ? (
+                                <>
+                                  <span
+                                    className={`w-12 shrink-0 text-right tabular-nums text-sm font-semibold ${d > 0 ? "text-emerald-700" : d < 0 ? "text-rose-700" : "text-zinc-500"}`}
+                                    title="Your rating minus audience rating (stars)"
+                                  >
+                                    {formatStarDelta(d)}
+                                  </span>
+                                  <div className="w-20 shrink-0 flex justify-end">
+                                    <StaticStars rating={migrateRatingValue(e.userRating!)} color="red" />
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="w-32 text-right text-xs text-zinc-400">not rated</span>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => deleteHistoryEntries([i])}

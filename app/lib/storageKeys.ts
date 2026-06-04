@@ -98,13 +98,17 @@ export function clearAllPrefetchQueueKeys(): void {
 export interface StoredRatingEntry {
   title: string;
   type: "movie" | "tv";
-  userRating: number;
+  /** null = presented but not yet rated */
+  userRating: number | null;
   predictedRating: number;
   error: number;
   rtScore?: string | null;
   channelId?: string;
   posterUrl?: string | null;
   ratingMode?: "seen" | "unseen";
+  watchFrac?: number;
+  /** ISO timestamp of when this title was first presented */
+  presentedAt?: string;
 }
 
 function toRatingNumber(raw: unknown): number | null {
@@ -121,11 +125,15 @@ function parseRatingEntry(x: unknown): StoredRatingEntry | null {
   const o = x as Record<string, unknown>;
   if (typeof o.title !== "string" || !o.title.trim()) return null;
 
-  const userRaw = toRatingNumber(o.userRating);
-  if (userRaw == null) return null;
+  // null / absent userRating = presented but not rated
+  const userRaw = (o.userRating === null || o.userRating === undefined)
+    ? null
+    : toRatingNumber(o.userRating);
+  // If userRating was present but not a valid number, reject
+  if (o.userRating !== null && o.userRating !== undefined && userRaw === null) return null;
 
   const predRaw = toRatingNumber(o.predictedRating);
-  const u = migrateRatingValue(userRaw);
+  const u = userRaw != null ? migrateRatingValue(userRaw) : null;
   const p = predRaw != null ? migrateRatingValue(predRaw) : normalizePredictedRating(undefined);
 
   return {
@@ -133,11 +141,13 @@ function parseRatingEntry(x: unknown): StoredRatingEntry | null {
     type: o.type === "tv" ? "tv" : "movie",
     userRating: u,
     predictedRating: p,
-    error: Math.abs(u - p),
+    error: u != null ? Math.abs(u - p) : 0,
     rtScore: typeof o.rtScore === "string" || o.rtScore === null ? (o.rtScore as string | null) : undefined,
     channelId: typeof o.channelId === "string" ? o.channelId : undefined,
     posterUrl: typeof o.posterUrl === "string" || o.posterUrl === null ? (o.posterUrl as string | null) : undefined,
     ratingMode: o.ratingMode === "unseen" ? "unseen" : o.ratingMode === "seen" ? "seen" : undefined,
+    watchFrac: typeof o.watchFrac === "number" && Number.isFinite(o.watchFrac) ? o.watchFrac : undefined,
+    presentedAt: typeof o.presentedAt === "string" ? o.presentedAt : undefined,
   };
 }
 
@@ -158,3 +168,4 @@ export function loadRatingHistory(): StoredRatingEntry[] {
 export function saveRatingHistory(entries: StoredRatingEntry[]): void {
   safeSetItem(RATING_HISTORY_KEY, JSON.stringify(entries));
 }
+

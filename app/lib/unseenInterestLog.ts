@@ -17,6 +17,7 @@ export type UnseenInterestEntry = {
   kind: "want" | "skip";
   channelId: string;
   at: string;
+  watchFrac?: number;
 };
 
 function isValidEntry(x: unknown): x is Omit<UnseenInterestEntry, "channelId"> & { channelId?: string } {
@@ -32,9 +33,11 @@ function isValidEntry(x: unknown): x is Omit<UnseenInterestEntry, "channelId"> &
 
 function normalizeEntry(x: unknown): UnseenInterestEntry | null {
   if (!isValidEntry(x)) return null;
+  const o = x as Record<string, unknown>;
   return {
     ...x,
     channelId: typeof x.channelId === "string" && x.channelId ? x.channelId : "all",
+    watchFrac: typeof o.watchFrac === "number" && Number.isFinite(o.watchFrac) ? o.watchFrac : undefined,
   };
 }
 
