@@ -109,6 +109,8 @@ export interface StoredRatingEntry {
   watchFrac?: number;
   /** ISO timestamp of when this title was first presented */
   presentedAt?: string;
+  /** Genre/category tags assigned by the LLM at recommendation time */
+  categories?: string[];
 }
 
 function toRatingNumber(raw: unknown): number | null {
@@ -148,6 +150,9 @@ function parseRatingEntry(x: unknown): StoredRatingEntry | null {
     ratingMode: o.ratingMode === "unseen" ? "unseen" : o.ratingMode === "seen" ? "seen" : undefined,
     watchFrac: typeof o.watchFrac === "number" && Number.isFinite(o.watchFrac) ? o.watchFrac : undefined,
     presentedAt: typeof o.presentedAt === "string" ? o.presentedAt : undefined,
+    categories: Array.isArray(o.categories)
+      ? (o.categories as unknown[]).filter((s): s is string => typeof s === "string")
+      : undefined,
   };
 }
 

@@ -102,7 +102,7 @@ export default function SettingsPage() {
   const [exportHistory, setExportHistory] = useState(true);
   const [importNotice, setImportNotice] = useState<string | null>(null);
   const [importDialog, setImportDialog] = useState<{ count: number; apply: () => void } | null>(null);
-  const [confirm, setConfirm] = useState<"remove-all" | null>(null);
+  const [confirm, setConfirm] = useState<"remove-all" | "clear-history" | null>(null);
   const [factoryMergeNote, setFactoryMergeNote] = useState<string | null>(null);
 
   const refreshFromStorage = useCallback(() => {
@@ -168,6 +168,13 @@ export default function SettingsPage() {
     a.download = `trailer-vision-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleClearHistory = () => {
+    DATA_KEYS.forEach((k) => localStorage.removeItem(k));
+    clearAllPrefetchQueueKeys();
+    setConfirm(null);
+    router.push("/");
   };
 
   const handleRemoveAll = () => {
@@ -247,21 +254,6 @@ export default function SettingsPage() {
                       className={`px-4 py-2 rounded-lg border text-sm transition-colors ${pillClass(settings.mediaType === opt)}`}
                     >
                       {opt === "both" ? "Movies & TV" : opt === "movie" ? "Movies" : "TV Series"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-zinc-600 mb-2">Display mode</p>
-                <div className="flex flex-wrap gap-2">
-                  {(["trailers", "posters"] as const).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => patchSettings("displayMode", mode)}
-                      className={`px-4 py-2 rounded-lg border text-sm capitalize transition-colors ${pillClass(settings.displayMode === mode)}`}
-                    >
-                      {mode}
                     </button>
                   ))}
                 </div>
@@ -376,6 +368,25 @@ export default function SettingsPage() {
 
           <hr className="border-zinc-200" />
 
+          {/* Clear history */}
+          <section className="flex flex-col gap-2">
+            <div>
+              <h2 className="text-sm font-semibold">Clear history &amp; taste profile</h2>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Clears all ratings, watchlist, skipped titles, and the AI taste profile. Channels are kept.
+              </p>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => setConfirm("clear-history")}
+                className="px-4 py-2 rounded-lg border border-red-200 text-red-600 text-sm hover:bg-red-50 transition-colors"
+              >
+                Clear history &amp; taste profile
+              </button>
+            </div>
+          </section>
+
           {/* Remove all channels */}
           <section className="flex flex-col gap-2">
             <div>
@@ -461,6 +472,18 @@ export default function SettingsPage() {
       >
         Replace {importDialog?.count ?? 0} saved item(s) in this browser? Your current data for
         those keys will be overwritten.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={confirm === "clear-history"}
+        title="Clear history & taste profile?"
+        tone="danger"
+        confirmLabel="Clear"
+        cancelLabel="Cancel"
+        onCancel={() => setConfirm(null)}
+        onConfirm={handleClearHistory}
+      >
+        This clears all ratings, watchlist, skipped titles, and the AI taste profile. Your channels are kept. You cannot undo this.
       </ConfirmDialog>
 
       <ConfirmDialog

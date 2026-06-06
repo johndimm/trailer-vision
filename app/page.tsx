@@ -99,7 +99,7 @@ function loadYouTubeApi(): Promise<void> {
     }
     _ytReadyCallbacks.push(resolve);
     if (_ytApiLoaded) {
-      // Script tag already injected but callback may be delayed or blocked — poll for YT.
+      // Script tag already injected but callback may be delayed or blocked -- poll for YT.
       const t = window.setInterval(() => {
         if (window.YT?.Player) {
           window.clearInterval(t);
@@ -186,6 +186,8 @@ export interface RatingEntry {
   ratingMode?: "seen" | "unseen";
   watchFrac?: number;
   presentedAt?: string;
+  /** Genre/category tags assigned by the LLM at recommendation time */
+  categories?: string[];
 }
 
 function getHistoryEntryForTitle(hist: RatingEntry[], title: string): RatingEntry | undefined {
@@ -236,6 +238,7 @@ interface CurrentMovie {
   rtScore: string | null;
   reason: string | null;
   streaming?: string[];
+  categories?: string[];
 }
 
 export interface WatchlistEntry {
@@ -272,6 +275,8 @@ const DIVERSITY_LENSES = [
   "non-English language films (French, Italian, Spanish, German, etc.)",
   "Japanese cinema (anime or live-action)",
   "South Korean cinema",
+  "Bollywood or Indian cinema (Hindi, Tamil, Bengali, or other Indian-language films)",
+  "Persian / Iranian cinema",
   "Scandinavian or Eastern European cinema",
   "Latin American or Middle Eastern or African cinema",
   "British cinema",
@@ -364,7 +369,7 @@ function persistCurrentMovieForChannel(channelId: string, movie: CurrentMovie | 
 
 const STORAGE_KEY = "movie-recs-history";
 const SKIPPED_KEY = "movie-recs-skipped";
-/** Titles advanced with "Next" — excluded from picks, not a rating or "not interested". */
+/** Titles advanced with "Next" -- excluded from picks, not a rating or "not interested". */
 const PASSED_KEY = "movie-recs-passed";
 const WATCHLIST_KEY = "movie-recs-watchlist";
 const NOTSEEN_KEY = "movie-recs-notseen";
@@ -386,6 +391,14 @@ function loadSetting<T>(key: string, fallback: T): T {
   }
 }
 
+function saveSetting(key: string, value: unknown): void {
+  try {
+    const s = localStorage.getItem(SETTINGS_KEY);
+    const obj = s ? (JSON.parse(s) as Record<string, unknown>) : {};
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...obj, [key]: value }));
+  } catch {}
+}
+
 interface NotSeenEvent {
   afterRating: number;
   kind: "want" | "skip";
@@ -403,7 +416,7 @@ const StarRow = memo(function StarRow({
   label,
   onRate,
   compact = false,
-  /** Smaller controls when Prev/Next share the row (mobile) — keeps stars from overlapping */
+  /** Smaller controls when Prev/Next share the row (mobile) -- keeps stars from overlapping */
   careerNavTight = false,
   hideLabel = false,
 }: {
@@ -418,7 +431,7 @@ const StarRow = memo(function StarRow({
   hideLabel?: boolean;
 }) {
   const [hover, setHover] = useState(0);
-  /** Value from last click — keeps stars lit after pointer leaves (hover clears on mouseleave). */
+  /** Value from last click -- keeps stars lit after pointer leaves (hover clears on mouseleave). */
   const [committed, setCommitted] = useState(0);
   useEffect(() => {
     setCommitted(filled);
@@ -549,7 +562,7 @@ const PassNextButton = memo(function PassNextButton({
   onPass,
   compact = false,
   prominent = false,
-  /** Trailer strip: next to star row — larger than compact, emerald (not indigo poster Next) */
+  /** Trailer strip: next to star row -- larger than compact, emerald (not indigo poster Next) */
   muted = false,
   /** Fullscreen overlay: text-only ghost on transparent background */
   ghost = false,
@@ -559,7 +572,7 @@ const PassNextButton = memo(function PassNextButton({
 }: {
   onPass: () => void;
   compact?: boolean;
-  /** Larger, hero-style — use when Next is the primary control above the rating row */
+  /** Larger, hero-style -- use when Next is the primary control above the rating row */
   prominent?: boolean;
   muted?: boolean;
   ghost?: boolean;
@@ -633,7 +646,7 @@ const PassNextButton = memo(function PassNextButton({
   );
 });
 
-/** Native radios: "Seen it" vs "Not yet" — mutually exclusive, proper keyboard + SR semantics. */
+/** Native radios: "Seen it" vs "Not yet" -- mutually exclusive, proper keyboard + SR semantics. */
 const SeenOrNotRadios = memo(function SeenOrNotRadios({
   name,
   value,
@@ -684,7 +697,7 @@ const SeenOrNotRadios = memo(function SeenOrNotRadios({
   );
 });
 
-// Persists volume across trailer cards (module-level, not localStorage — session only)
+// Persists volume across trailer cards (module-level, not localStorage -- session only)
 let _lastVolume: number | null = null;
 
 /** Reserves the same space as the loaded movie card so initial fetch does not reflow the layout. */
@@ -827,7 +840,7 @@ const PrefetchQueuePanel = memo(function PrefetchQueuePanel({
             <span className="ml-1.5 inline-flex items-center gap-1 rounded-md bg-indigo-950/80 px-2 py-0.5 ring-1 ring-indigo-500/40">
               <span className="text-[10px] font-semibold uppercase tracking-wide text-indigo-300/90">Channel</span>
               <span className="font-semibold text-indigo-100">
-                {channels.find((c) => c.id === activeChannelId)?.name ?? "—"}
+                {channels.find((c) => c.id === activeChannelId)?.name ?? "--"}
               </span>
             </span>
           ) : null}
@@ -837,7 +850,7 @@ const PrefetchQueuePanel = memo(function PrefetchQueuePanel({
         Click the row to play now; click the title to create a channel. Remove drops it from the list. Saved per channel when Settings backup includes the prefetch queue.
       </p>
       {prefetchQueueUi.length === 0 ? (
-        <p className="text-sm text-zinc-500 mt-3">Nothing queued yet — titles appear here as the model responds.</p>
+        <p className="text-sm text-zinc-500 mt-3">Nothing queued yet -- titles appear here as the model responds.</p>
       ) : (
         <ul className="mt-3 divide-y divide-zinc-700 max-h-56 overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-800">
           {prefetchQueueUi.map((m, index) => (
@@ -937,7 +950,7 @@ const TrailerPlayer = memo(function TrailerPlayer({
 }: {
   videoId: string;
   onProgress?: (frac: number) => void;
-  /** Called when the iframe reports an error (removed video, embed disabled, etc.) — parent should drop trailerKey. */
+  /** Called when the iframe reports an error (removed video, embed disabled, etc.) -- parent should drop trailerKey. */
   onPlaybackError?: () => void;
   /** 0–1. When resuming a channel, seek here once after the video is ready (e.g. last watch point before you switched away). */
   resumeFromFraction?: number;
@@ -1055,7 +1068,7 @@ const TrailerPlayer = memo(function TrailerPlayer({
             }, 500);
             const origCancel = cancelled;
             void origCancel; // suppress unused warning
-            // Attach cleanup via the outer cancelled flag approach — store interval on wrapperRef
+            // Attach cleanup via the outer cancelled flag approach -- store interval on wrapperRef
             (wrapperRef.current as HTMLDivElement & { _poll?: number })._poll = poll;
           },
         },
@@ -1143,7 +1156,7 @@ const ShareButton = memo(function ShareButton({ onClick, toast }: { onClick: () 
   );
 });
 
-/** Fullscreen + share — sits directly under the video (or poster hero). */
+/** Fullscreen + share -- sits directly under the video (or poster hero). */
 const TrailerMediaActions = memo(function TrailerMediaActions({
   onFullscreen,
   onShare,
@@ -1210,7 +1223,7 @@ function PersonLink({
   );
 }
 
-/** Trailer layout: title block only — isolated from rating state. */
+/** Trailer layout: title block only -- isolated from rating state. */
 const TrailerMetadata = memo(function TrailerMetadata({
   movie,
   onPersonClick,
@@ -1279,7 +1292,7 @@ const TrailerMetadata = memo(function TrailerMetadata({
   );
 });
 
-/** Poster layout: poster + metadata — isolated from rating state. */
+/** Poster layout: poster + metadata -- isolated from rating state. */
 const PosterMovieTop = memo(function PosterMovieTop({
   movie,
   onOpenPoster,
@@ -1287,6 +1300,7 @@ const PosterMovieTop = memo(function PosterMovieTop({
   onCreateChannelFromMovie,
   careerPersonName = null,
   detailsLoading = false,
+  showPoster = false,
 }: {
   movie: CurrentMovie;
   onOpenPoster: (url: string) => void;
@@ -1295,10 +1309,12 @@ const PosterMovieTop = memo(function PosterMovieTop({
   careerPersonName?: string | null;
   /** True while a new title’s details are still being fetched (keeps layout stable vs swapping to a short placeholder). */
   detailsLoading?: boolean;
+  /** Show the poster even when a trailerKey exists (poster mode). */
+  showPoster?: boolean;
 }) {
   return (
     <div className="flex min-w-0 w-full flex-col sm:flex-row gap-4 sm:items-start">
-      {movie.posterUrl && !movie.trailerKey && (
+      {movie.posterUrl && (!movie.trailerKey || showPoster) && (
         <div className="w-full sm:w-auto shrink-0 self-center sm:self-start flex justify-center sm:justify-start">
           <button
             type="button"
@@ -1390,7 +1406,7 @@ const PosterMovieTop = memo(function PosterMovieTop({
   );
 });
 
-/** Trailer: directly under the video, above title row — border separates from metadata. */
+/** Trailer: directly under the video, above title row -- border separates from metadata. */
 const TRAILER_BAR_OUTER =
   "w-full border-b border-zinc-800/90 bg-zinc-950/60 py-2 sm:py-3";
 
@@ -1419,14 +1435,14 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   watchFrac?: number;
   /** If true, default to "Seen it"; otherwise default to "Not yet". */
   defaultSeen?: boolean;
-  /** Pre-existing rating from history — locks stars immediately, no auto-progress. */
+  /** Pre-existing rating from history -- locks stars immediately, no auto-progress. */
   previousRating?: number;
   previousMode?: "seen" | "unseen";
   /** Bumps when the card title changes so local star state resets from history. */
   ratingResetKey?: string;
   showNextInRating?: boolean;
   layout?: "card" | "trailerBar" | "fullscreenOverlay";
-  /** Prev control — career filmography index or playback back stack. */
+  /** Prev control -- career filmography index or playback back stack. */
   prevNav?: { onPass: () => void; disabled: boolean } | null;
   /** Career mode: disable Next on last film in filmography (passCurrentCard is a no-op there). */
   careerNextDisabled?: boolean;
@@ -1736,7 +1752,7 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
       {children ? (
         <div className="relative flex min-h-0 flex-1 flex-col w-full bg-black">
           {children}
-          {/* Above the YouTube iframe (cross-origin — no events reach document). */}
+          {/* Above the YouTube iframe (cross-origin -- no events reach document). */}
           {wakeOverlay}
         </div>
       ) : (
@@ -1822,7 +1838,7 @@ const CareerFilmographyPanel = memo(function CareerFilmographyPanel({
   loading: boolean;
 }) {
   const listRef = useRef<HTMLUListElement>(null);
-  /** Reveal the active row only after metadata loading settles — avoids list scroll + page layout reflow (hero height) compounding. */
+  /** Reveal the active row only after metadata loading settles -- avoids list scroll + page layout reflow (hero height) compounding. */
   useLayoutEffect(() => {
     if (loading) return;
     const list = listRef.current;
@@ -2081,10 +2097,10 @@ export default function Home() {
   useEffect(() => {
     if (pathname === "/") syncChannelsFromStorage();
   }, [pathname, syncChannelsFromStorage]);
-  /** Persisted lists — refs only on this page (nothing in the tree reads them for render). Updates skip full-tree re-renders. */
+  /** Persisted lists -- refs only on this page (nothing in the tree reads them for render). Updates skip full-tree re-renders. */
   const historyRef = useRef<RatingEntry[]>([]);
   const [historyRevision, setHistoryRevision] = useState(0);
-  /** In-tab star picks before/until Next — keyed by canonical title. */
+  /** In-tab star picks before/until Next -- keyed by canonical title. */
   const sessionRatingsRef = useRef<Record<string, DisplayRating>>({});
   const [sessionRatingsRevision, setSessionRatingsRevision] = useState(0);
   const [unseenLogRevision, setUnseenLogRevision] = useState(0);
@@ -2100,13 +2116,13 @@ export default function Home() {
   currentRef.current = current;
   const [trailerResumeByChannel, setTrailerResumeByChannel] = useState<Record<string, Record<string, number>>>({});
   const [initialLoading, setInitialLoading] = useState(true);
-  /** True while fetchNext is loading the next title (after first card). Not tied to card opacity — avoids collapsing the layout. */
+  /** True while fetchNext is loading the next title (after first card). Not tied to card opacity -- avoids collapsing the layout. */
   const [isAdvancingCard, setIsAdvancingCard] = useState(false);
   const advanceFetchDepthRef = useRef(0);
   const [pendingRating, setPendingRating] = useState<{ stars: number; mode: "seen" | "unseen" } | null>(null);
   const pendingRatingRef = useRef(pendingRating);
   pendingRatingRef.current = pendingRating;
-  /** Delayed advance after star rating — cleared if user uses Next or queue before it fires. */
+  /** Delayed advance after star rating -- cleared if user uses Next or queue before it fires. */
   const advanceAfterRatingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Home hydration (localStorage + first fetchNext) must run once; `fetchNext` in deps was re-firing the effect and popping an extra title each time its identity changed. */
   const homeHydrationEffectRanRef = useRef(false);
@@ -2133,16 +2149,16 @@ export default function Home() {
   const [careerTrailerBlockStableH, setCareerTrailerBlockStableH] = useState(0);
   const prefetchRef = useRef<CurrentMovie[]>([]);
   const [prefetchQueueUi, setPrefetchQueueUi] = useState<CurrentMovie[]>([]);
-  /** Titles the user left via Next / queue pick — Prev walks back through this stack. */
+  /** Titles the user left via Next / queue pick -- Prev walks back through this stack. */
   const navBackStackRef = useRef<CurrentMovie[]>([]);
-  /** Main-card titles already shown this channel session — excluded from upcoming UI. */
+  /** Main-card titles already shown this channel session -- excluded from upcoming UI. */
   const viewedTitleKeysRef = useRef<Set<string>>(new Set());
   const suppressNavPushRef = useRef(false);
   const [navBackDepth, setNavBackDepth] = useState(0);
   const replenishGenRef = useRef(0);
   const savedPrefetchChannelRef = useRef<string | null>(null);
   const replenishInFlight = useRef(0);
-  /** In-flight replenish count for the current gen — reset to 0 on every gen bump so fetchNext knows when to kick off a fresh batch. */
+  /** In-flight replenish count for the current gen -- reset to 0 on every gen bump so fetchNext knows when to kick off a fresh batch. */
   const replenishGenInFlight = useRef(0);
   const batchYieldRef = useRef<number[]>([]); // rolling yield fractions (fresh / requested)
 
@@ -2151,7 +2167,7 @@ export default function Home() {
   const [userRequest, setUserRequest] = useState<string>(() => loadSetting("userRequest", ""));
   const userRequestRef = useRef("");
   userRequestRef.current = userRequest;
-  /** Set after first userRequest effect — used so we only flush prefetch on real edits, not mount/import. */
+  /** Set after first userRequest effect -- used so we only flush prefetch on real edits, not mount/import. */
   const prevUserRequestForFlushRef = useRef<string | undefined>(undefined);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [factoryPackFullyMerged, setFactoryPackFullyMerged] = useState<boolean | null>(null);
@@ -2167,7 +2183,7 @@ export default function Home() {
   activeChannelIdRef.current = activeChannelId;
   channelsRef.current = channels;
 
-  /** Same as “What you want” in the channel editor: All → settings `userRequest`; else → this channel’s `freeText`. */
+  /** Same as "What you want" in the channel editor: All → settings `userRequest`; else → this channel’s `freeText`. */
   const channelPromptValue = useMemo(() => {
     if (activeChannelId === "all") return userRequest;
     const ch = channels.find((c) => c.id === activeChannelId);
@@ -2228,7 +2244,7 @@ export default function Home() {
   }, [activeChannelId]);
 
   const replenishOptsRef = useRef<{ mediaType: string; llm: string }>({ mediaType: "both", llm: "deepseek" });
-  const zeroYieldStreakRef = useRef(0); // consecutive batches with 0 fresh items — stop daisy-chaining when high
+  const zeroYieldStreakRef = useRef(0); // consecutive batches with 0 fresh items -- stop daisy-chaining when high
   const lensIndexRef = useRef(0);       // rotates through DIVERSITY_LENSES so each batch explores a different area
   tasteSummaryRef.current = tasteSummary;
 
@@ -2414,6 +2430,7 @@ export default function Home() {
       posterUrl: current.posterUrl,
       watchFrac: 0,
       presentedAt: new Date().toISOString(),
+      categories: current.categories?.length ? current.categories : undefined,
     };
     saveHistory([...historyRef.current, entry]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2540,7 +2557,12 @@ export default function Home() {
             watchlistTitles: wl.map((w) => ({ title: w.title, rtScore: w.rtScore })),
             notInterestedItems: ni,
             tasteSummary: tasteSummaryRef.current ?? undefined,
-            diversityLens: DIVERSITY_LENSES[lensIndexRef.current % DIVERSITY_LENSES.length],
+            // TikTok-style exploration: maximize diversity early (few ratings),
+            // then narrow as preferences emerge. If user has rated < 20 titles,
+            // skip the lens constraint and let LLM explore freely.
+            diversityLens: hist.length < 20
+              ? undefined
+              : DIVERSITY_LENSES[lensIndexRef.current % DIVERSITY_LENSES.length],
             userRequest: userRequestRef.current.trim() || undefined,
             activeChannel: (() => {
               const id = activeChannelIdRef.current?.trim();
@@ -2602,6 +2624,9 @@ export default function Home() {
     lensIndexRef.current++; // advance lens so concurrent batches each explore a different area
     const seenThisBatch = new Set<string>();
 
+    // Refresh taste summary in parallel with the batch fetch so it's ready for the next call.
+    updateTasteSummary(historyRef.current, opts.llm);
+
     try {
       const skippedForApi = [
         ...skippedRef.current,
@@ -2626,7 +2651,7 @@ export default function Home() {
       let freshCount = 0;
 
       if (movies) {
-        // After await, re-check against latest refs — avoids a slower in-flight request
+        // After await, re-check against latest refs -- avoids a slower in-flight request
         // re-adding a title the user just rated while another replenish was in flight.
         const excluded = new Set<string>();
         for (const h of historyRef.current) excluded.add(canonicalTitleKey(h.title));
@@ -2657,7 +2682,7 @@ export default function Home() {
       replenishInFlight.current--;
       if (genAtStart === replenishGenRef.current) replenishGenInFlight.current = Math.max(0, replenishGenInFlight.current - 1);
       // Daisy-chain: keep filling until high-water mark, but stop if recent batches are all dupes.
-      // zeroYieldStreak >= 3 means the LLM is stuck — no point hammering it further.
+      // zeroYieldStreak >= 3 means the LLM is stuck -- no point hammering it further.
       if (
         genAtStart === replenishGenRef.current &&
         prefetchRef.current.length < HIGH_WATER_MARK &&
@@ -2669,7 +2694,7 @@ export default function Home() {
     }
 
     return seenThisBatch;
-  }, [fetchMovieBatch, persistPrefetchQueue]);
+  }, [fetchMovieBatch, persistPrefetchQueue, updateTasteSummary]);
 
   // Pop instantly from prefetch queue; if empty, wait for replenish first
   const fetchNext = useCallback(async (
@@ -2691,7 +2716,7 @@ export default function Home() {
         for (const s of skippedRef.current) excluded.add(canonicalTitleKey(s));
         for (const p of passedRef.current) excluded.add(canonicalTitleKey(p));
         for (const w of watchlistRef.current) excluded.add(canonicalTitleKey(w.title));
-        if (excluded.has(canonicalTitleKey(next.title))) continue; // already seen — discard silently
+        if (excluded.has(canonicalTitleKey(next.title))) continue; // already seen -- discard silently
         persistPrefetchQueue();
         pushNavBack(currentRef.current);
         setCurrent(next);
@@ -2702,10 +2727,10 @@ export default function Home() {
       }
       persistPrefetchQueue();
 
-      // Queue empty — wait for whatever is already in-flight, or start a fresh batch.
+      // Queue empty -- wait for whatever is already in-flight, or start a fresh batch.
       try {
         zeroYieldStreakRef.current = 0; // reset so the daisy-chain can run
-        if (replenishGenInFlight.current === 0) replenish(opts); // no current-gen batch running — kick one off
+        if (replenishGenInFlight.current === 0) replenish(opts); // no current-gen batch running -- kick one off
         const deadline = Date.now() + 90_000;
         while (prefetchRef.current.length === 0 && replenishGenInFlight.current > 0 && Date.now() < deadline) {
           await new Promise((r) => setTimeout(r, 200));
@@ -2864,7 +2889,7 @@ export default function Home() {
             const payload = await res.json() as { channel?: Channel | null; current?: CurrentMovie | null };
             // Full export when nothing stored; otherwise add any missing bundled channels.
             // Share fetch runs after mount, so hasNoChannelsPersisted() is usually false even on first
-            // visit—merge is what repopulates the rest of the factory pack (e.g. after following ?share=).
+            // visit--merge is what repopulates the rest of the factory pack (e.g. after following ?share=).
             if (hasNoChannelsPersisted()) applyFactoryBootstrap();
             mergeFactoryChannelsAndQueues();
             if (payload.channel) {
@@ -2944,7 +2969,7 @@ export default function Home() {
     // in the dependency array re-ran the whole effect when fetchNext was recreated, popping an extra title.
   }, []) /* eslint-disable-line react-hooks/exhaustive-deps -- explicit single hydration + initial pick */;
 
-  // Persist the active channel's current card (same channel only — not on channel switch).
+  // Persist the active channel's current card (same channel only -- not on channel switch).
   useEffect(() => {
     const chId = activeChannelIdRef.current;
     if (!chId || !current?.title) return;
@@ -2968,7 +2993,7 @@ export default function Home() {
     };
   }, []);
 
-  // On mobile, nudge the card into view when a new title loads — only if needed; avoid smooth scroll (feels like a jump on tap)
+  // On mobile, nudge the card into view when a new title loads -- only if needed; avoid smooth scroll (feels like a jump on tap)
   const isFirstCard = useRef(true);
   useEffect(() => {
     if (!current?.title) return;
@@ -3001,7 +3026,7 @@ export default function Home() {
 
   // When userRequest changes (debounced 600ms), flush the prefetch queue so
   // upcoming cards reflect the new request rather than stale pre-fetched batches.
-  // Do not run on initial mount — that would clear an imported queue ~600ms after load.
+  // Do not run on initial mount -- that would clear an imported queue ~600ms after load.
   useEffect(() => {
     const prev = prevUserRequestForFlushRef.current;
     if (prev === undefined) {
@@ -3151,6 +3176,7 @@ export default function Home() {
       ratingMode,
       watchFrac: watchFracRef.current > 0 ? watchFracRef.current : existingEntry?.watchFrac,
       presentedAt: existingEntry?.presentedAt ?? new Date().toISOString(),
+      categories: movie.categories?.length ? movie.categories : existingEntry?.categories,
     };
     const titleKey = canonicalTitleKey(movie.title);
     const newHistory = [...historyRef.current];
@@ -3159,10 +3185,8 @@ export default function Home() {
     else newHistory.push(entry);
     saveHistory(newHistory);
     zeroYieldStreakRef.current = 0;
-    const n = newHistory.length;
-    if (n === 1 || n % 5 === 0) updateTasteSummary(newHistory, llm);
     if (opts?.replenish !== false && !careerModeRef.current) replenish({ mediaType, llm });
-  }, [llm, mediaType, replenish, updateTasteSummary]);
+  }, [llm, mediaType, replenish]);
 
   const handleRate = (rating: number, ratingMode: "seen" | "unseen" = "seen") => {
     if (!current) return;
@@ -3178,7 +3202,7 @@ export default function Home() {
     }
   };
 
-  /** Advance — submits any pending star rating, otherwise marks title as passed (no rating). */
+  /** Advance -- submits any pending star rating, otherwise marks title as passed (no rating). */
   const passCurrentCard = () => {
     if (!current) return;
     clearAdvanceAfterRating();
@@ -3355,7 +3379,7 @@ export default function Home() {
       if (prev.index === index) return prev;
       return { ...prev, index };
     });
-    // Same title as the card already showing (e.g. opened an actor for this movie) — keep trailer so the player does not stop/restart.
+    // Same title as the card already showing (e.g. opened an actor for this movie) -- keep trailer so the player does not stop/restart.
     setCurrent((prev) => {
       if (isSameFilmAsCurrent(prev, film)) {
         const posterUrl = film.posterUrl ?? prev!.posterUrl;
@@ -3668,7 +3692,7 @@ export default function Home() {
           {initialLoading ? (
             <MovieCardSkeleton mode={displayMode} />
           ) : current ? (
-            <div>
+            <div className="relative">
               {careerMode && (
                 <div
                   className="flex flex-col gap-2 border-b border-indigo-500/35 bg-indigo-950/45 px-3 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3 sm:px-4 sm:py-3.5"
@@ -3692,10 +3716,10 @@ export default function Home() {
                 </div>
               )}
               {displayMode === "trailers" ? (
-                /* ── TRAILER LAYOUT (always in “trailers” mode — never swap in a full poster page while a trailer may load) ── */
+                /* ── TRAILER LAYOUT ── */
                 <div
                   ref={careerTrailerBlockRef}
-                  className="bg-black"
+                  className="bg-black transition-opacity duration-300"
                   style={
                     careerMode && careerLoading && careerTrailerBlockStableH > 0
                       ? { minHeight: careerTrailerBlockStableH }
@@ -3797,6 +3821,18 @@ export default function Home() {
                       shareToast={shareToast}
                     />
                   )}
+                  {!trailerFsUi && !careerMode && (
+                    <div className="px-3 pt-2 sm:px-6">
+                      <div className="flex rounded-2xl overflow-hidden border border-zinc-700 w-fit">
+                        {(["posters", "trailers"] as const).map(mode => (
+                          <button key={mode} type="button"
+                            onClick={() => { setDisplayMode(mode); saveSetting("displayMode", mode); }}
+                            className={`px-3 py-2 text-xs font-semibold capitalize transition-colors ${displayMode === mode ? "bg-zinc-200 text-zinc-900" : "bg-transparent text-zinc-500 hover:text-zinc-200"}`}
+                          >{mode}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {!trailerFsUi && (
                     <MovieRatingBlock
                       key={ratingCardKey}
@@ -3878,8 +3914,8 @@ export default function Home() {
                   )}
                 </div>
               ) : (
-                /* ── POSTER MODE (user chose “posters” in settings — large poster + metadata) ── */
-                <div className="flex flex-col gap-4 p-4 sm:p-6">
+                /* ── POSTER MODE ── */
+                <div className="flex flex-col gap-4 p-4 sm:p-6 transition-opacity duration-300">
                   <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <PosterMovieTop
@@ -3889,6 +3925,7 @@ export default function Home() {
                         onCreateChannelFromMovie={openNewChannelFromMovie}
                         careerPersonName={careerMode?.personName ?? null}
                         detailsLoading={careerLoading}
+                        showPoster
                       />
                     </div>
                     <div className="shrink-0 pt-0.5">
@@ -3901,6 +3938,18 @@ export default function Home() {
                     </p>
                   )}
 
+                  {!careerMode && (
+                    <div className="flex">
+                      <div className="flex rounded-2xl overflow-hidden border border-zinc-700">
+                        {(["posters", "trailers"] as const).map(mode => (
+                          <button key={mode} type="button"
+                            onClick={() => { setDisplayMode(mode); saveSetting("displayMode", mode); }}
+                            className={`px-3 py-2 text-xs font-semibold capitalize transition-colors ${displayMode === mode ? "bg-zinc-200 text-zinc-900" : "bg-transparent text-zinc-500 hover:text-zinc-200"}`}
+                          >{mode}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <MovieRatingBlock
                     key={ratingCardKey}
                     passCurrentCardStable={passCurrentCardStable}
@@ -3991,7 +4040,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Thinking indicator — fixed so it's always visible */}
+      {/* Thinking indicator -- fixed so it's always visible */}
       <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-zinc-900 text-white text-sm shadow-lg transition-all duration-300 ${isAdvancingCard ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
         <div className="flex gap-1">
           {[0,1,2].map(i => (

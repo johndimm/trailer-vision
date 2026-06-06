@@ -1,107 +1,97 @@
 import { callLLM } from "../next-movie/llm";
-import { type RatingEntry } from "../next-movie/route";
-import {
-  migrateRatingValue,
-  rtTomatometerPercentToStars,
-} from "../../lib/ratingScale";
+import { migrateRatingValue } from "../../lib/ratingScale";
 
-/** Parse "91%" → 91 */
-function parseRtPercent(s: string | null | undefined): number | null {
-  if (!s) return null;
-  const n = parseInt(s, 10);
-  return Number.isFinite(n) ? n : null;
-}
-
-function divergence(entry: RatingEntry): number {
-  const u = migrateRatingValue(entry.userRating);
-  const p = migrateRatingValue(entry.predictedRating);
-  const rt = parseRtPercent(entry.rtScore);
-  if (rt !== null) {
-    return Math.abs(u - rtTomatometerPercentToStars(rt));
-  }
-  return Math.abs(u - p);
+interface RatingEntry {
+  title: string;
+  type: "movie" | "tv";
+  userRating: number;
+  predictedRating: number;
+  rtScore?: string | null;
+  categories?: string[];
 }
 
 export async function POST(request: Request) {
   const raw = (await request.json()) as {
     history?: RatingEntry[];
-    watchlistSignals?: { title: string; rtScore?: string | null }[];
-    notInterestedSignals?: { title: string; rtScore?: string | null }[];
     existingSummary?: string;
     llm?: string;
   };
 
   const llm = raw.llm ?? "deepseek";
-  const history = raw.history ?? [];
-  const watchlistSignals = raw.watchlistSignals ?? [];
-  const notInterestedSignals = raw.notInterestedSignals ?? [];
+  const history = (raw.history ?? []).filter(e => e.userRating != null);
 
   if (history.length === 0) {
     return Response.json({ tasteSummary: null });
   }
 
-  // Use top divergers + recent for the summary prompt
-  const MAX_LINES = 30;
-  const recentCount = Math.min(5, history.length);
-  const recentEntries = history.slice(-recentCount);
-  const recentKeys = new Set(recentEntries.map((e) => e.title.toLowerCase()));
-  const olderScored = history
-    .slice(0, -recentCount)
-    .filter((e) => !recentKeys.has(e.title.toLowerCase()))
-    .map((e) => ({ e, d: divergence(e) }))
-    .sort((a, b) => b.d - a.d)
-    .slice(0, MAX_LINES - recentCount)
-    .map((x) => x.e);
-  const selected = [...olderScored, ...recentEntries];
+  // ── Category pattern analysis ──────────────────────────────────────────────
+  // Group ratings by category (from LLM-assigned tags) and compute averages.
+  const catRatings = new Map<string, number[]>();
+  let entriesWithCategories = 0;
 
-  const ratingLines = selected
-    .map((h) => {
-      const u = migrateRatingValue(h.userRating);
-      const p = migrateRatingValue(h.predictedRating);
-      const rt = h.rtScore ? ` RT:${h.rtScore}` : "";
-      const rtN = parseRtPercent(h.rtScore);
-      const gap =
-        rtN !== null
-          ? ` gap vs RT★: ${Math.abs(u - rtTomatometerPercentToStars(rtN)).toFixed(1)}`
-          : "";
-      return `- "${h.title}" (${h.type}): user ${u}/5, AI ${p}/5${rt}${gap}`;
-    })
-    .join("\n");
+  for (const entry of history) {
+    const u = migrateRatingValue(entry.userRating);
+    if (entry.categories && entry.categories.length > 0) {
+      entriesWithCategories++;
+      for (const cat of entry.categories) {
+        if (!catRatings.has(cat)) catRatings.set(cat, []);
+        catRatings.get(cat)!.push(u);
+      }
+    }
+  }
 
-  const lowRtWants = watchlistSignals.filter((w) => {
-    const rt = parseRtPercent(w.rtScore);
-    return rt !== null && rt < 60;
-  });
-  const highRtSkips = notInterestedSignals.filter((n) => {
-    const rt = parseRtPercent(n.rtScore);
-    return rt !== null && rt >= 70;
-  });
+  // Build a structured category preference list when we have enough data
+  const categorySection = (() => {
+    if (entriesWithCategories < 3) return "";
 
-  const wantText = lowRtWants.length > 0
-    ? lowRtWants.map((w) => `"${w.title}" (RT:${w.rtScore})`).join(", ")
-    : "none";
-  const skipText = highRtSkips.length > 0
-    ? highRtSkips.map((n) => `"${n.title}" (RT:${n.rtScore})`).join(", ")
-    : "none";
+    const stats = [...catRatings.entries()]
+      .map(([cat, ratings]) => ({
+        cat,
+        avg: ratings.reduce((a, b) => a + b, 0) / ratings.length,
+        count: ratings.length,
+      }))
+      .filter(s => s.count >= 2)
+      .sort((a, b) => b.avg - a.avg);
+
+    if (stats.length === 0) return "";
+
+    const loved    = stats.filter(s => s.avg >= 4.0).map(s => `${s.cat} (${s.avg.toFixed(1)}★, n=${s.count})`);
+    const neutral  = stats.filter(s => s.avg > 2.0 && s.avg < 4.0).map(s => `${s.cat} (${s.avg.toFixed(1)}★, n=${s.count})`);
+    const disliked = stats.filter(s => s.avg <= 2.0).map(s => `${s.cat} (${s.avg.toFixed(1)}★, n=${s.count})`);
+
+    const lines: string[] = [];
+    if (loved.length)    lines.push(`Consistently rates HIGH (4-5★): ${loved.join(", ")}`);
+    if (neutral.length)  lines.push(`Mixed response (2-4★): ${neutral.join(", ")}`);
+    if (disliked.length) lines.push(`Consistently rates LOW (1-2★): ${disliked.join(", ")}`);
+
+    return `\nCATEGORY PREFERENCES (derived from ${entriesWithCategories} rated titles):\n${lines.join("\n")}\n`;
+  })();
+
+  // ── Recent ratings with categories ────────────────────────────────────────
+  const MAX_LINES = 20;
+  const recent = history.slice(-Math.min(MAX_LINES, history.length));
+  const ratingLines = recent.map(h => {
+    const u = migrateRatingValue(h.userRating);
+    const cats = h.categories?.length ? ` [${h.categories.join(", ")}]` : "";
+    return `- "${h.title}" (${h.type}): ${u}/5★${cats}`;
+  }).join("\n");
 
   const existingNote = raw.existingSummary
     ? `\nPrevious summary to refine: "${raw.existingSummary}"\n`
     : "";
 
-  const systemPrompt = `You analyze movie/TV viewer taste from rating data. Write a concise, specific taste profile addressed directly to the viewer in second person ("You tend to...", "You consistently rate...", "You diverge from critics when..."). Cover what they love, what they avoid, and how their taste compares to critics. Be concrete, not generic. 2–4 sentences max. Reply with ONLY the profile text, no labels or JSON.`;
+  const isExploring = history.length < 20;
+  const systemPrompt = `You analyze movie/TV viewer taste to write a short, specific taste profile in second person ("You..."). Focus primarily on which GENRES and CATEGORIES the viewer consistently enjoys or avoids — use the category preference data when available.
+${isExploring ? "NOTE: The viewer is in early exploration mode (still discovering preferences). Low ratings don't mean they dislike movies — they're testing different categories to find what resonates. Be neutral and observational, not judgmental. You're describing a search in progress, not condemning their taste." : "Do not moralize about diverging from critics; the viewer may simply prefer certain genres."}
+Be concrete and descriptive. 2–4 sentences max. Reply with ONLY the profile text.`;
 
-  const userMessage = `${existingNote}
-RATED TITLES (${history.length} total; showing highest-divergence + most recent):
-${ratingLines}
+  const userMessage = `${existingNote}${categorySection}
+RECENT RATINGS (${history.length} total):
+${ratingLines}`;
 
-Saved to watchlist despite LOW RT (likes what critics don't): ${wantText}
-Dismissed despite HIGH RT (dislikes what critics love): ${skipText}`;
-
-  const start = Date.now();
   let summary: string;
   try {
     summary = await callLLM(llm, systemPrompt, userMessage, { maxTokens: 256 });
-    console.log(`[taste-summary] done (${llm}) in ${((Date.now() - start) / 1000).toFixed(1)}s`);
   } catch (err) {
     console.error("[taste-summary] LLM failed:", err);
     return Response.json({ tasteSummary: null });

@@ -5,6 +5,7 @@ export interface RatingEntry {
   userRating: number;
   predictedRating: number;
   rtScore?: string | null;
+  categories?: string[];
 }
 
 
@@ -21,6 +22,8 @@ export interface NextMovieResponse {
   rtScore: string | null;
   reason: string | null;
   streaming: string[];
+  /** Genre/category tags returned by the LLM, e.g. ["crime thriller","gangster"] */
+  categories: string[];
 }
 
 /** One entry inside the LLM "items" array — snake_case from model output */
@@ -35,6 +38,8 @@ interface RawItem {
   rt_score?: string | null;
   reason?: string | null;
   streaming_services?: unknown;
+  /** 2–4 short genre/category tags, e.g. ["crime thriller","gangster","neo-noir"] */
+  categories?: string[];
 }
 
 import {
@@ -57,8 +62,8 @@ const MAX_LOW_RT_WANT_LINES = 28;
 const MAX_HIGH_RT_SKIP_LINES = 28;
 const LOW_RT_THRESHOLD = 60; // want-to-watch: RT below this is a strong signal
 const HIGH_RT_THRESHOLD = 70; // not interested: RT at/above this is a strong signal
-/** Scales with batch size (8 titles × short JSON + reasons). */
-const LLM_OUTPUT_MAX_TOKENS = 2200;
+/** Scales with batch size (8 titles × short JSON + reasons + categories). */
+const LLM_OUTPUT_MAX_TOKENS = 3500;
 
 function stripMarkdownJsonFence(text: string): string {
   return text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
@@ -129,14 +134,43 @@ function repairTrailingCommas(json: string): string {
   return json.replace(/,\s*([}\]])/g, "$1");
 }
 
+/**
+ * Fix the LLM habit of emitting two string values for a single key, e.g.:
+ *   "director": "A", "B",   →   "director": "A, B",
+ * Handles one or two extra orphan string values after the main value.
+ */
+function repairDoubleStringValues(json: string): string {
+  return json.replace(
+    /("(?:[^"\\]|\\.)*"\s*:\s*"(?:[^"\\]|\\.)*")\s*,\s*("(?:[^"\\]|\\.)*")\s*,\s*("(?:[^"\\]|\\.)*")/g,
+    (_m, kv, extra1, extra2) => {
+      // kv = "key": "val1" — merge extra1 and extra2 into val1
+      const valEnd = kv.lastIndexOf('"');
+      return kv.slice(0, valEnd) + ", " + JSON.parse(extra1) + ", " + JSON.parse(extra2) + '"';
+    }
+  ).replace(
+    /("(?:[^"\\]|\\.)*"\s*:\s*"(?:[^"\\]|\\.)*")\s*,\s*("(?:[^"\\]|\\.)*")\s*(?=,\s*"(?:[^"\\]|\\.)*"\s*:)/g,
+    (_m, kv, extra) => {
+      const valEnd = kv.lastIndexOf('"');
+      return kv.slice(0, valEnd) + ", " + JSON.parse(extra) + '"';
+    }
+  );
+}
+
 function tryParseJson(text: string): unknown | null {
+  const repaired = repairDoubleStringValues(text);
   const candidates = [
     text,
+    repaired,
     repairTrailingCommas(text),
+    repairTrailingCommas(repaired),
     text.replace(/[\r\n]+/g, " "),
+    repaired.replace(/[\r\n]+/g, " "),
     repairTrailingCommas(text.replace(/[\r\n]+/g, " ")),
+    repairTrailingCommas(repaired.replace(/[\r\n]+/g, " ")),
     extractRootJsonObject(text),
+    extractRootJsonObject(repaired),
     extractRootJsonArray(text),
+    extractRootJsonArray(repaired),
   ].filter((s): s is string => typeof s === "string" && s.length > 0);
 
   for (const candidate of candidates) {
@@ -255,6 +289,62 @@ function selectInformativeHistory(history: RatingEntry[], maxEntries: number): R
 import { callLLM } from "./llm";
 import { resolveHistoryForPrompt } from "./historySessionStore";
 
+/**
+ * In exploration mode (<20 ratings), ask the LLM to identify which categories/regions
+ * we should explore NEXT, excluding ones already tried.
+ */
+async function identifyUnexploredCategories(
+  history: RatingEntry[],
+  triedCategories: string[],
+  llm: string,
+): Promise<string[]> {
+  // Always produce suggestions, even with no history — start broad.
+  const triedList = triedCategories.length > 0
+    ? `Already tried these: ${triedCategories.slice(-20).join(", ")}`
+    : "Starting fresh — nothing tried yet.";
+
+  const historyContext = history.length === 0
+    ? "No ratings yet."
+    : `Recent films rated: ${history.slice(-5).map(h => `"${h.title}"`).join(", ")}`;
+
+  const systemPrompt = `You suggest underexplored film categories and regions for taste discovery. Be aggressive and specific.
+Suggest major film traditions, regions, eras, and genres that the viewer hasn't encountered yet.
+IMPORTANT: Include major global cinema traditions that are often overlooked: Bollywood, Indian cinema, Japanese anime, Korean cinema, Persian/Iranian cinema, Brazilian cinema, etc.
+Also include format suggestions: musicals, dance films, animated features, documentaries, etc.`;
+
+  const prompt = `${historyContext}
+
+${triedList}
+
+What 5-7 COMPLETELY DIFFERENT film categories, regions, eras, or traditions should we explore next?
+GOAL: Maximum diversity. Avoid anything similar to what's already been tried.
+MUST INCLUDE regional/national cinemas: Bollywood, Indian cinema, Japanese anime, Korean cinema, Brazilian cinema, Scandinavian films, etc.
+MUST INCLUDE film types: musicals, dance films, animated, documentaries, action films, etc.
+
+The viewer likely hasn't tried these major traditions yet. Pick 5-7 that are as geographically, culturally, and stylistically different as possible:
+
+Priority: Suggest regions/traditions that HAVEN'T appeared in the tried list. For example, if no Bollywood/Indian/South Asian films have been tried, suggest "Bollywood musicals" or "Indian dance films" as a TOP priority.
+
+Reply ONLY with a JSON array of 5-7 strings, in order of priority:
+["Bollywood musicals", "Japanese anime", "Korean cinema", "Brazilian cinema novo", "musicals with dance", "Scandinavian noir", "animated features"]`;
+
+  try {
+    const response = await callLLM(llm, systemPrompt, prompt, {
+      maxTokens: 300,
+    });
+    const match = response.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]) as string[];
+    return parsed
+      .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+      .map(s => s.trim())
+      .slice(0, 7);
+  } catch (e) {
+    console.error("[identifyUnexploredCategories] error:", e);
+    return [];
+  }
+}
+
 interface ChannelPayload {
   id: string;
   name: string;
@@ -330,6 +420,7 @@ export async function POST(request: Request) {
     mediaType?: "movie" | "tv" | "both";
     llm?: string;
     count?: number;
+    triedCategories?: string[];
   };
 
   const skipped = raw.skipped ?? [];
@@ -344,6 +435,7 @@ export async function POST(request: Request) {
   const diversityLens = raw.diversityLens?.trim() || null;
   const userRequest = raw.userRequest?.trim() || null;
   const activeChannel = raw.activeChannel ?? null;
+  const triedCategories = raw.triedCategories ?? [];
   const mediaType = raw.mediaType ?? "both";
   // "all" is the special no-filter channel — treat it like no channel so the diversity lens applies
   const channelConstraint = (activeChannel && activeChannel.id !== "all") ? buildChannelConstraint(activeChannel, mediaType) : null;
@@ -400,6 +492,7 @@ export async function POST(request: Request) {
               rtScore: null,
               reason: null,
               streaming: [],
+              categories: [],
             };
             console.log(
               `[next-movie] direct TMDB lookup for "${directPrompt}" → "${resolved.title}" (trailer=${resolved.trailerKey ? "yes" : "no"})`,
@@ -497,20 +590,23 @@ Your job each turn:
 3. Return title, year, director, top 3-4 actors, a 1-2 sentence plot summary, Rotten Tomatoes Tomatometer when known, and a one-sentence reason explaining why this title fits the user's taste — write it in second person, addressing the user as "you" (e.g. "You rated X highly" not "The user rated X highly").
 4. For **each title** include **streaming_services**: a JSON array of US streaming platform names where the viewer can watch now — use short names: Netflix, Max, Hulu, Disney+, Apple TV+, Amazon Prime Video, Peacock, Paramount+, AMC+, STARZ, Tubi, Pluto TV. Use [] if unsure.
 5. Respond with ONLY valid JSON — no markdown, no explanation:
-{"items":[{"title":"...","type":"movie","year":1994,"director":"...","predicted_rating":3.5,"actors":["...","..."],"plot":"...","rt_score":"94%","reason":"...","streaming_services":["Netflix"]}]}
+{"items":[{"title":"...","type":"movie","year":1994,"director":"...","predicted_rating":3.5,"actors":["...","..."],"plot":"...","rt_score":"94%","reason":"...","streaming_services":["Netflix"],"categories":["crime thriller","gangster","neo-noir"]}]}
 
 Rules:
 - Return exactly ${batchCount} objects in "items" (unless absolutely impossible — then return as many distinct valid picks as you can)
 - Avoid duplicate titles within "items". Do not worry about overlap with the user's full past list — the app enforces that separately
 - "type" must be exactly "movie" or "tv"
 - "title" must be the exact official release name only — never a sentence, channel label, or "description: title" format
-- "year" is a number; "director" is the creator/showrunner for TV
+- "year" is a number; "director" is a single string — if multiple directors, combine them: "A, B" (never two separate JSON values)
 - "predicted_rating" is a number from 0.5 to 5 in steps of 0.5 (half stars) — never use 0–100
 - "rt_score" is the Tomatometer percentage (e.g. "94%") or null if unknown
+- "categories" is an array of 2–4 short genre/category tags for this title (e.g. ["crime thriller","gangster","neo-noir"] or ["animated family","pixar"] or ["romantic comedy"])
 - All string values must be on a single line — no newline characters inside strings
 - Vary genres, eras, and (if media allows) movie vs TV to calibrate faster
 - Predict honestly — vary predictions; the midpoint is not always 3
-- Taste data below is intentionally small: high-divergence ratings, low-RT wants, high-RT dismissals. Full exclusion is not listed.`;
+- Taste data below is intentionally small: high-divergence ratings, low-RT wants, high-RT dismissals. Full exclusion is not listed.
+- IMPORTANT: If CATEGORY PREFERENCES are provided below, treat them as the strongest signal — they show exactly what this viewer loves and avoids. Align your picks accordingly.
+- IMPORTANT: If EXPLORATION FOCUS categories are listed, every title must fit at least one of them. Do not pick films outside these categories.`;
 
   const diversityLensSection =
     diversityLens && !channelConstraint && !userRequest
@@ -524,11 +620,54 @@ ${existingTasteSummary}
 `
     : "";
 
+  // Compute category preferences from rated history entries that have categories
+  const categoryPrefsSection = (() => {
+    const catMap = new Map<string, number[]>();
+    for (const e of history) {
+      if (!e.categories?.length) continue;
+      for (const cat of e.categories) {
+        if (!catMap.has(cat)) catMap.set(cat, []);
+        catMap.get(cat)!.push(e.userRating);
+      }
+    }
+    const stats = [...catMap.entries()]
+      .map(([cat, ratings]) => ({
+        cat,
+        avg: ratings.reduce((a, b) => a + b, 0) / ratings.length,
+        count: ratings.length,
+      }))
+      .filter(s => s.count >= 2)
+      .sort((a, b) => b.avg - a.avg);
+    if (!stats.length) return "";
+
+    const loved    = stats.filter(s => s.avg >= 4.0).map(s => `"${s.cat}" (${s.avg.toFixed(1)}★)`);
+    const disliked = stats.filter(s => s.avg <= 2.0).map(s => `"${s.cat}" (${s.avg.toFixed(1)}★)`);
+    if (!loved.length && !disliked.length) return "";
+
+    const lines: string[] = [];
+    if (loved.length)    lines.push(`Loves: ${loved.join(", ")}`);
+    if (disliked.length) lines.push(`Avoids: ${disliked.join(", ")}`);
+    return `CATEGORY PREFERENCES (from ${stats.reduce((a, s) => Math.max(a, s.count), 0)}+ ratings):\n${lines.join("\n")}\n\n`;
+  })();
+
   const directTitleNote = directTitleAlreadySeen
     ? `The user asked specifically for "${directTitleAlreadySeen.title}"${directTitleAlreadySeen.year ? ` (${directTitleAlreadySeen.year})` : ""}, which they have already seen. Suggest ${batchCount} similar titles instead. Each "title" must be the exact official name only.\n\n`
     : "";
 
-  const userMessage = `${diversityLensSection}${directTitleNote}${tasteSummarySection}RATED TITLES — selected for largest |user−RT| divergence, plus most recent (most informative per token):
+  // In exploration mode: identify unexplored categories and force LLM to use them
+  let exploreCategoriesSection = "";
+  if (history.length < 20 && !channelConstraint && !userRequest && !diversityLens) {
+    const unexploredCats = await identifyUnexploredCategories(history, triedCategories, llm);
+    if (unexploredCats.length > 0) {
+      exploreCategoriesSection = `EXPLORATION FOCUS — pick films ONLY from these undiscovered categories/regions/styles:
+${unexploredCats.map(c => `- ${c}`).join("\n")}
+Every recommendation must clearly fit at least one of these categories.
+
+`;
+    }
+  }
+
+  const userMessage = `${exploreCategoriesSection}${diversityLensSection}${directTitleNote}${categoryPrefsSection}${tasteSummarySection}RATED TITLES — selected for largest |user−RT| divergence, plus most recent (most informative per token):
 ${historyText}
 ${historyNote}
 
@@ -539,8 +678,11 @@ Not interested despite HIGH RT (${HIGH_RT_THRESHOLD}%+): ${highRtSkipText}
 EXCLUSION (counts only — the app drops any repeat client-side):
 ${allExcluded.length} titles already decided (${ratedTitles.length} rated, ${watchlistTitles.length} on watchlist, ${skipped.length} skipped/dismissed). Suggest ${batchCount} diverse candidates.
 
-${history.length === 0 && allExcluded.length === 0
-  ? `No history yet — suggest ${batchCount} well-known, widely-seen titles to start learning preferences (varied mix of genres helps).`
+${history.length < 20
+  ? `EXPLORATION MODE (${history.length} ratings so far): Analyze what the user HAS rated. What categories, regions, eras, styles, or types of films are conspicuously ABSENT from their ratings?
+${triedCategories.length > 0 ? `Already explored: ${triedCategories.join(", ")}. Do NOT suggest films from these.` : ""}
+Identify completely NEW categories/regions/styles not yet tried. Suggest ${batchCount} films from those unexplored areas to help them discover what they like.
+Focus on areas they haven't encountered yet, not on what they've already seen.`
   : `Analyze all signals above and pick ${batchCount} titles that will confirm or usefully challenge your model of their taste.`}`;
 
 
@@ -613,6 +755,9 @@ ${history.length === 0 && allExcluded.length === 0
       reason: raw.reason?.trim() || null,
       streaming: Array.isArray(raw.streaming_services)
         ? (raw.streaming_services as unknown[]).filter((s): s is string => typeof s === "string" && !!s.trim())
+        : [],
+      categories: Array.isArray(raw.categories)
+        ? (raw.categories as unknown[]).filter((s): s is string => typeof s === "string" && !!s.trim()).map(s => s.toLowerCase())
         : [],
     });
   }

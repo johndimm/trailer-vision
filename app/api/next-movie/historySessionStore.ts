@@ -6,6 +6,7 @@ export interface SessionRatingEntry {
   predictedRating: number;
   error?: number;
   rtScore?: string | null;
+  categories?: string[];
 }
 
 type SessionData = { history: SessionRatingEntry[]; updatedAt: number };
