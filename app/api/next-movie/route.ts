@@ -303,6 +303,7 @@ function analyzePreferenceSignals(history: RatingEntry[]): {
   loved: Map<string, number>;
   avoided: Map<string, number>;
   hasSignal: boolean;
+  topLoved: string[];
 } {
   const lovedCats = new Map<string, number[]>();
   const avoidedCats = new Map<string, number[]>();
@@ -328,7 +329,96 @@ function analyzePreferenceSignals(history: RatingEntry[]): {
     [...avoidedCats.entries()].map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length])
   );
 
-  return { loved, avoided, hasSignal: loved.size > 0 };
+  const topLoved = [...loved.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([cat]) => cat);
+
+  return { loved, avoided, hasSignal: loved.size > 0, topLoved };
+}
+
+/**
+ * Generate strategic hypotheses to test using 20Q logic.
+ * If user loves "Bollywood musicals," test: is it Bollywood? musicals? the spectacle? romance?
+ */
+function generateTestHypotheses(topLoved: string[]): string[] {
+  if (topLoved.length === 0) return [];
+
+  const hypotheses: string[] = [];
+
+  // Core hypothesis: what's the primary dimension?
+  if (topLoved.length >= 2) {
+    const [primary, secondary] = topLoved;
+    hypotheses.push(
+      `Is it specifically "${primary}" or more broadly "${secondary}"-style content?`,
+      `Does removing ${primary} break the appeal, or is ${secondary} enough?`
+    );
+  } else if (topLoved.length === 1) {
+    hypotheses.push(
+      `Is it specifically the "${topLoved[0]}" category or a broader pattern?`,
+      `What's the core appeal: the cultural origin, the genre, the tone, or the production style?`
+    );
+  }
+
+  // Dimensional hypotheses
+  hypotheses.push(
+    "Is it the storytelling tone (romantic, epic, comedy) or the category itself?",
+    "Is it the region/culture or the specific genre conventions?",
+    "Is it the production scale (spectacle, music, choreography) or the plot type?"
+  );
+
+  return hypotheses.slice(0, 5);
+}
+
+/**
+ * In hypothesis-testing phase, ask LLM to design films that isolate dimensions.
+ */
+async function generateHypothesisTestingPrompt(
+  topLoved: string[],
+  history: RatingEntry[],
+  llm: string,
+): Promise<string | null> {
+  const hypotheses = generateTestHypotheses(topLoved);
+  if (hypotheses.length === 0) return null;
+
+  const lovedFilmExamples = history
+    .filter(e => e.userRating >= 4 && e.categories?.length)
+    .slice(-3)
+    .map(e => `"${e.title}" (${e.categories?.join(", ")})`)
+    .join(", ");
+
+  const systemPrompt = `You are designing strategic films to isolate which dimension of a user's taste matters most.
+This is like 20 Questions: each film should test a specific hypothesis about why they love what they love.
+Design films where the results (4★ vs 1★) will teach us something definitive.`;
+
+  const prompt = `User LOVES: ${topLoved.join(", ")}
+Examples: ${lovedFilmExamples}
+
+Test these hypotheses with 5 strategic films:
+1. CONFIRM: Another example of exactly what they love (validate the pattern)
+2. ISOLATE-DIMENSION-1: Same appeal but different dimension (e.g., if they love Bollywood musicals, try non-Bollywood musical)
+3. ISOLATE-DIMENSION-2: Related but flip one key attribute (e.g., Bollywood non-musical)
+4. ISOLATE-TONE: Similar tone/emotion but different category (test if it's emotion or category)
+5. BOUNDARY-TEST: Edge case that challenges the hypothesis (what breaks the spell?)
+
+For each film, explain which hypothesis it tests.
+
+Reply ONLY with JSON array:
+[
+  {"title": "Film Name", "year": 2020, "type": "movie", "hypothesis_tests": "CONFIRM: validates Bollywood masala pattern"},
+  {"title": "Film Name", "year": 2015, "type": "movie", "hypothesis_tests": "ISOLATE-DIMENSION: is it Bollywood or musicals?"},
+  ...
+]`;
+
+  try {
+    const response = await callLLM(llm, systemPrompt, prompt, {
+      maxTokens: 500,
+    });
+    return response;
+  } catch (e) {
+    console.error("[generateHypothesisTestingPrompt] error:", e);
+    return null;
+  }
 }
 
 async function identifyUnexploredCategories(
@@ -644,7 +734,8 @@ Rules:
 - Predict honestly — vary predictions; the midpoint is not always 3
 - Taste data below is intentionally small: high-divergence ratings, low-RT wants, high-RT dismissals. Full exclusion is not listed.
 - IMPORTANT: If CATEGORY PREFERENCES are provided below, treat them as the strongest signal — they show exactly what this viewer loves and avoids. Align your picks accordingly.
-- IMPORTANT: If EXPLORATION FOCUS categories are listed, every title must fit at least one of them. Do not pick films outside these categories.`;
+- IMPORTANT: If EXPLORATION FOCUS categories are listed, every title must fit at least one of them. Do not pick films outside these categories.
+- IMPORTANT: If 20Q HYPOTHESIS TESTING is described, design films that isolate different dimensions. Each film tests whether the appeal is due to region, genre, tone, spectacle, etc. A 4★ vs 1★ rating for strategically different films teaches us which dimension matters most.`;
 
   const diversityLensSection =
     diversityLens && !channelConstraint && !userRequest
@@ -692,16 +783,66 @@ ${existingTasteSummary}
     ? `The user asked specifically for "${directTitleAlreadySeen.title}"${directTitleAlreadySeen.year ? ` (${directTitleAlreadySeen.year})` : ""}, which they have already seen. Suggest ${batchCount} similar titles instead. Each "title" must be the exact official name only.\n\n`
     : "";
 
-  // In exploration mode: identify unexplored categories and force LLM to use them
+  // In exploration mode: use 20Q strategy based on what user has shown they love
   let exploreCategoriesSection = "";
   if (history.length < 20 && !channelConstraint && !userRequest && !diversityLens) {
-    const unexploredCats = await identifyUnexploredCategories(history, triedCategories, llm);
-    if (unexploredCats.length > 0) {
-      exploreCategoriesSection = `EXPLORATION FOCUS — pick films ONLY from these undiscovered categories/regions/styles:
+    const { hasSignal, topLoved } = analyzePreferenceSignals(history);
+
+    if (hasSignal && history.length >= 5) {
+      // PHASE 2: User has clear preferences — use 20Q hypothesis testing
+      const hypothesisPromptResponse = await generateHypothesisTestingPrompt(topLoved, history, llm);
+
+      if (hypothesisPromptResponse) {
+        // Try to parse and use the LLM-designed hypothesis tests
+        try {
+          const match = hypothesisPromptResponse.match(/\[[\s\S]*\]/);
+          if (match) {
+            const parsed = JSON.parse(match[0]) as Array<{ hypothesis_tests?: string }>;
+            const hypotheses = parsed
+              .map(item => item.hypothesis_tests)
+              .filter((h): h is string => typeof h === "string")
+              .slice(0, 5)
+              .join("\n");
+
+            if (hypotheses) {
+              exploreCategoriesSection = `20Q HYPOTHESIS TESTING:
+User clearly loves: ${topLoved.join(", ")}
+
+This round, each film tests a specific dimension to isolate what matters:
+${hypotheses}
+
+Design films that distinguish between these hypotheses. A 4★ vs 1★ result for contrasting films teaches us which dimension drives their taste.
+
+`;
+            }
+          }
+        } catch (e) {
+          // Fallback to broad exploration if parsing fails
+          console.error("[20Q parse] failed:", e);
+        }
+      }
+
+      // If 20Q failed, fall back to broad exploration
+      if (!exploreCategoriesSection) {
+        const unexploredCats = await identifyUnexploredCategories(history, triedCategories, llm);
+        if (unexploredCats.length > 0) {
+          exploreCategoriesSection = `EXPLORATION FOCUS — pick films ONLY from these undiscovered categories/regions/styles:
 ${unexploredCats.map(c => `- ${c}`).join("\n")}
 Every recommendation must clearly fit at least one of these categories.
 
 `;
+        }
+      }
+    } else {
+      // PHASE 1: No clear signal yet — explore broadly
+      const unexploredCats = await identifyUnexploredCategories(history, triedCategories, llm);
+      if (unexploredCats.length > 0) {
+        exploreCategoriesSection = `EXPLORATION FOCUS — pick films ONLY from these undiscovered categories/regions/styles:
+${unexploredCats.map(c => `- ${c}`).join("\n")}
+Every recommendation must clearly fit at least one of these categories.
+
+`;
+      }
     }
   }
 
