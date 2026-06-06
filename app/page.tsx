@@ -3357,7 +3357,11 @@ export default function Home() {
     if (mode === "seen") {
       writeSeenRating(movie, stars, "seen", { replenish: false });
     }
-  }, [writeSeenRating]);
+    // In poster mode, auto-advance to next item after rating
+    if (displayMode === "posters") {
+      passCurrentCardStable();
+    }
+  }, [writeSeenRating, displayMode, passCurrentCardStable]);
 
   const passCurrentCardRef = useRef(passCurrentCard);
   passCurrentCardRef.current = passCurrentCard;
