@@ -1776,7 +1776,7 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
         </svg>
       </button>
       <MovieRatingBlock
-        key={ratingResetKey ?? movieTitle}
+        key={ratingResetKey}
         layout="fullscreenOverlay"
         passCurrentCardStable={passCurrentCardStable}
         onRate={onRate}
