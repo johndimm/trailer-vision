@@ -733,7 +733,7 @@ Rules:
 - Vary genres, eras, and (if media allows) movie vs TV to calibrate faster
 - Predict honestly — vary predictions; the midpoint is not always 3
 - Taste data below is intentionally small: high-divergence ratings, low-RT wants, high-RT dismissals. Full exclusion is not listed.
-- IMPORTANT: If AVOID categories are listed, absolutely do NOT pick films from those categories. They consistently get 1-2★ ratings.
+- AVOID CATEGORIES LISTED: These consistently get 1-2★ ratings, so deprioritize them in favor of new areas. But they're not absolute bans — it's okay to suggest one occasionally if it genuinely fits exploration or contrast testing. Just don't cluster them.
 - IMPORTANT: If CATEGORY PREFERENCES are provided below, treat them as the strongest signal — they show exactly what this viewer loves and avoids. Align your picks accordingly.
 - IMPORTANT: If EXPLORATION FOCUS categories are listed, every title must fit at least one of them. Do not pick films outside these categories.
 - IMPORTANT: If 20Q HYPOTHESIS TESTING is described, design films that isolate different dimensions. Each film tests whether the appeal is due to region, genre, tone, spectacle, etc. A 4★ vs 1★ rating for strategically different films teaches us which dimension matters most.`;
@@ -799,7 +799,7 @@ ${existingTasteSummary}
       .map(([cat]) => cat);
 
     if (avoidedCats.length > 0) {
-      avoidCategoriesSection = `AVOID — do NOT recommend from these categories (consistently rated 1-2★):
+      avoidCategoriesSection = `DEPRIORITIZE — these categories consistently get 1-2★. Suggest from new areas instead, but occasional recommendations from these are okay if they genuinely fit exploration or testing:
 ${avoidedCats.map(c => `- ${c}`).join("\n")}
 
 `;
