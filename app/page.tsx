@@ -3345,6 +3345,13 @@ export default function Home() {
 
   const submitRatingRef = useRef(submitRating);
   submitRatingRef.current = submitRating;
+
+  const passCurrentCardRef = useRef(passCurrentCard);
+  passCurrentCardRef.current = passCurrentCard;
+  const passCurrentCardStable = useCallback(() => {
+    passCurrentCardRef.current();
+  }, []);
+
   const handlePendingChange = useCallback((stars: number, mode: "seen" | "unseen") => {
     const next = { stars, mode };
     pendingRatingRef.current = next;
@@ -3362,12 +3369,6 @@ export default function Home() {
       passCurrentCardStable();
     }
   }, [writeSeenRating, displayMode, passCurrentCardStable]);
-
-  const passCurrentCardRef = useRef(passCurrentCard);
-  passCurrentCardRef.current = passCurrentCard;
-  const passCurrentCardStable = useCallback(() => {
-    passCurrentCardRef.current();
-  }, []);
 
   const openPosterLightbox = useCallback((url: string) => {
     setLightboxUrl(url);
