@@ -1465,21 +1465,21 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
     const hasHistoryRating = previousRating !== undefined && previousRating > 0;
 
     if (titleChanged) {
-      setSeenStatus(
-        hasHistoryRating ? (previousMode === "unseen" ? "unseen" : null) : defaultSeen ? null : "unseen"
-      );
-      if (!hasHistoryRating) {
+      // Only reset seen status if there's a history rating; keep user's selection otherwise
+      if (hasHistoryRating) {
+        setSeenStatus(previousMode === "unseen" ? "unseen" : null);
+        setUserLocked(true);
+        setLockedValue(previousRating!);
+      } else {
         setUserLocked(false);
         setLockedValue(0);
+        // Don't reset seenStatus here — keep user's previous selection
       }
     }
 
-    if (hasHistoryRating) {
+    if (hasHistoryRating && !titleChanged) {
       setUserLocked(true);
       setLockedValue(previousRating!);
-      if (titleChanged) {
-        setSeenStatus(previousMode === "unseen" ? "unseen" : null);
-      }
     }
   }, [movieTitle, defaultSeen, previousRating, previousMode, ratingResetKey]);
   const onSeenStatusChange = useCallback((v: "unseen" | null) => {
