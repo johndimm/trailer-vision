@@ -297,7 +297,6 @@ import { resolveHistoryForPrompt } from "./historySessionStore";
  * Analyze ratings to understand preference patterns using 20Q logic:
  * - Which categories user loves (4-5★)
  * - Which they avoid (1-2★)
- * - What hypotheses to test next
  */
 function analyzePreferenceSignals(history: RatingEntry[]): {
   loved: Map<string, number>;
@@ -338,6 +337,49 @@ function analyzePreferenceSignals(history: RatingEntry[]): {
 }
 
 /**
+ * Ask LLM to infer category hierarchy from observed categories.
+ * This lets the hierarchy emerge from what the LLM actually returns, not hard-coded mappings.
+ */
+async function inferCategoryHierarchy(
+  observedCategories: string[],
+  llm: string,
+): Promise<{ superCategories: string[]; specifics: Record<string, string[]> }> {
+  if (observedCategories.length === 0) {
+    return { superCategories: [], specifics: {} };
+  }
+
+  const systemPrompt = `You analyze film categories and identify their hierarchy.
+Broad categories are "super-categories" (e.g., "South Asian Cinema", "Crime Drama").
+Specific categories are refinements of those (e.g., "Bollywood musical", "Neo-noir").
+Identify which are broad and which are specific, and group specifics under their parent super-category.`;
+
+  const prompt = `Analyze these film categories and infer their hierarchy:
+${observedCategories.map(c => `- ${c}`).join("\n")}
+
+Reply ONLY with JSON:
+{
+  "superCategories": ["category1", "category2", ...],
+  "specifics": {
+    "superCategory1": ["specific1", "specific2", ...],
+    "superCategory2": ["specific3", ...]
+  }
+}`;
+
+  try {
+    const response = await callLLM(llm, systemPrompt, prompt, { maxTokens: 400 });
+    const match = response.match(/\{[\s\S]*\}/);
+    if (match) {
+      return JSON.parse(match[0]);
+    }
+  } catch (e) {
+    console.error("[inferCategoryHierarchy] error:", e);
+  }
+
+  // Fallback: treat all as super-categories if inference fails
+  return { superCategories: observedCategories, specifics: {} };
+}
+
+/**
  * Generate strategic hypotheses to test using 20Q logic.
  * If user loves "Bollywood musicals," test: is it Bollywood? musicals? the spectacle? romance?
  */
@@ -372,6 +414,7 @@ function generateTestHypotheses(topLoved: string[]): string[] {
 
 /**
  * In hypothesis-testing phase, ask LLM to design films that isolate dimensions.
+ * Suggest exploring variations/sub-categories of what they love.
  */
 async function generateHypothesisTestingPrompt(
   topLoved: string[],
@@ -387,12 +430,19 @@ async function generateHypothesisTestingPrompt(
     .map(e => `"${e.title}" (${e.categories?.join(", ")})`)
     .join(", ");
 
+  // Ask LLM to suggest variations of loved categories
+  const variationHint = topLoved.length > 0
+    ? `Also explore variations within "${topLoved[0]}" that they haven't tried yet (e.g., if they like "Bollywood musicals", try "Bollywood drama" or "Bollywood romance").`
+    : '';
+
   const systemPrompt = `You are designing strategic films to isolate which dimension of a user's taste matters most.
 This is like 20 Questions: each film should test a specific hypothesis about why they love what they love.
 Design films where the results (4★ vs 1★) will teach us something definitive.`;
 
   const prompt = `User LOVES: ${topLoved.join(", ")}
 Examples: ${lovedFilmExamples}
+
+${variationHint}
 
 Test these hypotheses with 5 strategic films:
 1. CONFIRM: Another example of exactly what they love (validate the pattern)
