@@ -733,6 +733,7 @@ Rules:
 - Vary genres, eras, and (if media allows) movie vs TV to calibrate faster
 - Predict honestly — vary predictions; the midpoint is not always 3
 - Taste data below is intentionally small: high-divergence ratings, low-RT wants, high-RT dismissals. Full exclusion is not listed.
+- IMPORTANT: If AVOID categories are listed, absolutely do NOT pick films from those categories. They consistently get 1-2★ ratings.
 - IMPORTANT: If CATEGORY PREFERENCES are provided below, treat them as the strongest signal — they show exactly what this viewer loves and avoids. Align your picks accordingly.
 - IMPORTANT: If EXPLORATION FOCUS categories are listed, every title must fit at least one of them. Do not pick films outside these categories.
 - IMPORTANT: If 20Q HYPOTHESIS TESTING is described, design films that isolate different dimensions. Each film tests whether the appeal is due to region, genre, tone, spectacle, etc. A 4★ vs 1★ rating for strategically different films teaches us which dimension matters most.`;
@@ -785,8 +786,24 @@ ${existingTasteSummary}
 
   // In exploration mode: use 20Q strategy based on what user has shown they love
   let exploreCategoriesSection = "";
+  let avoidCategoriesSection = "";
+
   if (history.length < 20 && !channelConstraint && !userRequest && !diversityLens) {
-    const { hasSignal, topLoved } = analyzePreferenceSignals(history);
+    const { hasSignal, topLoved, avoided } = analyzePreferenceSignals(history);
+
+    // Build avoid section for categories with consistent low ratings
+    const avoidedCats = [...avoided.entries()]
+      .filter(([, avg]) => avg <= 2.0)
+      .sort((a, b) => a[1] - b[1])
+      .slice(0, 5)
+      .map(([cat]) => cat);
+
+    if (avoidedCats.length > 0) {
+      avoidCategoriesSection = `AVOID — do NOT recommend from these categories (consistently rated 1-2★):
+${avoidedCats.map(c => `- ${c}`).join("\n")}
+
+`;
+    }
 
     if (hasSignal && history.length >= 5) {
       // PHASE 2: User has clear preferences — use 20Q hypothesis testing
@@ -846,7 +863,7 @@ Every recommendation must clearly fit at least one of these categories.
     }
   }
 
-  const userMessage = `${exploreCategoriesSection}${diversityLensSection}${directTitleNote}${categoryPrefsSection}${tasteSummarySection}RATED TITLES — selected for largest |user−RT| divergence, plus most recent (most informative per token):
+  const userMessage = `${avoidCategoriesSection}${exploreCategoriesSection}${diversityLensSection}${directTitleNote}${categoryPrefsSection}${tasteSummarySection}RATED TITLES — selected for largest |user−RT| divergence, plus most recent (most informative per token):
 ${historyText}
 ${historyNote}
 
