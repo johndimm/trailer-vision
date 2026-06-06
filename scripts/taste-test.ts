@@ -114,7 +114,7 @@ Reply with ONLY a JSON array, one entry per film IN ORDER. Format:
 
   return movies.map(m => {
     const cats = (m.categories ?? []).map(c => c.toLowerCase()).join(" ");
-    const plot = (m.plot ?? "").toLowerCase();
+    const plot = typeof m.plot === "string" ? m.plot.toLowerCase() : "";
     const title = m.title.toLowerCase();
     const text = `${cats} ${plot} ${title}`;
 

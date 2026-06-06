@@ -293,6 +293,44 @@ import { resolveHistoryForPrompt } from "./historySessionStore";
  * In exploration mode (<20 ratings), ask the LLM to identify which categories/regions
  * we should explore NEXT, excluding ones already tried.
  */
+/**
+ * Analyze ratings to understand preference patterns using 20Q logic:
+ * - Which categories user loves (4-5★)
+ * - Which they avoid (1-2★)
+ * - What hypotheses to test next
+ */
+function analyzePreferenceSignals(history: RatingEntry[]): {
+  loved: Map<string, number>;
+  avoided: Map<string, number>;
+  hasSignal: boolean;
+} {
+  const lovedCats = new Map<string, number[]>();
+  const avoidedCats = new Map<string, number[]>();
+
+  for (const entry of history) {
+    if (!entry.categories?.length) continue;
+    const rating = entry.userRating;
+    for (const cat of entry.categories) {
+      if (rating >= 4) {
+        if (!lovedCats.has(cat)) lovedCats.set(cat, []);
+        lovedCats.get(cat)!.push(rating);
+      } else if (rating <= 2) {
+        if (!avoidedCats.has(cat)) avoidedCats.set(cat, []);
+        avoidedCats.get(cat)!.push(rating);
+      }
+    }
+  }
+
+  const loved = new Map(
+    [...lovedCats.entries()].map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length])
+  );
+  const avoided = new Map(
+    [...avoidedCats.entries()].map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length])
+  );
+
+  return { loved, avoided, hasSignal: loved.size > 0 };
+}
+
 async function identifyUnexploredCategories(
   history: RatingEntry[],
   triedCategories: string[],
