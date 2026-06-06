@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import FilmMusicHomeLink from "./FilmMusicHomeLink";
 
@@ -22,8 +23,14 @@ function isDarkNav(pathname: string): boolean {
 
 export default function NavBar({ hubUrl }: { hubUrl?: string }) {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const homeHref = hubUrl || "http://127.0.0.1:8000";
-  const dark = isDarkNav(pathname);
+  const dark = mounted ? isDarkNav(pathname) : pathname === "/" || pathname.startsWith("/constellations");
 
   return (
     <nav
@@ -54,7 +61,7 @@ export default function NavBar({ hubUrl }: { hubUrl?: string }) {
         <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max min-h-11 items-center gap-1 pl-2 pr-1">
             {LINKS.map(({ href, label }) => {
-              const active = pathname === href;
+              const active = mounted && pathname === href;
               return (
                 <Link
                   key={href}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import type { Channel } from "./channels/page";
 import { ALL_CHANNEL, normalizeChannel, CHANNELS_KEY, ACTIVE_CHANNEL_KEY } from "./channels/page";
-import { insertChannelAfterAll, hydrateChannelsOnLoad, normalizeChannelList } from "./lib/channelBulkActions";
+import { insertChannelAfterAll, hydrateChannelsOnLoad, normalizeChannelList, countCustomChannels } from "./lib/channelBulkActions";
 import { channelDraftFromPrompt } from "./lib/channelFromPrompt";
 import { queueNewChannelFromGraphNode } from "./lib/newChannelFromGraphNode";
 import {
@@ -381,6 +381,7 @@ const RECONSIDER_KEY = "movie-recs-reconsider";
 const TRAILER_RESUME_KEY = "movie-recs-trailer-resume-frac";
 
 function loadSetting<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
   try {
     const s = localStorage.getItem(SETTINGS_KEY);
     if (!s) return fallback;
@@ -819,6 +820,7 @@ const PrefetchQueuePanel = memo(function PrefetchQueuePanel({
   prefetchQueueUi,
   channels,
   activeChannelId,
+  mounted,
   onPlayAtIndex,
   onRemoveAtIndex,
   onCreateChannelFromMovie,
@@ -826,6 +828,7 @@ const PrefetchQueuePanel = memo(function PrefetchQueuePanel({
   prefetchQueueUi: CurrentMovie[];
   channels: Channel[];
   activeChannelId: string;
+  mounted: boolean;
   onPlayAtIndex: (index: number) => void;
   onRemoveAtIndex: (index: number) => void;
   onCreateChannelFromMovie?: (movie: MovieChannelSeedInput) => void;
@@ -836,7 +839,7 @@ const PrefetchQueuePanel = memo(function PrefetchQueuePanel({
         <h2 className="text-sm font-semibold text-zinc-100">Upcoming queue</h2>
         <span className="text-xs text-zinc-500 tabular-nums">
           {prefetchQueueUi.length} title{prefetchQueueUi.length === 1 ? "" : "s"}
-          {channels.length > 0 && activeChannelId ? (
+          {mounted && channels.length > 0 && activeChannelId ? (
             <span className="ml-1.5 inline-flex items-center gap-1 rounded-md bg-indigo-950/80 px-2 py-0.5 ring-1 ring-indigo-500/40">
               <span className="text-[10px] font-semibold uppercase tracking-wide text-indigo-300/90">Channel</span>
               <span className="font-semibold text-indigo-100">
@@ -2127,9 +2130,9 @@ export default function Home() {
   /** Home hydration (localStorage + first fetchNext) must run once; `fetchNext` in deps was re-firing the effect and popping an extra title each time its identity changed. */
   const homeHydrationEffectRanRef = useRef(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [mediaType, setMediaType] = useState<"both" | "movie" | "tv">(() => loadSetting("mediaType", "both" as const));
-  const [displayMode, setDisplayMode] = useState<"trailers" | "posters">(() => loadSetting("displayMode", "trailers" as const));
-  const [llm, setLlm] = useState<string>(() => loadSetting("llm", "deepseek"));
+  const [mediaType, setMediaType] = useState<"both" | "movie" | "tv">("both");
+  const [displayMode, setDisplayMode] = useState<"trailers" | "posters">("trailers");
+  const [llm, setLlm] = useState<string>("deepseek");
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isTrailerFullscreen, setIsTrailerFullscreen] = useState(false);
   const [pseudoTrailerFullscreen, setPseudoTrailerFullscreen] = useState(false);
@@ -2164,12 +2167,13 @@ export default function Home() {
 
   const tasteSummaryRef = useRef(tasteSummary);
 
-  const [userRequest, setUserRequest] = useState<string>(() => loadSetting("userRequest", ""));
+  const [userRequest, setUserRequest] = useState<string>("");
   const userRequestRef = useRef("");
   userRequestRef.current = userRequest;
   /** Set after first userRequest effect -- used so we only flush prefetch on real edits, not mount/import. */
   const prevUserRequestForFlushRef = useRef<string | undefined>(undefined);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [mounted, setMounted] = useState(false);
   const [factoryPackFullyMerged, setFactoryPackFullyMerged] = useState<boolean | null>(null);
   const [channelPendingDelete, setChannelPendingDelete] = useState<Channel | null>(null);
 
@@ -2458,6 +2462,10 @@ export default function Home() {
 
   useEffect(() => {
     try {
+      setMediaType(loadSetting("mediaType", "both" as const));
+      setDisplayMode(loadSetting("displayMode", "trailers" as const));
+      setLlm(loadSetting("llm", "deepseek"));
+      setUserRequest(loadSetting("userRequest", ""));
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         historyRef.current = (JSON.parse(stored) as RatingEntry[]).map(migrateRatingEntry);
@@ -2496,7 +2504,10 @@ export default function Home() {
       const activeId = storedActiveChannel || defaultChannelId;
       setActiveChannelId(activeId);
       activeChannelIdRef.current = activeId;
+      setHistoryRevision((n) => n + 1);
+      setUnseenLogRevision((n) => n + 1);
     } catch {}
+    setMounted(true);
   }, []);
 
   const saveHistory = (h: RatingEntry[]) => {
@@ -3462,7 +3473,7 @@ export default function Home() {
 
   const currentDisplayRating = useMemo(
     () =>
-      current?.title
+      mounted && current?.title
         ? getDisplayRatingForTitle(
             current.title,
             historyRef.current,
@@ -3470,7 +3481,7 @@ export default function Home() {
             loadUnseenInterestLog(),
           )
         : undefined,
-    [current?.title, historyRevision, sessionRatingsRevision, unseenLogRevision],
+    [mounted, current?.title, historyRevision, sessionRatingsRevision, unseenLogRevision],
   );
 
   const ratingCardKey = current ? `${current.title}:${cardNavSeq}` : "";
@@ -3617,10 +3628,18 @@ export default function Home() {
   );
 
   const hubUrl = process.env.NEXT_PUBLIC_HUB_URL || "http://127.0.0.1:8000";
+  const showChannelPanel = mounted && countCustomChannels(channels) > 0;
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-black px-3 py-3 sm:px-4 sm:py-5 lg:px-8 lg:py-6">
-      <div className="mx-auto flex w-full max-w-[min(100%,90rem)] flex-col gap-4 lg:grid lg:grid-cols-[minmax(14rem,22rem)_minmax(0,1fr)] lg:items-start lg:gap-x-8 lg:gap-y-0 xl:grid-cols-[minmax(15rem,24rem)_minmax(0,1fr)] xl:gap-x-12">
+      <div
+        className={`mx-auto flex w-full flex-col gap-4 ${
+          showChannelPanel
+            ? "max-w-[min(100%,90rem)] lg:grid lg:grid-cols-[minmax(14rem,22rem)_minmax(0,1fr)] lg:items-start lg:gap-x-8 lg:gap-y-0 xl:grid-cols-[minmax(15rem,24rem)_minmax(0,1fr)] xl:gap-x-12"
+            : "max-w-5xl"
+        }`}
+      >
+        {showChannelPanel && (
         <aside className="flex min-w-0 flex-col gap-2 sm:gap-3 lg:sticky lg:top-11 lg:z-10 lg:max-h-[calc(100dvh-3.5rem)] lg:self-start lg:pr-1">
           <p className="hidden text-[11px] font-semibold uppercase tracking-wide text-zinc-500 lg:block">
             Channels
@@ -3687,6 +3706,7 @@ export default function Home() {
           />
 
         </aside>
+        )}
 
         <div className="flex min-w-0 flex-col gap-4 sm:gap-5 lg:min-h-0">
         {/* Movie card */}
@@ -3889,6 +3909,7 @@ export default function Home() {
                         prefetchQueueUi={prefetchQueueUi}
                         channels={channels}
                         activeChannelId={activeChannelId}
+                        mounted={mounted}
                         onPlayAtIndex={playPrefetchAtIndex}
                         onRemoveAtIndex={removeFromPrefetchQueue}
                         onCreateChannelFromMovie={openNewChannelFromMovie}
@@ -3980,6 +4001,7 @@ export default function Home() {
                       prefetchQueueUi={prefetchQueueUi}
                       channels={channels}
                       activeChannelId={activeChannelId}
+                      mounted={mounted}
                       onPlayAtIndex={playPrefetchAtIndex}
                       onRemoveAtIndex={removeFromPrefetchQueue}
                       onCreateChannelFromMovie={openNewChannelFromMovie}

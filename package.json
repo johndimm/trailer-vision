@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS='--no-experimental-webstorage' next dev",
+    "dev:clean": "node -e \"require('node:fs').rmSync('.next',{recursive:true,force:true})\" && npm run dev",
     "prebuild": "node -e \"require('node:fs').rmSync('.next',{recursive:true,force:true})\"",
     "build": "next build",
     "start": "next start",

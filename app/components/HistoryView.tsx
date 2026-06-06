@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import { StaticStars } from "./Stars";
 import { migrateRatingValue } from "../lib/ratingScale";
 import { starDelta, formatStarDelta } from "../lib/ratingDelta";
@@ -44,14 +44,15 @@ export default function HistoryView({
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [filter, setFilter] = useState<FilterKind>("all");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [watchlistKeys, setWatchlistKeys] = useState<Set<string>>(() => new Set());
 
-  const watchlistKeys = useMemo(() => {
+  useEffect(() => {
     try {
       const wlRaw = localStorage.getItem(WATCHLIST_KEY);
       const wl: { title: string }[] = wlRaw ? JSON.parse(wlRaw) : [];
-      return new Set(wl.map((w) => canonicalTitleKey(w.title)));
+      setWatchlistKeys(new Set(wl.map((w) => canonicalTitleKey(w.title))));
     } catch {
-      return new Set<string>();
+      setWatchlistKeys(new Set());
     }
   }, [unseenLog]);
 

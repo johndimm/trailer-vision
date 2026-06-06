@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import type { WatchlistEntry } from "../page";
 import { canonicalTitleKey, entryMatchesChannel, loadUnseenInterestLog, saveUnseenInterestLog } from "../lib/unseenInterestLog";
-import { loadRatingHistory, saveRatingHistory } from "../lib/storageKeys";
+import { loadRatingHistory, saveRatingHistory, type StoredRatingEntry } from "../lib/storageKeys";
 import { Channel, normalizeChannel, ALL_CHANNEL, CHANNELS_KEY, ACTIVE_CHANNEL_KEY } from "../channels/page";
 import HistoryView from "../components/HistoryView";
+import type { UnseenInterestEntry } from "../lib/unseenInterestLog";
 
 const WATCHLIST_KEY = "movie-recs-watchlist";
 const SKIPPED_KEY = "movie-recs-skipped";
@@ -24,10 +25,11 @@ function readLlm(): string {
 export default function ChannelHistoryPage() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [history, setHistory] = useState(() => loadRatingHistory());
-  const [unseenLog, setUnseenLog] = useState(() => loadUnseenInterestLog());
+  const [history, setHistory] = useState<StoredRatingEntry[]>([]);
+  const [unseenLog, setUnseenLog] = useState<UnseenInterestEntry[]>([]);
   const [minPromoteStars, setMinPromoteStars] = useState(3.5);
   const [promoteMessage, setPromoteMessage] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -45,6 +47,7 @@ export default function ChannelHistoryPage() {
         setHistory(loadRatingHistory());
         setUnseenLog(loadUnseenInterestLog());
       } catch {}
+      setMounted(true);
     });
   }, []);
 
@@ -82,14 +85,14 @@ export default function ChannelHistoryPage() {
   }, [unseenLog, channelUnseen]);
 
   const promoteMatchCount = useMemo(() => {
-    if (!selected) return 0;
+    if (!mounted || !selected) return 0;
     try {
       const wlRaw = localStorage.getItem(WATCHLIST_KEY);
       const wl: { title: string }[] = wlRaw ? JSON.parse(wlRaw) : [];
       const keys = new Set(wl.map((w) => canonicalTitleKey(w.title)));
       return channelUnseen.filter((e) => !keys.has(canonicalTitleKey(e.title)) && e.interestStars >= minPromoteStars).length;
     } catch { return 0; }
-  }, [selected, channelUnseen, minPromoteStars]);
+  }, [mounted, selected, channelUnseen, minPromoteStars]);
 
   const addToWatchlist = useCallback(() => {
     if (!selected) return;

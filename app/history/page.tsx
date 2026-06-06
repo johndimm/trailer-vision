@@ -8,18 +8,20 @@ import {
   canUseLocalStorage,
   loadRatingHistory,
   saveRatingHistory,
+  type StoredRatingEntry,
 } from "../lib/storageKeys";
 import {
   loadUnseenInterestLog,
   saveUnseenInterestLog,
+  type UnseenInterestEntry,
 } from "../lib/unseenInterestLog";
 import { Channel, normalizeChannel, CHANNELS_KEY } from "../channels/page";
 import HistoryView from "../components/HistoryView";
 
 export default function HistoryPage() {
   const pathname = usePathname();
-  const [history, setHistory] = useState(() => loadRatingHistory());
-  const [unseenLog, setUnseenLog] = useState(() => loadUnseenInterestLog());
+  const [history, setHistory] = useState<StoredRatingEntry[]>([]);
+  const [unseenLog, setUnseenLog] = useState<UnseenInterestEntry[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [storageBlocked, setStorageBlocked] = useState(false);
