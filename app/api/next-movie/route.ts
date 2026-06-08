@@ -22,7 +22,7 @@ export interface NextMovieResponse {
   rtScore: string | null;
   reason: string | null;
   streaming: string[];
-  /** Genre/category tags returned by the LLM, e.g. ["crime thriller","gangster"] */
+  /** Genre/category tags returned by the LLM */
   categories: string[];
 }
 
@@ -38,7 +38,7 @@ interface RawItem {
   rt_score?: string | null;
   reason?: string | null;
   streaming_services?: unknown;
-  /** 2–4 short genre/category tags, e.g. ["crime thriller","gangster","neo-noir"] */
+  /** 2–4 short genre/category tags assigned by the LLM */
   categories?: string[];
 }
 
@@ -337,51 +337,7 @@ function analyzePreferenceSignals(history: RatingEntry[]): {
 }
 
 /**
- * Ask LLM to infer category hierarchy from observed categories.
- * This lets the hierarchy emerge from what the LLM actually returns, not hard-coded mappings.
- */
-async function inferCategoryHierarchy(
-  observedCategories: string[],
-  llm: string,
-): Promise<{ superCategories: string[]; specifics: Record<string, string[]> }> {
-  if (observedCategories.length === 0) {
-    return { superCategories: [], specifics: {} };
-  }
-
-  const systemPrompt = `You analyze film categories and identify their hierarchy.
-Broad categories are "super-categories" (e.g., "South Asian Cinema", "Crime Drama").
-Specific categories are refinements of those (e.g., "Bollywood musical", "Neo-noir").
-Identify which are broad and which are specific, and group specifics under their parent super-category.`;
-
-  const prompt = `Analyze these film categories and infer their hierarchy:
-${observedCategories.map(c => `- ${c}`).join("\n")}
-
-Reply ONLY with JSON:
-{
-  "superCategories": ["category1", "category2", ...],
-  "specifics": {
-    "superCategory1": ["specific1", "specific2", ...],
-    "superCategory2": ["specific3", ...]
-  }
-}`;
-
-  try {
-    const response = await callLLM(llm, systemPrompt, prompt, { maxTokens: 400 });
-    const match = response.match(/\{[\s\S]*\}/);
-    if (match) {
-      return JSON.parse(match[0]);
-    }
-  } catch (e) {
-    console.error("[inferCategoryHierarchy] error:", e);
-  }
-
-  // Fallback: treat all as super-categories if inference fails
-  return { superCategories: observedCategories, specifics: {} };
-}
-
-/**
  * Generate strategic hypotheses to test using 20Q logic.
- * If user loves "Bollywood musicals," test: is it Bollywood? musicals? the spectacle? romance?
  */
 function generateTestHypotheses(topLoved: string[]): string[] {
   if (topLoved.length === 0) return [];
@@ -432,7 +388,7 @@ async function generateHypothesisTestingPrompt(
 
   // Ask LLM to suggest variations of loved categories
   const variationHint = topLoved.length > 0
-    ? `Also explore variations within "${topLoved[0]}" that they haven't tried yet (e.g., if they like "Bollywood musicals", try "Bollywood drama" or "Bollywood romance").`
+    ? `Also explore variations within "${topLoved[0]}" that they haven't tried yet (sub-genres, adjacent eras, or same appeal from a different region).`
     : '';
 
   const systemPrompt = `You are designing strategic films to isolate which dimension of a user's taste matters most.
@@ -446,8 +402,8 @@ ${variationHint}
 
 Test these hypotheses with 5 strategic films:
 1. CONFIRM: Another example of exactly what they love (validate the pattern)
-2. ISOLATE-DIMENSION-1: Same appeal but different dimension (e.g., if they love Bollywood musicals, try non-Bollywood musical)
-3. ISOLATE-DIMENSION-2: Related but flip one key attribute (e.g., Bollywood non-musical)
+2. ISOLATE-DIMENSION-1: Same appeal but different dimension
+3. ISOLATE-DIMENSION-2: Related but flip one key attribute
 4. ISOLATE-TONE: Similar tone/emotion but different category (test if it's emotion or category)
 5. BOUNDARY-TEST: Edge case that challenges the hypothesis (what breaks the spell?)
 
@@ -455,8 +411,8 @@ For each film, explain which hypothesis it tests.
 
 Reply ONLY with JSON array:
 [
-  {"title": "Film Name", "year": 2020, "type": "movie", "hypothesis_tests": "CONFIRM: validates Bollywood masala pattern"},
-  {"title": "Film Name", "year": 2015, "type": "movie", "hypothesis_tests": "ISOLATE-DIMENSION: is it Bollywood or musicals?"},
+  {"title": "Film Name", "year": 2020, "type": "movie", "hypothesis_tests": "CONFIRM: validates the loved pattern"},
+  {"title": "Film Name", "year": 2015, "type": "movie", "hypothesis_tests": "ISOLATE-DIMENSION: is it genre or region?"},
   ...
 ]`;
 
@@ -468,58 +424,6 @@ Reply ONLY with JSON array:
   } catch (e) {
     console.error("[generateHypothesisTestingPrompt] error:", e);
     return null;
-  }
-}
-
-async function identifyUnexploredCategories(
-  history: RatingEntry[],
-  triedCategories: string[],
-  llm: string,
-): Promise<string[]> {
-  // Always produce suggestions, even with no history — start broad.
-  const triedList = triedCategories.length > 0
-    ? `Already tried these: ${triedCategories.slice(-20).join(", ")}`
-    : "Starting fresh — nothing tried yet.";
-
-  const historyContext = history.length === 0
-    ? "No ratings yet."
-    : `Recent films rated: ${history.slice(-5).map(h => `"${h.title}"`).join(", ")}`;
-
-  const systemPrompt = `You suggest underexplored film categories and regions for taste discovery. Be aggressive and specific.
-Suggest major film traditions, regions, eras, and genres that the viewer hasn't encountered yet.
-IMPORTANT: Include major global cinema traditions that are often overlooked: Bollywood, Indian cinema, Japanese anime, Korean cinema, Persian/Iranian cinema, Brazilian cinema, etc.
-Also include format suggestions: musicals, dance films, animated features, documentaries, etc.`;
-
-  const prompt = `${historyContext}
-
-${triedList}
-
-What 5-7 COMPLETELY DIFFERENT film categories, regions, eras, or traditions should we explore next?
-GOAL: Maximum diversity. Avoid anything similar to what's already been tried.
-MUST INCLUDE regional/national cinemas: Bollywood, Indian cinema, Japanese anime, Korean cinema, Brazilian cinema, Scandinavian films, etc.
-MUST INCLUDE film types: musicals, dance films, animated, documentaries, action films, etc.
-
-The viewer likely hasn't tried these major traditions yet. Pick 5-7 that are as geographically, culturally, and stylistically different as possible:
-
-Priority: Suggest regions/traditions that HAVEN'T appeared in the tried list. For example, if no Bollywood/Indian/South Asian films have been tried, suggest "Bollywood musicals" or "Indian dance films" as a TOP priority.
-
-Reply ONLY with a JSON array of 5-7 strings, in order of priority:
-["Bollywood musicals", "Japanese anime", "Korean cinema", "Brazilian cinema novo", "musicals with dance", "Scandinavian noir", "animated features"]`;
-
-  try {
-    const response = await callLLM(llm, systemPrompt, prompt, {
-      maxTokens: 300,
-    });
-    const match = response.match(/\[[\s\S]*\]/);
-    if (!match) return [];
-    const parsed = JSON.parse(match[0]) as string[];
-    return parsed
-      .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
-      .map(s => s.trim())
-      .slice(0, 7);
-  } catch (e) {
-    console.error("[identifyUnexploredCategories] error:", e);
-    return [];
   }
 }
 
@@ -592,7 +496,6 @@ export async function POST(request: Request) {
     watchlistTitles?: Array<string | { title: string; rtScore?: string | null }>;
     notInterestedItems?: Array<{ title: string; rtScore?: string | null }>;
     tasteSummary?: string;
-    diversityLens?: string;
     userRequest?: string;
     activeChannel?: ChannelPayload;
     mediaType?: "movie" | "tv" | "both";
@@ -610,12 +513,9 @@ export async function POST(request: Request) {
   const watchlistTitles = watchlistItems.map((w) => w.title);
   const notInterestedItems: { title: string; rtScore?: string | null }[] = raw.notInterestedItems ?? [];
   const existingTasteSummary = raw.tasteSummary?.trim() || null;
-  const diversityLens = raw.diversityLens?.trim() || null;
   const userRequest = raw.userRequest?.trim() || null;
   const activeChannel = raw.activeChannel ?? null;
-  const triedCategories = raw.triedCategories ?? [];
   const mediaType = raw.mediaType ?? "both";
-  // "all" is the special no-filter channel — treat it like no channel so the diversity lens applies
   const channelConstraint = (activeChannel && activeChannel.id !== "all") ? buildChannelConstraint(activeChannel, mediaType) : null;
   const llm = raw.llm ?? "deepseek";
   const countRaw = raw.count;
@@ -634,6 +534,12 @@ export async function POST(request: Request) {
   }
 
   const history = merged.history;
+  const triedCategories = [
+    ...new Set([
+      ...(raw.triedCategories ?? []),
+      ...history.flatMap((e) => e.categories ?? []),
+    ]),
+  ];
 
   const batchCount = Math.min(MAX_BATCH, Math.max(1, Math.floor(Number(countRaw) || DEFAULT_BATCH)));
 
@@ -768,7 +674,7 @@ Your job each turn:
 3. Return title, year, director, top 3-4 actors, a 1-2 sentence plot summary, Rotten Tomatoes Tomatometer when known, and a one-sentence reason explaining why this title fits the user's taste — write it in second person, addressing the user as "you" (e.g. "You rated X highly" not "The user rated X highly").
 4. For **each title** include **streaming_services**: a JSON array of US streaming platform names where the viewer can watch now — use short names: Netflix, Max, Hulu, Disney+, Apple TV+, Amazon Prime Video, Peacock, Paramount+, AMC+, STARZ, Tubi, Pluto TV. Use [] if unsure.
 5. Respond with ONLY valid JSON — no markdown, no explanation:
-{"items":[{"title":"...","type":"movie","year":1994,"director":"...","predicted_rating":3.5,"actors":["...","..."],"plot":"...","rt_score":"94%","reason":"...","streaming_services":["Netflix"],"categories":["crime thriller","gangster","neo-noir"]}]}
+{"items":[{"title":"...","type":"movie","year":1994,"director":"...","predicted_rating":3.5,"actors":["...","..."],"plot":"...","rt_score":"94%","reason":"...","streaming_services":["Netflix"],"categories":["tag1","tag2"]}]}
 
 Rules:
 - Return exactly ${batchCount} objects in "items" (unless absolutely impossible — then return as many distinct valid picks as you can)
@@ -778,20 +684,15 @@ Rules:
 - "year" is a number; "director" is a single string — if multiple directors, combine them: "A, B" (never two separate JSON values)
 - "predicted_rating" is a number from 0.5 to 5 in steps of 0.5 (half stars) — never use 0–100
 - "rt_score" is the Tomatometer percentage (e.g. "94%") or null if unknown
-- "categories" is an array of 2–4 short genre/category tags for this title (e.g. ["crime thriller","gangster","neo-noir"] or ["animated family","pixar"] or ["romantic comedy"])
+- "categories" is an array of 2–4 short genre/category tags you assign for this title
 - All string values must be on a single line — no newline characters inside strings
+- Maximize diversity across regions, eras, genres, languages, and traditions. You choose what to explore based on the rating history — the app does not prescribe categories
 - Vary genres, eras, and (if media allows) movie vs TV to calibrate faster
 - Predict honestly — vary predictions; the midpoint is not always 3
 - Taste data below is intentionally small: high-divergence ratings, low-RT wants, high-RT dismissals. Full exclusion is not listed.
 - AVOID CATEGORIES LISTED: These consistently get 1-2★ ratings, so deprioritize them in favor of new areas. But they're not absolute bans — it's okay to suggest one occasionally if it genuinely fits exploration or contrast testing. Just don't cluster them.
 - IMPORTANT: If CATEGORY PREFERENCES are provided below, treat them as the strongest signal — they show exactly what this viewer loves and avoids. Align your picks accordingly.
-- IMPORTANT: If EXPLORATION FOCUS categories are listed, every title must fit at least one of them. Do not pick films outside these categories.
 - IMPORTANT: If 20Q HYPOTHESIS TESTING is described, design films that isolate different dimensions. Each film tests whether the appeal is due to region, genre, tone, spectacle, etc. A 4★ vs 1★ rating for strategically different films teaches us which dimension matters most.`;
-
-  const diversityLensSection =
-    diversityLens && !channelConstraint && !userRequest
-      ? `DIVERSITY LENS FOR THIS BATCH (hard constraint): ${diversityLens}. Every item must fit this lens.\n\n`
-      : "";
 
   const tasteSummarySection = existingTasteSummary
     ? `RUNNING TASTE PROFILE (your summary from the previous session — treat as primary signal, refine it):
@@ -838,10 +739,10 @@ ${existingTasteSummary}
   let exploreCategoriesSection = "";
   let avoidCategoriesSection = "";
 
-  if (history.length < 20 && !channelConstraint && !userRequest && !diversityLens) {
+  if (history.length < 20 && !channelConstraint && !userRequest) {
     const { hasSignal, topLoved, avoided } = analyzePreferenceSignals(history);
 
-    // Build avoid section for categories with consistent low ratings
+    // Build avoid section for categories with consistent low ratings (tags from prior LLM responses)
     const avoidedCats = [...avoided.entries()]
       .filter(([, avg]) => avg <= 2.0)
       .sort((a, b) => a[1] - b[1])
@@ -849,18 +750,16 @@ ${existingTasteSummary}
       .map(([cat]) => cat);
 
     if (avoidedCats.length > 0) {
-      avoidCategoriesSection = `DEPRIORITIZE — these categories consistently get 1-2★. Suggest from new areas instead, but occasional recommendations from these are okay if they genuinely fit exploration or testing:
+      avoidCategoriesSection = `DEPRIORITIZE — these category tags from past picks consistently get 1-2★. Lean toward new areas, but occasional recommendations from these are okay if they genuinely fit exploration or testing:
 ${avoidedCats.map(c => `- ${c}`).join("\n")}
 
 `;
     }
 
     if (hasSignal && history.length >= 5) {
-      // PHASE 2: User has clear preferences — use 20Q hypothesis testing
       const hypothesisPromptResponse = await generateHypothesisTestingPrompt(topLoved, history, llm);
 
       if (hypothesisPromptResponse) {
-        // Try to parse and use the LLM-designed hypothesis tests
         try {
           const match = hypothesisPromptResponse.match(/\[[\s\S]*\]/);
           if (match) {
@@ -884,36 +783,13 @@ Design films that distinguish between these hypotheses. A 4★ vs 1★ result fo
             }
           }
         } catch (e) {
-          // Fallback to broad exploration if parsing fails
           console.error("[20Q parse] failed:", e);
         }
-      }
-
-      // If 20Q failed, fall back to broad exploration
-      if (!exploreCategoriesSection) {
-        const unexploredCats = await identifyUnexploredCategories(history, triedCategories, llm);
-        if (unexploredCats.length > 0) {
-          exploreCategoriesSection = `EXPLORATION FOCUS — pick films ONLY from these undiscovered categories/regions/styles:
-${unexploredCats.map(c => `- ${c}`).join("\n")}
-Every recommendation must clearly fit at least one of these categories.
-
-`;
-        }
-      }
-    } else {
-      // PHASE 1: No clear signal yet — explore broadly
-      const unexploredCats = await identifyUnexploredCategories(history, triedCategories, llm);
-      if (unexploredCats.length > 0) {
-        exploreCategoriesSection = `EXPLORATION FOCUS — pick films ONLY from these undiscovered categories/regions/styles:
-${unexploredCats.map(c => `- ${c}`).join("\n")}
-Every recommendation must clearly fit at least one of these categories.
-
-`;
       }
     }
   }
 
-  const userMessage = `${avoidCategoriesSection}${exploreCategoriesSection}${diversityLensSection}${directTitleNote}${categoryPrefsSection}${tasteSummarySection}RATED TITLES — selected for largest |user−RT| divergence, plus most recent (most informative per token):
+  const userMessage = `${avoidCategoriesSection}${exploreCategoriesSection}${directTitleNote}${categoryPrefsSection}${tasteSummarySection}RATED TITLES — selected for largest |user−RT| divergence, plus most recent (most informative per token):
 ${historyText}
 ${historyNote}
 
@@ -925,11 +801,9 @@ EXCLUSION (counts only — the app drops any repeat client-side):
 ${allExcluded.length} titles already decided (${ratedTitles.length} rated, ${watchlistTitles.length} on watchlist, ${skipped.length} skipped/dismissed). Suggest ${batchCount} diverse candidates.
 
 ${history.length < 20
-  ? `EXPLORATION MODE (${history.length} ratings so far): Analyze what the user HAS rated. What categories, regions, eras, styles, or types of films are conspicuously ABSENT from their ratings?
-${triedCategories.length > 0 ? `Already explored: ${triedCategories.join(", ")}. Do NOT suggest films from these.` : ""}
-Identify completely NEW categories/regions/styles not yet tried. Suggest ${batchCount} films from those unexplored areas to help them discover what they like.
-Focus on areas they haven't encountered yet, not on what they've already seen.`
-  : `Analyze all signals above and pick ${batchCount} titles that will confirm or usefully challenge your model of their taste.`}`;
+  ? `EXPLORATION MODE (${history.length} ratings so far): Study the rated titles and category tags below. Each pick in this batch should explore a different area of cinema — regions, eras, genres, languages, traditions — that is underrepresented in their history so far. You decide which dimensions to vary; spread the batch wide and avoid clustering on one tradition.
+${triedCategories.length > 0 ? `Category tags already attached to rated titles: ${triedCategories.join(", ")}. Prefer fresh areas not yet represented there.` : ""}`
+  : `Analyze all signals above and pick ${batchCount} titles that will confirm or usefully challenge your model of their taste. Spread picks across disparate areas of cinema unless channel or user constraints say otherwise.`}`;
 
 
   // Set NEXT_MOVIE_LOG_LLM_PROMPTS=1 in .env.local to re-enable prompt logging when debugging.

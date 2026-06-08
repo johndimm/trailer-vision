@@ -57,7 +57,6 @@ Request body:
 - watchlistTitles: { title, rtScore }[] — want-to-watch entries with RT score
 - notInterestedItems: { title, rtScore }[] — not-interested entries with RT score
 - tasteSummary?: string — the running taste profile (used as primary signal context)
-- diversityLens?: string — e.g. "films from the 1970s" or "South Korean cinema"
 - userRequest?: string — free-text user request appended to system prompt as a hard steer
 - mediaType: "movie" | "tv" | "both"
 - llm: "deepseek" | "claude" | "gpt-4o" | "gemini"
@@ -71,16 +70,13 @@ entries for freshness. Want-to-watch lists only low-RT saves (<60%). Not-interes
 only high-RT dismissals (≥70%). Full exclusion title lists are NOT sent — counts only.
 The client dedupes returned titles against its own excluded set.
 
-Diversity lens: each batch carries a hard constraint ("DIVERSITY LENS FOR THIS BATCH: …")
-that forces the LLM to explore a specific corner of cinema — a decade, world region, or
-genre. 24 lenses rotate across batches so concurrent requests explore different areas.
-This prevents the LLM from defaulting to the same ~300 popular titles.
+Diversity: the LLM is instructed to spread each batch across disparate areas of cinema
+(regions, eras, genres, languages, traditions) based on rating history. The app does not
+prescribe which categories to explore — only the user request field and channel constraints
+steer picks when set.
 
-User request: if userRequest is non-empty, replace the diversity lens entirely with:
-"USER REQUEST — HARD CONSTRAINT: The user has asked for '<request>'. Every single
-item you return MUST match this request. Do not return anything outside this category."
-When userRequest is empty, the diversity lens is used as normal.
-When userRequest changes on the client, flush the prefetch queue (debounced 600ms).
+User request: if userRequest is non-empty, it is appended as a hard constraint in the
+system prompt. When userRequest changes on the client, flush the prefetch queue (debounced 600ms).
 
 The model returns ONLY valid JSON:
 { "items": [ { title, type, year, director, predicted_rating, actors[], plot, rt_score }, ... ] }
@@ -129,8 +125,6 @@ Empty-queue fallback: reset zeroYieldStreak, kick off a replenish if nothing is 
 then poll every 200ms until a card arrives or 90s elapse. Show error pill if nothing found.
 
 On failure, show a friendly error pill with a Retry button.
-
-lensIndexRef increments on every replenish call so concurrent batches get different lenses.
 
 ## Star rating system
 Half-star precision on 1–5. Trailer and poster layouts use the same interaction model.
@@ -263,7 +257,7 @@ Segmented control: Trailers | Posters (displayMode state, default "trailers").
 When "posters" is selected, always use the poster layout even if trailerKey is available.
 
 User request text input: full-width input below the segmented controls.
-Placeholder: 'Request something specific… e.g. "French cinema" or "slow-burn thrillers"'.
+Placeholder: 'Request something specific… free text only, no preset categories'.
 Shows a × clear button when non-empty. Value is read from a ref (userRequestRef) at
 fetch time so background replenish calls always use the latest text.
 When the value changes, flush the prefetch queue after a 600ms debounce so upcoming
