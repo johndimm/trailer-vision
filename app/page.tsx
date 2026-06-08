@@ -3515,7 +3515,7 @@ export default function Home() {
     setSeenStatusByCard((prev) => (prev[key] === v ? prev : { ...prev, [key]: v }));
     const p = pendingRatingRef.current;
     if (displayMode === "posters" && p && p.stars > 0) {
-      const mode = v === "unseen" ? "unseen" : "seen";
+      const mode: "seen" | "unseen" = v === "unseen" ? "unseen" : "seen";
       const next = { stars: p.stars, mode };
       pendingRatingRef.current = next;
       setPendingRating(next);
