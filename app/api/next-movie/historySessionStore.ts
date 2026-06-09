@@ -1,3 +1,5 @@
+import type { CategoryTree } from "../../lib/categoryTree";
+
 /** Same shape as RatingEntry in route.ts — kept here to avoid circular imports */
 export interface SessionRatingEntry {
   title: string;
@@ -7,9 +9,14 @@ export interface SessionRatingEntry {
   error?: number;
   rtScore?: string | null;
   categories?: string[];
+  categoryPaths?: Array<{ dimension: string; super: string; leaf?: string | null }>;
 }
 
-type SessionData = { history: SessionRatingEntry[]; updatedAt: number };
+type SessionData = {
+  history: SessionRatingEntry[];
+  categoryTree?: CategoryTree | null;
+  updatedAt: number;
+};
 
 const TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_SESSIONS = 2000;
@@ -44,10 +51,39 @@ export function getSessionHistory(sessionId: string): SessionRatingEntry[] | nul
   return d.history;
 }
 
+export function getSessionCategoryTree(sessionId: string): CategoryTree | null {
+  const map = sessions();
+  const d = map.get(sessionId);
+  if (!d) return null;
+  if (Date.now() - d.updatedAt > TTL_MS) {
+    map.delete(sessionId);
+    return null;
+  }
+  return d.categoryTree ?? null;
+}
+
+export function saveSessionCategoryTree(sessionId: string, tree: CategoryTree) {
+  const now = Date.now();
+  prune(now);
+  const map = sessions();
+  const prev = map.get(sessionId);
+  map.set(sessionId, {
+    history: prev?.history ?? [],
+    categoryTree: tree,
+    updatedAt: now,
+  });
+}
+
 function saveSession(sessionId: string, history: SessionRatingEntry[]) {
   const now = Date.now();
   prune(now);
-  sessions().set(sessionId, { history, updatedAt: now });
+  const map = sessions();
+  const prev = map.get(sessionId);
+  map.set(sessionId, {
+    history,
+    categoryTree: prev?.categoryTree ?? null,
+    updatedAt: now,
+  });
 }
 
 export type MergeResult =

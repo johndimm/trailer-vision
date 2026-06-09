@@ -1,3 +1,20 @@
+import type { CategoryPath, CategoryTree } from "../../lib/categoryTree";
+import {
+  buildChannelTreeTaggingSection,
+  buildRoundOneSlots,
+  buildTreeExplorationSection,
+  formatRoundOneSlotRequirements,
+  formatSlotValidationFeedback,
+  formatTreeForPrompt,
+  generateCategoryTree,
+  resolveTreeForPreference,
+  parseCategoryPathsFromRaw,
+  pathsToDisplayCategories,
+  superKey,
+  validateBatchAgainstSlots,
+} from "../../lib/categoryTree";
+import { getSessionCategoryTree, saveSessionCategoryTree } from "./historySessionStore";
+
 export interface RatingEntry {
   title: string;
   type: "movie" | "tv";
@@ -6,6 +23,7 @@ export interface RatingEntry {
   predictedRating: number;
   rtScore?: string | null;
   categories?: string[];
+  categoryPaths?: CategoryPath[];
 }
 
 
@@ -24,6 +42,8 @@ export interface NextMovieResponse {
   streaming: string[];
   /** Genre/category tags returned by the LLM */
   categories: string[];
+  /** Hierarchical paths in the session category tree */
+  categoryPaths: CategoryPath[];
 }
 
 /** One entry inside the LLM "items" array — snake_case from model output */
@@ -40,6 +60,7 @@ interface RawItem {
   streaming_services?: unknown;
   /** 2–4 short genre/category tags assigned by the LLM */
   categories?: string[];
+  category_paths?: unknown;
 }
 
 import {
@@ -301,16 +322,20 @@ import { resolveHistoryForPrompt } from "./historySessionStore";
 function analyzePreferenceSignals(history: RatingEntry[]): {
   loved: Map<string, number>;
   avoided: Map<string, number>;
+  /** Tags that ever scored 3+ — never deprioritize these after a single low rating elsewhere */
+  warmTags: Set<string>;
   hasSignal: boolean;
   topLoved: string[];
 } {
   const lovedCats = new Map<string, number[]>();
   const avoidedCats = new Map<string, number[]>();
+  const warmTags = new Set<string>();
 
   for (const entry of history) {
     if (!entry.categories?.length) continue;
     const rating = entry.userRating;
     for (const cat of entry.categories) {
+      if (rating >= 3) warmTags.add(cat);
       if (rating >= 4) {
         if (!lovedCats.has(cat)) lovedCats.set(cat, []);
         lovedCats.get(cat)!.push(rating);
@@ -333,7 +358,7 @@ function analyzePreferenceSignals(history: RatingEntry[]): {
     .slice(0, 5)
     .map(([cat]) => cat);
 
-  return { loved, avoided, hasSignal: loved.size > 0, topLoved };
+  return { loved, avoided, warmTags, hasSignal: loved.size > 0, topLoved };
 }
 
 /**
@@ -502,6 +527,10 @@ export async function POST(request: Request) {
     llm?: string;
     count?: number;
     triedCategories?: string[];
+    /** CLI taste tests: skip TMDB poster/trailer enrichment (avoids YouTube API calls). */
+    skipAssets?: boolean;
+    /** Session taxonomy — generated once per session if omitted */
+    categoryTree?: CategoryTree;
   };
 
   const skipped = raw.skipped ?? [];
@@ -519,6 +548,7 @@ export async function POST(request: Request) {
   const channelConstraint = (activeChannel && activeChannel.id !== "all") ? buildChannelConstraint(activeChannel, mediaType) : null;
   const llm = raw.llm ?? "deepseek";
   const countRaw = raw.count;
+  const skipAssets = raw.skipAssets === true;
 
   const merged = resolveHistoryForPrompt(raw.sessionId, raw.historySync, {
     history: raw.history,
@@ -538,6 +568,35 @@ export async function POST(request: Request) {
     ...new Set([
       ...(raw.triedCategories ?? []),
       ...history.flatMap((e) => e.categories ?? []),
+    ]),
+  ];
+
+  let categoryTree: CategoryTree | null =
+    raw.categoryTree ?? (raw.sessionId ? getSessionCategoryTree(raw.sessionId) : null) ?? null;
+
+  if (!categoryTree) {
+    try {
+      if (!channelConstraint && !userRequest) {
+        categoryTree = await generateCategoryTree(llm);
+      } else if (channelConstraint && activeChannel) {
+        const anchor = activeChannel.freeText.trim() || activeChannel.name.trim();
+        if (anchor) {
+          const base = await generateCategoryTree(llm, { anchorPreference: anchor });
+          const resolved = await resolveTreeForPreference(base, anchor, llm);
+          categoryTree = resolved.tree;
+        }
+      }
+      if (categoryTree && raw.sessionId) saveSessionCategoryTree(raw.sessionId, categoryTree);
+    } catch (e) {
+      console.error("[next-movie] category tree generation failed:", e);
+    }
+  } else if (categoryTree && raw.sessionId && raw.categoryTree) {
+    saveSessionCategoryTree(raw.sessionId, categoryTree);
+  }
+
+  const triedSuperKeys = [
+    ...new Set([
+      ...history.flatMap((e) => (e.categoryPaths ?? []).map(superKey)),
     ]),
   ];
 
@@ -577,6 +636,7 @@ export async function POST(request: Request) {
               reason: null,
               streaming: [],
               categories: [],
+              categoryPaths: [],
             };
             console.log(
               `[next-movie] direct TMDB lookup for "${directPrompt}" → "${resolved.title}" (trailer=${resolved.trailerKey ? "yes" : "no"})`,
@@ -674,7 +734,7 @@ Your job each turn:
 3. Return title, year, director, top 3-4 actors, a 1-2 sentence plot summary, Rotten Tomatoes Tomatometer when known, and a one-sentence reason explaining why this title fits the user's taste — write it in second person, addressing the user as "you" (e.g. "You rated X highly" not "The user rated X highly").
 4. For **each title** include **streaming_services**: a JSON array of US streaming platform names where the viewer can watch now — use short names: Netflix, Max, Hulu, Disney+, Apple TV+, Amazon Prime Video, Peacock, Paramount+, AMC+, STARZ, Tubi, Pluto TV. Use [] if unsure.
 5. Respond with ONLY valid JSON — no markdown, no explanation:
-{"items":[{"title":"...","type":"movie","year":1994,"director":"...","predicted_rating":3.5,"actors":["...","..."],"plot":"...","rt_score":"94%","reason":"...","streaming_services":["Netflix"],"categories":["tag1","tag2"]}]}
+{"items":[{"title":"...","type":"movie","year":1994,"director":"...","predicted_rating":3.5,"actors":["...","..."],"plot":"...","rt_score":"94%","reason":"...","streaming_services":["Netflix"],"categories":["tag1","tag2"],"category_paths":[{"dimension":"region","super":"south_asian","leaf":"bollywood musical"}]}]}
 
 Rules:
 - Return exactly ${batchCount} objects in "items" (unless absolutely impossible — then return as many distinct valid picks as you can)
@@ -685,6 +745,7 @@ Rules:
 - "predicted_rating" is a number from 0.5 to 5 in steps of 0.5 (half stars) — never use 0–100
 - "rt_score" is the Tomatometer percentage (e.g. "94%") or null if unknown
 - "categories" is an array of 2–4 short genre/category tags you assign for this title
+- "category_paths" is an array of 1–3 objects {dimension, super, leaf} from the SESSION CATEGORY TREE when one is provided — required in exploration mode
 - All string values must be on a single line — no newline characters inside strings
 - Maximize diversity across regions, eras, genres, languages, and traditions. You choose what to explore based on the rating history — the app does not prescribe categories
 - Vary genres, eras, and (if media allows) movie vs TV to calibrate faster
@@ -739,12 +800,20 @@ ${existingTasteSummary}
   let exploreCategoriesSection = "";
   let avoidCategoriesSection = "";
 
-  if (history.length < 20 && !channelConstraint && !userRequest) {
-    const { hasSignal, topLoved, avoided } = analyzePreferenceSignals(history);
+  if (history.length < 20 && channelConstraint && categoryTree) {
+    exploreCategoriesSection = `${buildChannelTreeTaggingSection(categoryTree)}
 
-    // Build avoid section for categories with consistent low ratings (tags from prior LLM responses)
+`;
+  } else if (history.length < 20 && !channelConstraint && !userRequest) {
+    const { avoided, warmTags } = analyzePreferenceSignals(history);
+
     const avoidedCats = [...avoided.entries()]
-      .filter(([, avg]) => avg <= 2.0)
+      .filter(([cat, avg]) => {
+        const lows = history.filter(
+          (e) => e.userRating <= 2 && e.categories?.includes(cat),
+        ).length;
+        return lows >= 2 && avg <= 2.0 && !warmTags.has(cat);
+      })
       .sort((a, b) => a[1] - b[1])
       .slice(0, 5)
       .map(([cat]) => cat);
@@ -756,7 +825,12 @@ ${avoidedCats.map(c => `- ${c}`).join("\n")}
 `;
     }
 
-    if (hasSignal && history.length >= 5) {
+    if (categoryTree) {
+      exploreCategoriesSection = `${buildTreeExplorationSection(categoryTree, history, batchCount, triedSuperKeys)}
+
+`;
+    } else if (history.length >= 5) {
+      const { topLoved } = analyzePreferenceSignals(history);
       const hypothesisPromptResponse = await generateHypothesisTestingPrompt(topLoved, history, llm);
 
       if (hypothesisPromptResponse) {
@@ -789,7 +863,20 @@ Design films that distinguish between these hypotheses. A 4★ vs 1★ result fo
     }
   }
 
-  const userMessage = `${avoidCategoriesSection}${exploreCategoriesSection}${directTitleNote}${categoryPrefsSection}${tasteSummarySection}RATED TITLES — selected for largest |user−RT| divergence, plus most recent (most informative per token):
+  const channelLockSection = channelConstraint
+    ? `CHANNEL LOCK: All ${batchCount} titles MUST satisfy the channel requirements above. Stay within the requested style, era, and region — vary specific titles and filmmakers, not the genre. Do not wander outside the channel for "variety".\n\n`
+    : "";
+
+  const channelFirstTurnSection =
+    channelConstraint && history.length === 0
+      ? `FIRST TURN: All ${batchCount} titles must fit the channel. Pick well-known, on-target exemplars (canonical films for this taste — not adjacent genres). Tag category_paths from the tree above when provided.\n\n`
+      : "";
+
+  const batchAskLine = channelConstraint
+    ? `Suggest ${batchCount} on-channel candidates (vary specific titles and filmmakers, not genre or era).`
+    : `Suggest ${batchCount} diverse candidates.`;
+
+  const userMessage = `${avoidCategoriesSection}${exploreCategoriesSection}${channelLockSection}${channelFirstTurnSection}${directTitleNote}${categoryPrefsSection}${tasteSummarySection}RATED TITLES — selected for largest |user−RT| divergence, plus most recent (most informative per token):
 ${historyText}
 ${historyNote}
 
@@ -798,10 +885,14 @@ Want to watch despite LOW RT (below ${LOW_RT_THRESHOLD}%): ${lowRtWantText}
 Not interested despite HIGH RT (${HIGH_RT_THRESHOLD}%+): ${highRtSkipText}
 
 EXCLUSION (counts only — the app drops any repeat client-side):
-${allExcluded.length} titles already decided (${ratedTitles.length} rated, ${watchlistTitles.length} on watchlist, ${skipped.length} skipped/dismissed). Suggest ${batchCount} diverse candidates.
+${allExcluded.length} titles already decided (${ratedTitles.length} rated, ${watchlistTitles.length} on watchlist, ${skipped.length} skipped/dismissed). ${batchAskLine}
 
 ${history.length < 20
-  ? `EXPLORATION MODE (${history.length} ratings so far): Study the rated titles and category tags below. Each pick in this batch should explore a different area of cinema — regions, eras, genres, languages, traditions — that is underrepresented in their history so far. You decide which dimensions to vary; spread the batch wide and avoid clustering on one tradition.
+  ? channelConstraint
+    ? `CHANNEL MODE (${history.length} ratings): Every pick must fit the channel. Tag every item with category_paths from the tree above when provided.${history.length === 0 ? " Round 1: prioritize famous exemplars of this exact taste." : ""}`
+    : categoryTree
+      ? `EXPLORATION MODE (${history.length} ratings): Follow the SESSION CATEGORY TREE and 20Q instructions above. Tag every item with category_paths.`
+      : `EXPLORATION MODE (${history.length} ratings so far): Study the rated titles and category tags below. Each pick in this batch should explore a different area of cinema — regions, eras, genres, languages, traditions — that is underrepresented in their history so far. You decide which dimensions to vary; spread the batch wide and avoid clustering on one tradition.
 ${triedCategories.length > 0 ? `Category tags already attached to rated titles: ${triedCategories.join(", ")}. Prefer fresh areas not yet represented there.` : ""}`
   : `Analyze all signals above and pick ${batchCount} titles that will confirm or usefully challenge your model of their taste. Spread picks across disparate areas of cinema unless channel or user constraints say otherwise.`}`;
 
@@ -819,80 +910,149 @@ ${triedCategories.length > 0 ? `Category tags already attached to rated titles: 
     console.log("[next-movie] --- user message ---\n" + userMessage);
   }
 
-  let text: string;
-  const llmStart = Date.now();
-  try {
-    text = await callLLM(llm, systemPrompt, userMessage, {
-      maxTokens: LLM_OUTPUT_MAX_TOKENS,
-      systemPromptContext,
-    });
-    const llmMs = Date.now() - llmStart;
-    console.log(`[next-movie] LLM done (${llm}) in ${(llmMs / 1000).toFixed(1)}s — output ${text.length} chars`);
-  } catch (err) {
-    const llmMs = Date.now() - llmStart;
-    console.error(`[next-movie] LLM failed (${llm}) after ${(llmMs / 1000).toFixed(1)}s:`, err);
-    return Response.json({ error: String(err) }, { status: 500 });
+  const roundOneSlots =
+    categoryTree && history.length === 0 && !channelConstraint && !userRequest
+      ? buildRoundOneSlots(categoryTree, batchCount, triedSuperKeys)
+      : null;
+
+  function normalizeRawItems(rawItems: RawItem[]): NextMovieResponse[] {
+    const seenKeys = new Set<string>();
+    const out: NextMovieResponse[] = [];
+
+    for (const raw of rawItems) {
+      if (!raw?.title || (raw.type !== "movie" && raw.type !== "tv")) continue;
+      const cleanedTitle = sanitizeLlmMovieTitle(raw.title, titlePrefixCandidates);
+      if (!cleanedTitle) continue;
+      const key = cleanedTitle.toLowerCase();
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+
+      const categoryPaths = parseCategoryPathsFromRaw(raw.category_paths);
+      const flatCategories = Array.isArray(raw.categories)
+        ? (raw.categories as unknown[]).filter((s): s is string => typeof s === "string" && !!s.trim()).map((s) => s.toLowerCase())
+        : [];
+      const categories =
+        flatCategories.length > 0 ? flatCategories : pathsToDisplayCategories(categoryPaths);
+
+      out.push({
+        title: cleanedTitle,
+        type: raw.type,
+        year: raw.year ?? null,
+        director: raw.director ?? null,
+        predictedRating: normalizePredictedRating(raw.predicted_rating, 3),
+        actors: raw.actors ?? [],
+        plot: raw.plot ?? "",
+        posterUrl: null,
+        trailerKey: null,
+        rtScore: raw.rt_score ?? null,
+        reason: raw.reason?.trim() || null,
+        streaming: Array.isArray(raw.streaming_services)
+          ? (raw.streaming_services as unknown[]).filter((s): s is string => typeof s === "string" && !!s.trim())
+          : [],
+        categories,
+        categoryPaths,
+      });
+    }
+    return out;
   }
 
-  const fallbackObjects = extractAllJsonObjects(stripMarkdownJsonFence(text));
+  let normalized: NextMovieResponse[] = [];
+  let userMessageForLlm = userMessage;
+  const maxAttempts = roundOneSlots?.length ? 3 : 1;
 
-  let rawItems: RawItem[];
-  try {
-    rawItems = parseLlmResponse(text, fallbackObjects).items;
-  } catch (e) {
-    console.error(
-      "Failed to parse LLM response as JSON:",
-      e,
-      "\n--- response preview ---\n",
-      text.slice(0, 1200),
-      text.length > 1200 ? "\n...(truncated log)" : ""
-    );
-    return Response.json({ error: "Failed to parse response", raw: text.slice(0, 2000) }, { status: 500 });
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let text: string;
+    const llmStart = Date.now();
+    try {
+      text = await callLLM(llm, systemPrompt, userMessageForLlm, {
+        maxTokens: LLM_OUTPUT_MAX_TOKENS,
+        systemPromptContext,
+      });
+      const llmMs = Date.now() - llmStart;
+      console.log(
+        `[next-movie] LLM done (${llm}) in ${(llmMs / 1000).toFixed(1)}s — output ${text.length} chars${attempt > 1 ? ` (attempt ${attempt})` : ""}`,
+      );
+    } catch (err) {
+      const llmMs = Date.now() - llmStart;
+      console.error(`[next-movie] LLM failed (${llm}) after ${(llmMs / 1000).toFixed(1)}s:`, err);
+      return Response.json({ error: String(err) }, { status: 500 });
+    }
+
+    const fallbackObjects = extractAllJsonObjects(stripMarkdownJsonFence(text));
+
+    let rawItems: RawItem[];
+    try {
+      rawItems = parseLlmResponse(text, fallbackObjects).items;
+    } catch (e) {
+      console.error(
+        "Failed to parse LLM response as JSON:",
+        e,
+        "\n--- response preview ---\n",
+        text.slice(0, 1200),
+        text.length > 1200 ? "\n...(truncated log)" : ""
+      );
+      return Response.json({ error: "Failed to parse response", raw: text.slice(0, 2000) }, { status: 500 });
+    }
+
+    normalized = normalizeRawItems(rawItems);
+
+    if (!roundOneSlots?.length || attempt === maxAttempts) break;
+
+    const validation = validateBatchAgainstSlots(normalized, roundOneSlots);
+    if (validation.ok) break;
+
+    console.warn(`[next-movie] round-1 slot validation failed (attempt ${attempt}):`, validation.failures);
+    userMessageForLlm = `${userMessage}\n\n${formatSlotValidationFeedback(validation.failures, roundOneSlots)}`;
   }
 
-  const seenKeys = new Set<string>();
-  const normalized: NextMovieResponse[] = [];
+  if (roundOneSlots?.length && categoryTree && normalized.length > 0) {
+    const finalValidation = validateBatchAgainstSlots(normalized, roundOneSlots);
+    if (!finalValidation.ok) {
+      console.warn("[next-movie] round-1 batch invalid after retries — per-slot fallback");
+      const slotPicks: NextMovieResponse[] = [];
+      for (const slot of roundOneSlots) {
+        const slotUserMessage = `${formatTreeForPrompt(categoryTree)}
 
-  for (const raw of rawItems) {
-    if (!raw?.title || (raw.type !== "movie" && raw.type !== "tv")) continue;
-    const cleanedTitle = sanitizeLlmMovieTitle(raw.title, titlePrefixCandidates);
-    if (!cleanedTitle) continue;
-    const key = cleanedTitle.toLowerCase();
-    if (seenKeys.has(key)) continue;
-    seenKeys.add(key);
+${formatRoundOneSlotRequirements([slot])}
 
-    normalized.push({
-      title: cleanedTitle,
-      type: raw.type,
-      year: raw.year ?? null,
-      director: raw.director ?? null,
-      predictedRating: normalizePredictedRating(raw.predicted_rating, 3),
-      actors: raw.actors ?? [],
-      plot: raw.plot ?? "",
-      posterUrl: null,
-      trailerKey: null,
-      rtScore: raw.rt_score ?? null,
-      reason: raw.reason?.trim() || null,
-      streaming: Array.isArray(raw.streaming_services)
-        ? (raw.streaming_services as unknown[]).filter((s): s is string => typeof s === "string" && !!s.trim())
-        : [],
-      categories: Array.isArray(raw.categories)
-        ? (raw.categories as unknown[]).filter((s): s is string => typeof s === "string" && !!s.trim()).map(s => s.toLowerCase())
-        : [],
-    });
+Return exactly 1 object in "items". Choose a well-known real film/TV title that genuinely belongs in this slot.`;
+        try {
+          const slotText = await callLLM(llm, systemPrompt, slotUserMessage, {
+            maxTokens: 900,
+            systemPromptContext,
+          });
+          const slotRaw = parseLlmResponse(
+            slotText,
+            extractAllJsonObjects(stripMarkdownJsonFence(slotText)),
+          ).items;
+          const slotNorm = normalizeRawItems(slotRaw);
+          if (slotNorm[0]) slotPicks.push(slotNorm[0]);
+        } catch (err) {
+          console.warn(`[next-movie] round-1 slot ${slot.slot} fallback failed:`, err);
+        }
+      }
+      if (slotPicks.length >= Math.ceil(roundOneSlots.length / 2)) {
+        normalized = slotPicks;
+      }
+    }
   }
 
   if (normalized.length === 0) {
-    console.error("LLM returned no valid items:", text);
-    return Response.json({ error: "No valid titles in response", raw: text }, { status: 500 });
+    console.error("LLM returned no valid items");
+    return Response.json({ error: "No valid titles in response" }, { status: 500 });
   }
 
-  const assets = await Promise.all(
-    normalized.map((m) => fetchTmdbAssets(m.title, m.type, m.year, m.director)),
-  );
-  for (let i = 0; i < normalized.length; i++) {
-    normalized[i] = { ...normalized[i], posterUrl: assets[i].posterUrl, trailerKey: assets[i].trailerKey };
+  if (!skipAssets) {
+    const assets = await Promise.all(
+      normalized.map((m) => fetchTmdbAssets(m.title, m.type, m.year, m.director)),
+    );
+    for (let i = 0; i < normalized.length; i++) {
+      normalized[i] = { ...normalized[i], posterUrl: assets[i].posterUrl, trailerKey: assets[i].trailerKey };
+    }
   }
 
-  return Response.json({ movies: normalized });
+  return Response.json({
+    movies: normalized,
+    categoryTree: categoryTree ?? undefined,
+  });
 }

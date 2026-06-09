@@ -14,6 +14,7 @@ import {
 import type { MovieChannelSeedInput } from "./lib/movieToChannelSeeds";
 import RTBadge from "./components/RTBadge";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import type { CategoryTree } from "./lib/categoryTree";
 import { clampStarRating, migrateRatingValue } from "./lib/ratingScale";
 import {
   LEGACY_PREFETCH_QUEUE_KEY,
@@ -188,6 +189,7 @@ export interface RatingEntry {
   presentedAt?: string;
   /** Genre/category tags assigned by the LLM at recommendation time */
   categories?: string[];
+  categoryPaths?: Array<{ dimension: string; super: string; leaf?: string | null }>;
 }
 
 function getHistoryEntryForTitle(hist: RatingEntry[], title: string): RatingEntry | undefined {
@@ -239,6 +241,7 @@ interface CurrentMovie {
   reason: string | null;
   streaming?: string[];
   categories?: string[];
+  categoryPaths?: Array<{ dimension: string; super: string; leaf?: string | null }>;
 }
 
 export interface WatchlistEntry {
@@ -463,8 +466,6 @@ const StarRow = memo(function StarRow({
 
 /** Auto-hide fullscreen chrome after idle (YouTube-style). */
 const FULLSCREEN_CONTROLS_HIDE_MS = 4000;
-/** Pause after star tap so red/blue fill is visible before auto-advance (trailers only). */
-const RATING_ADVANCE_DELAY_MS = 900;
 
 /** Compact Seen it / Not yet toggle for fullscreen toolbar (matches normal-mode radios). */
 const SeenModeSegment = memo(function SeenModeSegment({
@@ -872,8 +873,9 @@ const PrefetchQueuePanel = memo(function PrefetchQueuePanel({
                     {m.type === "tv" ? "TV" : "Film"}
                   </span>
                 </div>
+                <MovieCategoryTags categories={m.categories} className="pl-7 mt-1" />
                 {m.reason && (
-                  <p className="text-xs text-zinc-400 line-clamp-2 pl-7">{m.reason}</p>
+                  <p className="text-xs text-zinc-400 line-clamp-2 pl-7 mt-1">{m.reason}</p>
                 )}
               </div>
               <button
@@ -1195,6 +1197,23 @@ function PersonLink({
   );
 }
 
+/** LLM-assigned category tags for a recommended title. */
+function MovieCategoryTags({ categories, className = "" }: { categories?: string[]; className?: string }) {
+  if (!categories?.length) return null;
+  return (
+    <div className={`flex flex-wrap gap-1.5 ${className}`.trim()}>
+      {categories.map((c) => (
+        <span
+          key={c}
+          className="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-950/55 text-violet-200 border border-violet-800/45"
+        >
+          {c}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /** Trailer layout: title block only -- isolated from rating state. */
 const TrailerMetadata = memo(function TrailerMetadata({
   movie,
@@ -1222,6 +1241,7 @@ const TrailerMetadata = memo(function TrailerMetadata({
         onCreateChannel={onCreateChannelFromMovie}
         headingClassName="text-2xl font-bold text-white mt-1 leading-tight w-full min-w-0 break-words"
       />
+      <MovieCategoryTags categories={movie.categories} className="mt-2" />
       {movie.director && (
         <p className="mt-1 text-sm text-zinc-300">
           <span className="text-zinc-400">{movie.type === "tv" ? "Created by" : "Dir."}</span>{" "}
@@ -1335,6 +1355,7 @@ const PosterMovieTop = memo(function PosterMovieTop({
           onCreateChannel={onCreateChannelFromMovie}
           headingClassName="text-xl sm:text-2xl font-bold text-white mt-0.5 leading-tight w-full min-w-0 break-words"
         />
+        <MovieCategoryTags categories={movie.categories} className="mt-2" />
         {movie.director && (
           <p className="mt-1 text-sm text-zinc-300">
             <span className="text-zinc-400">{movie.type === "tv" ? "Created by" : "Dir."}</span>{" "}
@@ -1662,6 +1683,7 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
   previousRating,
   previousMode,
   ratingResetKey,
+  pendingStars,
   prevNav,
   careerNextDisabled,
 }: {
@@ -1677,6 +1699,7 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
   previousRating?: number;
   previousMode?: "seen" | "unseen";
   ratingResetKey?: string;
+  pendingStars?: number;
   prevNav: { onPass: () => void; disabled: boolean } | null;
   careerNextDisabled: boolean;
 }) {
@@ -1768,6 +1791,8 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
         watchFrac={watchFrac}
         seenStatus={seenStatus}
         onSeenStatusChange={onSeenStatusChange}
+        lockStarsOnRate={false}
+        pendingStars={pendingStars}
         previousRating={previousRating}
         previousMode={previousMode}
         ratingResetKey={ratingResetKey}
@@ -2109,8 +2134,6 @@ export default function Home() {
   const [pendingRating, setPendingRating] = useState<{ stars: number; mode: "seen" | "unseen" } | null>(null);
   const pendingRatingRef = useRef(pendingRating);
   pendingRatingRef.current = pendingRating;
-  /** Delayed advance after star rating -- cleared if user uses Next or queue before it fires. */
-  const advanceAfterRatingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Home hydration (localStorage + first fetchNext) must run once; `fetchNext` in deps was re-firing the effect and popping an extra title each time its identity changed. */
   const homeHydrationEffectRanRef = useRef(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -2150,6 +2173,7 @@ export default function Home() {
   const batchYieldRef = useRef<number[]>([]); // rolling yield fractions (fresh / requested)
 
   const tasteSummaryRef = useRef(tasteSummary);
+  const categoryTreeRef = useRef<CategoryTree | null>(null);
 
   const [userRequest, setUserRequest] = useState<string>("");
   const userRequestRef = useRef("");
@@ -2418,6 +2442,7 @@ export default function Home() {
       watchFrac: 0,
       presentedAt: new Date().toISOString(),
       categories: current.categories?.length ? current.categories : undefined,
+      categoryPaths: current.categoryPaths?.length ? current.categoryPaths : undefined,
     };
     saveHistory([...historyRef.current, entry]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2573,6 +2598,7 @@ export default function Home() {
             mediaType: opts.mediaType,
             llm: opts.llm,
             count: LLM_BATCH_SIZE,
+            categoryTree: categoryTreeRef.current ?? undefined,
           }),
         });
         if (res.status === 409) {
@@ -2581,7 +2607,8 @@ export default function Home() {
         }
         if (!res.ok) continue;
         setSyncedRatingCount(historyRef.current.length);
-        const data = (await res.json()) as { movies?: CurrentMovie[] };
+        const data = (await res.json()) as { movies?: CurrentMovie[]; categoryTree?: CategoryTree };
+        if (data.categoryTree) categoryTreeRef.current = data.categoryTree;
         const movies = data.movies?.filter((m) => m?.title) ?? [];
         if (movies.length > 0) return movies;
       } catch (e) {
@@ -2749,24 +2776,6 @@ export default function Home() {
   const fetchNextRef = useRef(fetchNext);
   fetchNextRef.current = fetchNext;
 
-  const clearAdvanceAfterRating = useCallback(() => {
-    const t = advanceAfterRatingTimeoutRef.current;
-    if (t != null) {
-      clearTimeout(t);
-      advanceAfterRatingTimeoutRef.current = null;
-    }
-  }, []);
-
-  const scheduleAdvanceAfterRating = useCallback(() => {
-    clearAdvanceAfterRating();
-    advanceAfterRatingTimeoutRef.current = setTimeout(() => {
-      advanceAfterRatingTimeoutRef.current = null;
-      passCurrentCardRef.current();
-    }, RATING_ADVANCE_DELAY_MS);
-  }, [clearAdvanceAfterRating]);
-
-  useEffect(() => () => clearAdvanceAfterRating(), [clearAdvanceAfterRating]);
-
   const removeFromPrefetchQueue = useCallback(
     (displayIndex: number) => {
       const movie = getUpcomingQueueForDisplay()[displayIndex];
@@ -2798,7 +2807,6 @@ export default function Home() {
       );
       if (actualIndex < 0) return;
       if (current && canonicalTitleKey(movie.title) === canonicalTitleKey(current.title)) return;
-      clearAdvanceAfterRating();
       replenishGenRef.current += 1;
       replenishGenInFlight.current = 0;
       prefetchRef.current = q.filter((_, i) => i !== actualIndex);
@@ -3164,6 +3172,7 @@ export default function Home() {
       watchFrac: watchFracRef.current > 0 ? watchFracRef.current : existingEntry?.watchFrac,
       presentedAt: existingEntry?.presentedAt ?? new Date().toISOString(),
       categories: movie.categories?.length ? movie.categories : existingEntry?.categories,
+      categoryPaths: movie.categoryPaths?.length ? movie.categoryPaths : existingEntry?.categoryPaths,
     };
     const titleKey = canonicalTitleKey(movie.title);
     const newHistory = [...historyRef.current];
@@ -3192,7 +3201,6 @@ export default function Home() {
   /** Advance -- submits any pending star rating, otherwise marks title as passed (no rating). */
   const passCurrentCard = () => {
     if (!current) return;
-    clearAdvanceAfterRating();
     const p = pendingRatingRef.current;
     if (p) {
       if (p.mode === "seen") {
@@ -3351,12 +3359,7 @@ export default function Home() {
     setSeenStatusByCard((prev) => ({ ...prev, [key]: seenChoice }));
     sessionRatingsRef.current = { ...sessionRatingsRef.current, [key]: next };
     setSessionRatingsRevision((n) => n + 1);
-    if (displayMode === "posters") return;
-    if (mode === "seen") {
-      writeSeenRating(movie, stars, "seen", { replenish: false });
-    }
-    scheduleAdvanceAfterRating();
-  }, [displayMode, writeSeenRating, scheduleAdvanceAfterRating]);
+  }, []);
 
   const openPosterLightbox = useCallback((url: string) => {
     setLightboxUrl(url);
@@ -3448,20 +3451,7 @@ export default function Home() {
     [careerMode],
   );
 
-  const currentDisplayRating = useMemo(
-    () =>
-      mounted && current?.title
-        ? getDisplayRatingForTitle(
-            current.title,
-            historyRef.current,
-            sessionRatingsRef.current,
-            loadUnseenInterestLog(),
-          )
-        : undefined,
-    [mounted, current?.title, historyRevision, sessionRatingsRevision, unseenLogRevision],
-  );
-
-  /** Saved ratings only — excludes in-tab poster picks that are not submitted yet. */
+  /** Saved ratings only — excludes in-tab picks that are not submitted yet. */
   const committedDisplayRating = useMemo((): DisplayRating | undefined => {
     if (!mounted || !current?.title) return undefined;
     const fromHist = getHistoryEntryForTitle(historyRef.current, current.title);
@@ -3482,20 +3472,20 @@ export default function Home() {
   }, [mounted, current?.title, historyRevision, unseenLogRevision]);
 
   const currentPendingStars = useMemo((): number | undefined => {
-    if (displayMode !== "posters" || !current?.title) return undefined;
+    if (!current?.title) return undefined;
     const key = canonicalTitleKey(current.title);
     const fromSession = sessionRatingsRef.current[key];
     if (fromSession?.stars) return fromSession.stars;
     if (pendingRating?.stars) return pendingRating.stars;
     return undefined;
-  }, [displayMode, current?.title, pendingRating, sessionRatingsRevision]);
+  }, [current?.title, pendingRating, sessionRatingsRevision]);
 
   const ratingCardKey = current ? `${current.title}:${cardNavSeq}` : "";
 
   const currentSeenStatus = useMemo((): "unseen" | null => {
     if (!current?.title) return null;
     const key = canonicalTitleKey(current.title);
-    if (displayMode === "posters" && pendingRating && pendingRating.stars > 0) {
+    if (pendingRating && pendingRating.stars > 0) {
       if (key in seenStatusByCard) return seenStatusByCard[key]!;
       return pendingRating.mode === "unseen" ? "unseen" : null;
     }
@@ -3514,7 +3504,7 @@ export default function Home() {
     const key = canonicalTitleKey(title);
     setSeenStatusByCard((prev) => (prev[key] === v ? prev : { ...prev, [key]: v }));
     const p = pendingRatingRef.current;
-    if (displayMode === "posters" && p && p.stars > 0) {
+    if (p && p.stars > 0) {
       const mode: "seen" | "unseen" = v === "unseen" ? "unseen" : "seen";
       const next = { stars: p.stars, mode };
       pendingRatingRef.current = next;
@@ -3522,7 +3512,7 @@ export default function Home() {
       sessionRatingsRef.current = { ...sessionRatingsRef.current, [key]: next };
       setSessionRatingsRevision((n) => n + 1);
     }
-  }, [displayMode]);
+  }, []);
 
   const enterCareerMode = useCallback(async (name: string, role: "actor" | "director") => {
     setCareerLoading((s) => (s ? s : true));
@@ -3819,8 +3809,9 @@ export default function Home() {
                           watchFrac={watchFrac}
                           seenStatus={currentSeenStatus}
                           onSeenStatusChange={handleSeenStatusChange}
-                          previousRating={currentDisplayRating?.stars}
-                          previousMode={currentDisplayRating?.mode}
+                          pendingStars={currentPendingStars}
+                          previousRating={committedDisplayRating?.stars}
+                          previousMode={committedDisplayRating?.mode}
                           ratingResetKey={ratingCardKey}
                           prevNav={prevNav}
                           careerNextDisabled={careerAtLastFilm}
@@ -3843,8 +3834,9 @@ export default function Home() {
                           watchFrac={watchFrac}
                           seenStatus={currentSeenStatus}
                           onSeenStatusChange={handleSeenStatusChange}
-                          previousRating={currentDisplayRating?.stars}
-                          previousMode={currentDisplayRating?.mode}
+                          pendingStars={currentPendingStars}
+                          previousRating={committedDisplayRating?.stars}
+                          previousMode={committedDisplayRating?.mode}
                           ratingResetKey={ratingCardKey}
                           prevNav={prevNav}
                           careerNextDisabled={careerAtLastFilm}
@@ -3908,8 +3900,10 @@ export default function Home() {
                       watchFrac={watchFrac}
                       seenStatus={currentSeenStatus}
                       onSeenStatusChange={handleSeenStatusChange}
-                      previousRating={currentDisplayRating?.stars}
-                      previousMode={currentDisplayRating?.mode}
+                      lockStarsOnRate={false}
+                      pendingStars={currentPendingStars}
+                      previousRating={committedDisplayRating?.stars}
+                      previousMode={committedDisplayRating?.mode}
                       ratingResetKey={ratingCardKey}
                       prevNav={prevNav}
                       careerNextDisabled={careerAtLastFilm}
