@@ -277,7 +277,18 @@ export default function HistoryView({
                         </div>
                       </>
                     ) : (
-                      <span className="w-32 text-right text-xs text-zinc-400">not rated</span>
+                      <div className="w-20 flex justify-end">
+                        {onUpdateRating ? (
+                          <EditableStars
+                            rating={null}
+                            color="red"
+                            onChange={(newRating) => onUpdateRating(e.title, newRating)}
+                            ariaLabel={`Rate ${e.title}`}
+                          />
+                        ) : (
+                          <span className="text-xs text-zinc-400">not rated</span>
+                        )}
+                      </div>
                     )}
                     <button type="button" onClick={() => deleteSingle(row)}
                       className="ml-1 text-zinc-300 hover:text-rose-500 transition-colors text-base leading-none shrink-0" title="Delete" aria-label="Delete">×</button>
