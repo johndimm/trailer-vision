@@ -2876,7 +2876,23 @@ export default function Home() {
     const storedPlayMovie = localStorage.getItem("movie-recs-play");
     if (storedPlayMovie) {
       try {
-        const movie = JSON.parse(storedPlayMovie) as CurrentMovie;
+        const data = JSON.parse(storedPlayMovie) as any;
+        const movie: CurrentMovie = {
+          title: data.title || "",
+          type: data.type || "movie",
+          year: data.year ?? null,
+          director: data.director ?? null,
+          predictedRating: data.predictedRating ?? 3,
+          actors: Array.isArray(data.actors) ? data.actors : [],
+          plot: data.plot || "",
+          posterUrl: data.posterUrl ?? null,
+          trailerKey: data.trailerKey ?? null,
+          rtScore: data.rtScore ?? null,
+          reason: "From history",
+          streaming: data.streaming,
+          categories: data.categories,
+          categoryPaths: data.categoryPaths,
+        };
         setCurrent(movie);
         localStorage.removeItem("movie-recs-play");
         setInitialLoading(false);
