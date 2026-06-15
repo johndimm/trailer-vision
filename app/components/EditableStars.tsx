@@ -57,12 +57,14 @@ export function EditableStars({
               </span>
             )}
             <span
-              className="absolute inset-y-0 left-0 w-1/2"
+              className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
+              style={{ pointerEvents: 'auto' }}
               onMouseEnter={() => setHovered(star - 0.5)}
               onClick={() => onChange(rating === star - 0.5 ? null : star - 0.5)}
             />
             <span
-              className="absolute inset-y-0 right-0 w-1/2"
+              className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
+              style={{ pointerEvents: 'auto' }}
               onMouseEnter={() => setHovered(star)}
               onClick={() => onChange(rating === star ? null : star)}
             />
