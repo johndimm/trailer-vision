@@ -27,10 +27,17 @@ export function EditableStars({
   const [hovered, setHovered] = useState<number | null>(null)
   const display = hovered ?? rating ?? 0
 
+  const handleHalfClick = (star: number) => {
+    onChange(rating === star - 0.5 ? null : star - 0.5)
+  }
+
+  const handleFullClick = (star: number) => {
+    onChange(rating === star ? null : star)
+  }
+
   return (
     <div
-      className="flex select-none cursor-pointer"
-      style={{ gap: '0.1rem' }}
+      className="flex select-none gap-[0.1rem]"
       onMouseLeave={() => setHovered(null)}
       role="slider"
       aria-label={ariaLabel || 'Rating'}
@@ -44,29 +51,39 @@ export function EditableStars({
         return (
           <div
             key={star}
-            className="relative"
-            style={{ fontSize: '1.0rem', lineHeight: 1 }}
+            className="relative cursor-pointer select-none"
+            style={{ fontSize: '1rem', lineHeight: 1 }}
           >
-            <span className="text-zinc-300">★</span>
+            {/* Background unfilled star */}
+            <div className="text-zinc-300">★</div>
+
+            {/* Filled star overlay */}
             {(isFull || isHalf) && (
-              <span
+              <div
                 className={`absolute inset-0 overflow-hidden ${colorMap[color]}`}
-                style={isHalf ? { clipPath: 'inset(0 50% 0 0)' } : {}}
+                style={{
+                  clipPath: isHalf ? 'inset(0 50% 0 0)' : 'none',
+                  pointerEvents: 'none',
+                }}
               >
                 ★
-              </span>
+              </div>
             )}
-            <span
-              className="absolute inset-y-0 left-0 w-1/2 cursor-pointer"
-              style={{ pointerEvents: 'auto' }}
+
+            {/* Left half - clickable for half star */}
+            <div
+              className="absolute inset-y-0 left-0 w-1/2"
               onMouseEnter={() => setHovered(star - 0.5)}
-              onClick={() => onChange(rating === star - 0.5 ? null : star - 0.5)}
+              onClick={() => handleHalfClick(star)}
+              style={{ cursor: 'pointer' }}
             />
-            <span
-              className="absolute inset-y-0 right-0 w-1/2 cursor-pointer"
-              style={{ pointerEvents: 'auto' }}
+
+            {/* Right half - clickable for full star */}
+            <div
+              className="absolute inset-y-0 right-0 w-1/2"
               onMouseEnter={() => setHovered(star)}
-              onClick={() => onChange(rating === star ? null : star)}
+              onClick={() => handleFullClick(star)}
+              style={{ cursor: 'pointer' }}
             />
           </div>
         )
