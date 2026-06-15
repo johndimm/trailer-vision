@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { StaticStars } from "./Stars";
 import { EditableStars } from "./EditableStars";
 import { migrateRatingValue } from "../lib/ratingScale";
@@ -10,6 +11,7 @@ import { type StoredRatingEntry } from "../lib/storageKeys";
 import { type UnseenInterestEntry } from "../lib/unseenInterestLog";
 
 const WATCHLIST_KEY = "movie-recs-watchlist";
+const PLAY_KEY = "movie-recs-play";
 
 export type SeenRow   = { kind: "seen";   entry: StoredRatingEntry;  origIndex: number; sortKey: string };
 export type UnseenRow = { kind: "unseen"; entry: UnseenInterestEntry; origIndex: number; sortKey: string };
@@ -29,6 +31,8 @@ export interface HistoryViewProps {
   onUpdateRating?: (title: string, newRating: number | null) => void;
   /** Optional callback to update an unseen interest rating. */
   onUpdateUnseen?: (title: string, newRating: number | null) => void;
+  /** Optional callback to play a movie. */
+  onPlayMovie?: (entry: StoredRatingEntry | UnseenInterestEntry) => void;
   /** Optional channel map for displaying channel names. */
   channelMap?: Map<string, string>;
   /** Extra content rendered inside the toolbar card (above the filter row). */
@@ -43,10 +47,12 @@ export default function HistoryView({
   onDeleteUnseen,
   onUpdateRating,
   onUpdateUnseen,
+  onPlayMovie,
   channelMap,
   toolbarSlot,
   emptyMessage = "No activity yet.",
 }: HistoryViewProps) {
+  const router = useRouter();
   const [sortField, setSortField] = useState<SortField>("time");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [filter, setFilter] = useState<FilterKind>("all");
@@ -229,10 +235,22 @@ export default function HistoryView({
                   <input type="checkbox" checked={isSel} onChange={toggle} className="accent-indigo-600 shrink-0" />
                   {e.posterUrl
                     // eslint-disable-next-line @next/next/no-img-element
-                    ? <img src={e.posterUrl} alt={e.title} referrerPolicy="no-referrer" className="w-7 h-10 rounded object-cover flex-shrink-0" />
-                    : <div className="w-7 h-10 rounded bg-zinc-100 flex-shrink-0" />}
+                    ? <img
+                        src={e.posterUrl}
+                        alt={e.title}
+                        referrerPolicy="no-referrer"
+                        className="w-7 h-10 rounded object-cover flex-shrink-0 cursor-pointer hover:opacity-75"
+                        onClick={() => onPlayMovie?.(e)}
+                      />
+                    : <div
+                        className="w-7 h-10 rounded bg-zinc-100 flex-shrink-0 cursor-pointer hover:opacity-75"
+                        onClick={() => onPlayMovie?.(e)}
+                      />}
                   <div className="flex-1 min-w-0">
-                    <span className="font-medium text-zinc-800 truncate block">
+                    <span
+                      className="font-medium text-zinc-800 truncate block cursor-pointer hover:underline"
+                      onClick={() => onPlayMovie?.(e)}
+                    >
                       {e.title}
                     </span>
                     <div className="flex items-center gap-2 text-xs text-zinc-400 flex-wrap">
@@ -275,10 +293,24 @@ export default function HistoryView({
                 <input type="checkbox" checked={isSel} onChange={toggle} className="accent-indigo-600 shrink-0" />
                 {e.posterUrl
                   // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={e.posterUrl} alt={e.title} referrerPolicy="no-referrer" className="w-7 h-10 rounded object-cover flex-shrink-0" />
-                  : <div className="w-7 h-10 rounded bg-zinc-100 flex-shrink-0" />}
+                  ? <img
+                      src={e.posterUrl}
+                      alt={e.title}
+                      referrerPolicy="no-referrer"
+                      className="w-7 h-10 rounded object-cover flex-shrink-0 cursor-pointer hover:opacity-75"
+                      onClick={() => onPlayMovie?.(e)}
+                    />
+                  : <div
+                      className="w-7 h-10 rounded bg-zinc-100 flex-shrink-0 cursor-pointer hover:opacity-75"
+                      onClick={() => onPlayMovie?.(e)}
+                    />}
                 <div className="flex-1 min-w-0">
-                  <span className="font-medium text-zinc-800 truncate block">{e.title}</span>
+                  <span
+                    className="font-medium text-zinc-800 truncate block cursor-pointer hover:underline"
+                    onClick={() => onPlayMovie?.(e)}
+                  >
+                    {e.title}
+                  </span>
                   <div className="flex items-center gap-2 text-xs text-zinc-400 flex-wrap">
                     <span>{e.type === "tv" ? "TV" : "Film"}</span>
                     {chName && <span className="text-zinc-500">· {chName}</span>}

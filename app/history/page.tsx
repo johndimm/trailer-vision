@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { canonicalTitleKey } from "../lib/canonicalTitleKey";
 import {
   canUseLocalStorage,
@@ -18,8 +18,11 @@ import {
 import { Channel, normalizeChannel, CHANNELS_KEY } from "../channels/page";
 import HistoryView from "../components/HistoryView";
 
+const PLAY_KEY = "movie-recs-play";
+
 export default function HistoryPage() {
   const pathname = usePathname();
+  const router = useRouter();
   const [history, setHistory] = useState<StoredRatingEntry[]>([]);
   const [unseenLog, setUnseenLog] = useState<UnseenInterestEntry[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -93,6 +96,11 @@ export default function HistoryPage() {
     setUnseenLog(next);
   }, [unseenLog]);
 
+  const handlePlayMovie = useCallback((entry: StoredRatingEntry | UnseenInterestEntry) => {
+    localStorage.setItem(PLAY_KEY, JSON.stringify(entry));
+    router.push("/");
+  }, [router]);
+
   const totalCount = history.length + unseenLog.length;
 
   return (
@@ -125,6 +133,7 @@ export default function HistoryPage() {
             onDeleteUnseen={handleDeleteUnseen}
             onUpdateRating={handleUpdateRating}
             onUpdateUnseen={handleUpdateUnseen}
+            onPlayMovie={handlePlayMovie}
             channelMap={channelMap}
           />
         )}

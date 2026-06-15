@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { WatchlistEntry } from "../page";
 import { canonicalTitleKey, entryMatchesChannel, loadUnseenInterestLog, saveUnseenInterestLog } from "../lib/unseenInterestLog";
 import { loadRatingHistory, saveRatingHistory, type StoredRatingEntry } from "../lib/storageKeys";
@@ -13,6 +14,7 @@ const WATCHLIST_KEY = "movie-recs-watchlist";
 const SKIPPED_KEY = "movie-recs-skipped";
 const NOT_INTERESTED_KEY = "movie-recs-not-interested";
 const SETTINGS_KEY = "movie-recs-settings";
+const PLAY_KEY = "movie-recs-play";
 
 function readLlm(): string {
   try {
@@ -23,6 +25,7 @@ function readLlm(): string {
 }
 
 export default function ChannelHistoryPage() {
+  const router = useRouter();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [history, setHistory] = useState<StoredRatingEntry[]>([]);
@@ -102,6 +105,11 @@ export default function ChannelHistoryPage() {
     saveUnseenInterestLog(next);
     setUnseenLog(next);
   }, [unseenLog]);
+
+  const handlePlayMovie = useCallback((entry: StoredRatingEntry | UnseenInterestEntry) => {
+    localStorage.setItem(PLAY_KEY, JSON.stringify(entry));
+    router.push("/");
+  }, [router]);
 
   const promoteMatchCount = useMemo(() => {
     if (!mounted || !selected) return 0;
@@ -199,6 +207,7 @@ export default function ChannelHistoryPage() {
             onDeleteUnseen={handleDeleteUnseen}
             onUpdateRating={handleUpdateRating}
             onUpdateUnseen={handleUpdateUnseen}
+            onPlayMovie={handlePlayMovie}
             toolbarSlot={toolbarSlot}
             emptyMessage="No activity in this channel yet."
           />
