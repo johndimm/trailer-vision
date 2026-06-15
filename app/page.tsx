@@ -2872,6 +2872,20 @@ export default function Home() {
     loadPrefetchIntoRefForChannel(activeForPrefetch);
     persistPrefetchQueue();
 
+    // Check for stored movie from history click-to-play
+    const storedPlayMovie = localStorage.getItem("movie-recs-play");
+    if (storedPlayMovie) {
+      try {
+        const movie = JSON.parse(storedPlayMovie) as CurrentMovie;
+        setCurrent(movie);
+        localStorage.removeItem("movie-recs-play");
+        setInitialLoading(false);
+        return; // Skip fetchNext since we loaded the requested movie
+      } catch {
+        /* ignore */
+      }
+    }
+
     // Handle incoming share link (?share=id), then fall through to reconsider / fetchNext.
     const shareId = new URLSearchParams(window.location.search).get("share");
     void (async () => {
