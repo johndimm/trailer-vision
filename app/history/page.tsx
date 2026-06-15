@@ -84,6 +84,15 @@ export default function HistoryPage() {
     setHistory(next);
   }, [history]);
 
+  const handleUpdateUnseen = useCallback((title: string, newRating: number | null) => {
+    const next = unseenLog.map((e) => {
+      if (e.title !== title) return e;
+      return { ...e, interestStars: newRating };
+    });
+    saveUnseenInterestLog(next);
+    setUnseenLog(next);
+  }, [unseenLog]);
+
   const totalCount = history.length + unseenLog.length;
 
   return (
@@ -115,6 +124,7 @@ export default function HistoryPage() {
             onDeleteSeen={handleDeleteSeen}
             onDeleteUnseen={handleDeleteUnseen}
             onUpdateRating={handleUpdateRating}
+            onUpdateUnseen={handleUpdateUnseen}
             channelMap={channelMap}
           />
         )}

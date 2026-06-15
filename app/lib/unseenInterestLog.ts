@@ -13,7 +13,7 @@ export type UnseenInterestEntry = {
   plot: string;
   posterUrl: string | null;
   rtScore: string | null;
-  interestStars: number;
+  interestStars: number | null;
   kind: "want" | "skip";
   channelId: string;
   at: string;
@@ -25,7 +25,7 @@ function isValidEntry(x: unknown): x is Omit<UnseenInterestEntry, "channelId"> &
   const o = x as Record<string, unknown>;
   if (typeof o.title !== "string" || !o.title) return false;
   if (o.type !== "movie" && o.type !== "tv") return false;
-  if (typeof o.interestStars !== "number" || !Number.isFinite(o.interestStars)) return false;
+  if (o.interestStars !== null && (typeof o.interestStars !== "number" || !Number.isFinite(o.interestStars))) return false;
   if (o.kind !== "want" && o.kind !== "skip") return false;
   if (typeof o.at !== "string") return false;
   return true;

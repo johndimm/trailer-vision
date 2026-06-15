@@ -220,8 +220,8 @@ function getDisplayRatingForTitle(
   if (fromSession && fromSession.stars > 0) return fromSession;
   for (let i = unseenLog.length - 1; i >= 0; i--) {
     const e = unseenLog[i]!;
-    if (canonicalTitleKey(e.title) === key && e.interestStars > 0) {
-      return { stars: e.interestStars, mode: "unseen" };
+    if (canonicalTitleKey(e.title) === key && (e.interestStars ?? 0) > 0) {
+      return { stars: e.interestStars ?? 0, mode: "unseen" };
     }
   }
   return undefined;
@@ -3464,8 +3464,8 @@ export default function Home() {
     const key = canonicalTitleKey(current.title);
     for (let i = loadUnseenInterestLog().length - 1; i >= 0; i--) {
       const e = loadUnseenInterestLog()[i]!;
-      if (canonicalTitleKey(e.title) === key && e.interestStars > 0) {
-        return { stars: e.interestStars, mode: "unseen" };
+      if (canonicalTitleKey(e.title) === key && (e.interestStars ?? 0) > 0) {
+        return { stars: e.interestStars ?? 0, mode: "unseen" };
       }
     }
     return undefined;

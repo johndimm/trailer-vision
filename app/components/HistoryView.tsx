@@ -25,8 +25,10 @@ export interface HistoryViewProps {
   unseenLog: UnseenInterestEntry[];
   onDeleteSeen: (origIndices: number[]) => void;
   onDeleteUnseen: (origIndices: number[]) => void;
-  /** Optional callback to update a rating. */
+  /** Optional callback to update a seen rating. */
   onUpdateRating?: (title: string, newRating: number | null) => void;
+  /** Optional callback to update an unseen interest rating. */
+  onUpdateUnseen?: (title: string, newRating: number | null) => void;
   /** Optional channel map for displaying channel names. */
   channelMap?: Map<string, string>;
   /** Extra content rendered inside the toolbar card (above the filter row). */
@@ -40,6 +42,7 @@ export default function HistoryView({
   onDeleteSeen,
   onDeleteUnseen,
   onUpdateRating,
+  onUpdateUnseen,
   channelMap,
   toolbarSlot,
   emptyMessage = "No activity yet.",
@@ -87,8 +90,8 @@ export default function HistoryView({
       } else if (sortField === "title") {
         cmp = a.entry.title.localeCompare(b.entry.title);
       } else if (sortField === "rating") {
-        const av = a.kind === "seen" ? (a.entry.userRating ?? -1) : (a.entry as UnseenInterestEntry).interestStars;
-        const bv = b.kind === "seen" ? (b.entry.userRating ?? -1) : (b.entry as UnseenInterestEntry).interestStars;
+        const av = a.kind === "seen" ? (a.entry.userRating ?? -1) : ((a.entry as UnseenInterestEntry).interestStars ?? -1);
+        const bv = b.kind === "seen" ? (b.entry.userRating ?? -1) : ((b.entry as UnseenInterestEntry).interestStars ?? -1);
         cmp = av - bv;
       } else {
         const ad = a.kind === "seen" ? starDelta(a.entry.userRating ?? 0, (a.entry as StoredRatingEntry).predictedRating) : -99;
@@ -286,7 +289,18 @@ export default function HistoryView({
                   </div>
                 </div>
                 <div className="flex items-center justify-end gap-2 shrink-0">
-                  <div className="w-20 flex justify-end"><StaticStars rating={migrateRatingValue(e.interestStars)} color="blue" /></div>
+                  <div className="w-20 flex justify-end">
+                    {onUpdateUnseen ? (
+                      <EditableStars
+                        rating={e.interestStars ? migrateRatingValue(e.interestStars) : null}
+                        color="blue"
+                        onChange={(newRating) => onUpdateUnseen(e.title, newRating)}
+                        ariaLabel={`Interest rating for ${e.title}`}
+                      />
+                    ) : (
+                      <StaticStars rating={e.interestStars ? migrateRatingValue(e.interestStars) : 0} color="blue" />
+                    )}
+                  </div>
                   <button type="button" onClick={() => deleteSingle(row)}
                     className="ml-1 text-zinc-300 hover:text-rose-500 transition-colors text-base leading-none shrink-0" title="Delete" aria-label="Delete">×</button>
                 </div>

@@ -94,13 +94,22 @@ export default function ChannelHistoryPage() {
     setHistory(next);
   }, [history]);
 
+  const handleUpdateUnseen = useCallback((title: string, newRating: number | null) => {
+    const next = unseenLog.map((e) => {
+      if (e.title !== title) return e;
+      return { ...e, interestStars: newRating };
+    });
+    saveUnseenInterestLog(next);
+    setUnseenLog(next);
+  }, [unseenLog]);
+
   const promoteMatchCount = useMemo(() => {
     if (!mounted || !selected) return 0;
     try {
       const wlRaw = localStorage.getItem(WATCHLIST_KEY);
       const wl: { title: string }[] = wlRaw ? JSON.parse(wlRaw) : [];
       const keys = new Set(wl.map((w) => canonicalTitleKey(w.title)));
-      return channelUnseen.filter((e) => !keys.has(canonicalTitleKey(e.title)) && e.interestStars >= minPromoteStars).length;
+      return channelUnseen.filter((e) => !keys.has(canonicalTitleKey(e.title)) && (e.interestStars ?? 0) >= minPromoteStars).length;
     } catch { return 0; }
   }, [mounted, selected, channelUnseen, minPromoteStars]);
 
@@ -110,7 +119,7 @@ export default function ChannelHistoryPage() {
       const wlRaw = localStorage.getItem(WATCHLIST_KEY);
       let wl: WatchlistEntry[] = wlRaw ? JSON.parse(wlRaw) : [];
       const wlKeys = new Set(wl.map((w) => canonicalTitleKey(w.title)));
-      const candidates = channelUnseen.filter((e) => !wlKeys.has(canonicalTitleKey(e.title)) && e.interestStars >= minPromoteStars);
+      const candidates = channelUnseen.filter((e) => !wlKeys.has(canonicalTitleKey(e.title)) && (e.interestStars ?? 0) >= minPromoteStars);
       if (!candidates.length) { setPromoteMessage("No matching titles."); setTimeout(() => setPromoteMessage(null), 4000); return; }
       const llm = readLlm();
       const now = new Date().toISOString();
@@ -189,6 +198,7 @@ export default function ChannelHistoryPage() {
             onDeleteSeen={handleDeleteSeen}
             onDeleteUnseen={handleDeleteUnseen}
             onUpdateRating={handleUpdateRating}
+            onUpdateUnseen={handleUpdateUnseen}
             toolbarSlot={toolbarSlot}
             emptyMessage="No activity in this channel yet."
           />
