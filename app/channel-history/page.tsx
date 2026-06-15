@@ -84,6 +84,16 @@ export default function ChannelHistoryPage() {
     setUnseenLog(next);
   }, [unseenLog, channelUnseen]);
 
+  const handleUpdateRating = useCallback((title: string, newRating: number | null) => {
+    const next = history.map((h) => {
+      if (h.title !== title) return h;
+      const error = newRating ? Math.abs(newRating - h.predictedRating) : 0;
+      return { ...h, userRating: newRating, error };
+    });
+    saveRatingHistory(next);
+    setHistory(next);
+  }, [history]);
+
   const promoteMatchCount = useMemo(() => {
     if (!mounted || !selected) return 0;
     try {
@@ -178,6 +188,7 @@ export default function ChannelHistoryPage() {
             unseenLog={channelUnseen}
             onDeleteSeen={handleDeleteSeen}
             onDeleteUnseen={handleDeleteUnseen}
+            onUpdateRating={handleUpdateRating}
             toolbarSlot={toolbarSlot}
             emptyMessage="No activity in this channel yet."
           />

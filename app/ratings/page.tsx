@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { WatchlistEntry } from "../page";
 import { StaticStars } from "../components/Stars";
+import { EditableStars } from "../components/EditableStars";
 import RTBadge from "../components/RTBadge";
 import { migrateRatingValue } from "../lib/ratingScale";
 import { starDelta, formatStarDelta } from "../lib/ratingDelta";
@@ -18,7 +19,7 @@ const RECONSIDER_KEY = "movie-recs-reconsider";
 interface RatingEntry {
   title: string;
   type: "movie" | "tv";
-  userRating: number;
+  userRating: number | null;
   predictedRating: number;
   error: number;
   rtScore?: string | null;
@@ -44,9 +45,10 @@ export default function RatingsPage() {
           const parsed = JSON.parse(h) as RatingEntry[];
           setHistory(
             parsed.map((e) => {
-              const u = migrateRatingValue(e.userRating);
+              const u = e.userRating ? migrateRatingValue(e.userRating) : null;
               const p = migrateRatingValue(e.predictedRating);
-              return { ...e, userRating: u, predictedRating: p, error: Math.abs(u - p) };
+              const error = u ? Math.abs(u - p) : 0;
+              return { ...e, userRating: u, predictedRating: p, error };
             })
           );
         }
@@ -122,14 +124,24 @@ export default function RatingsPage() {
     router.push("/");
   };
 
+  const updateRating = (title: string, newRating: number | null) => {
+    const newHistory = history.map((h) => {
+      if (h.title !== title) return h;
+      const error = newRating ? Math.abs(newRating - h.predictedRating) : 0;
+      return { ...h, userRating: newRating, error };
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newHistory));
+    setHistory(newHistory);
+  };
+
   const hasAny = history.length > 0 || watchlist.length > 0 || dontSeeRows.length > 0;
 
   const sortedSeen = useMemo(() => {
     const copy = [...history];
     if (seenSort === "user") {
-      copy.sort((a, b) => migrateRatingValue(b.userRating) - migrateRatingValue(a.userRating));
+      copy.sort((a, b) => (b.userRating ? migrateRatingValue(b.userRating) : 0) - (a.userRating ? migrateRatingValue(a.userRating) : 0));
     } else {
-      copy.sort((a, b) => starDelta(b.userRating, b.predictedRating) - starDelta(a.userRating, a.predictedRating));
+      copy.sort((a, b) => starDelta(b.userRating ?? 0, b.predictedRating) - starDelta(a.userRating ?? 0, a.predictedRating));
     }
     return copy;
   }, [history, seenSort]);
@@ -199,16 +211,17 @@ export default function RatingsPage() {
             </div>
             <ul className="divide-y divide-zinc-50">
               {sortedSeen.map((e) => {
-                const d = starDelta(e.userRating, e.predictedRating);
+                const d = e.userRating ? starDelta(e.userRating, e.predictedRating) : 0;
                 const deltaStr = formatStarDelta(d);
                 return (
                   <li
                     key={e.title}
-                    onClick={() => reconsiderHistory(e)}
-                    className="px-4 py-2.5 flex items-center justify-between gap-3 text-sm min-w-0 cursor-pointer hover:bg-zinc-50 active:bg-zinc-100 transition-colors"
-                    title="Click to re-rate"
+                    className="px-4 py-2.5 flex items-center justify-between gap-3 text-sm min-w-0"
                   >
-                    <div className="min-w-0 flex items-baseline gap-1.5">
+                    <div
+                      className="min-w-0 flex items-baseline gap-1.5 cursor-pointer hover:bg-zinc-50 hover:px-2 hover:mx-2 hover:rounded transition-colors"
+                      onClick={() => reconsiderHistory(e)}
+                    >
                       <span className="font-medium text-zinc-800 truncate">{e.title}</span>
                       <span className="text-xs text-zinc-400 flex-shrink-0">{e.type === "tv" ? "TV" : "Film"}</span>
                     </div>
@@ -222,7 +235,12 @@ export default function RatingsPage() {
                         {deltaStr}
                       </span>
                       <div className="w-20 shrink-0 flex justify-end">
-                        <StaticStars rating={migrateRatingValue(e.userRating)} color="red" />
+                        <EditableStars
+                          rating={e.userRating ? migrateRatingValue(e.userRating) : null}
+                          color="red"
+                          onChange={(newRating) => updateRating(e.title, newRating)}
+                          ariaLabel={`Rating for ${e.title}`}
+                        />
                       </div>
                     </div>
                   </li>

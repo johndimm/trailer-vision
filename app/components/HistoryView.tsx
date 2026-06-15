@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import { StaticStars } from "./Stars";
+import { EditableStars } from "./EditableStars";
 import { migrateRatingValue } from "../lib/ratingScale";
 import { starDelta, formatStarDelta } from "../lib/ratingDelta";
 import { canonicalTitleKey } from "../lib/canonicalTitleKey";
@@ -24,6 +25,8 @@ export interface HistoryViewProps {
   unseenLog: UnseenInterestEntry[];
   onDeleteSeen: (origIndices: number[]) => void;
   onDeleteUnseen: (origIndices: number[]) => void;
+  /** Optional callback to update a rating. */
+  onUpdateRating?: (title: string, newRating: number | null) => void;
   /** Optional channel map for displaying channel names. */
   channelMap?: Map<string, string>;
   /** Extra content rendered inside the toolbar card (above the filter row). */
@@ -36,6 +39,7 @@ export default function HistoryView({
   unseenLog,
   onDeleteSeen,
   onDeleteUnseen,
+  onUpdateRating,
   channelMap,
   toolbarSlot,
   emptyMessage = "No activity yet.",
@@ -238,7 +242,18 @@ export default function HistoryView({
                     {isRated ? (
                       <>
                         <span className={`w-12 text-right tabular-nums text-sm font-semibold ${d! > 0 ? "text-emerald-700" : d! < 0 ? "text-rose-700" : "text-zinc-500"}`} title="Your rating minus predicted">{formatStarDelta(d!)}</span>
-                        <div className="w-20 flex justify-end"><StaticStars rating={migrateRatingValue(e.userRating!)} color="red" /></div>
+                        <div className="w-20 flex justify-end">
+                          {onUpdateRating ? (
+                            <EditableStars
+                              rating={migrateRatingValue(e.userRating!)}
+                              color="red"
+                              onChange={(newRating) => onUpdateRating(e.title, newRating)}
+                              ariaLabel={`Rating for ${e.title}`}
+                            />
+                          ) : (
+                            <StaticStars rating={migrateRatingValue(e.userRating!)} color="red" />
+                          )}
+                        </div>
                       </>
                     ) : (
                       <span className="w-32 text-right text-xs text-zinc-400">not rated</span>

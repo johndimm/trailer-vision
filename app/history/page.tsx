@@ -74,6 +74,16 @@ export default function HistoryPage() {
     setUnseenLog(next);
   }, [unseenLog]);
 
+  const handleUpdateRating = useCallback((title: string, newRating: number | null) => {
+    const next = history.map((h) => {
+      if (h.title !== title) return h;
+      const error = newRating ? Math.abs(newRating - h.predictedRating) : 0;
+      return { ...h, userRating: newRating, error };
+    });
+    saveRatingHistory(next);
+    setHistory(next);
+  }, [history]);
+
   const totalCount = history.length + unseenLog.length;
 
   return (
@@ -104,6 +114,7 @@ export default function HistoryPage() {
             unseenLog={unseenLog}
             onDeleteSeen={handleDeleteSeen}
             onDeleteUnseen={handleDeleteUnseen}
+            onUpdateRating={handleUpdateRating}
             channelMap={channelMap}
           />
         )}
