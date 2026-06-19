@@ -14,7 +14,6 @@ import {
 import type { MovieChannelSeedInput } from "./lib/movieToChannelSeeds";
 import RTBadge from "./components/RTBadge";
 import { ConfirmDialog } from "./components/ConfirmDialog";
-import type { CategoryTree } from "./lib/categoryTree";
 import { clampStarRating, migrateRatingValue } from "./lib/ratingScale";
 import {
   LEGACY_PREFETCH_QUEUE_KEY,
@@ -126,51 +125,43 @@ function loadYouTubeApi(): Promise<void> {
   });
 }
 
-/** Server merges full rating list in memory; client avoids resending it every request (delta / reuse). */
-const LS_LLM_SESSION = "movie-recs-llm-session-id";
-const LS_LLM_SYNCED = "movie-recs-llm-history-synced";
+/** Timestamp of page load — entries before this are "pre-session" (system prompt context); entries after are "this session" (user message). */
+const SESSION_START_MS = Date.now();
 
-function getLlmSessionId(): string {
-  let id = localStorage.getItem(LS_LLM_SESSION);
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem(LS_LLM_SESSION, id);
-  }
-  return id;
-}
+function buildChannelHistoryPayload(
+  seenHistory: RatingEntry[],
+  unseenLog: UnseenInterestEntry[],
+  channelId: string,
+): { channelHistory: RatingEntry[]; sessionHistory: RatingEntry[] } {
+  const channelMatch = (id?: string) => id === channelId || !id || id === "all";
 
-function getSyncedRatingCount(): number {
-  const n = Number.parseInt(localStorage.getItem(LS_LLM_SYNCED) || "0", 10);
-  return Number.isFinite(n) ? n : 0;
-}
+  const seenEntries: RatingEntry[] = seenHistory
+    .filter(e => channelMatch(e.channelId) && typeof e.userRating === "number")
+    .map(e => ({ ...e, userRating: e.userRating as number, ratingMode: (e.ratingMode ?? "seen") as "seen" | "unseen" }));
 
-function setSyncedRatingCount(n: number) {
-  localStorage.setItem(LS_LLM_SYNCED, String(n));
-}
+  const unseenEntries: RatingEntry[] = unseenLog
+    .filter(e => channelMatch(e.channelId) && e.interestStars != null)
+    .map(e => ({
+      title: e.title,
+      type: e.type,
+      userRating: e.interestStars as number,
+      predictedRating: 3,
+      error: 0,
+      rtScore: e.rtScore,
+      ratingMode: "unseen" as const,
+      channelId: e.channelId,
+      presentedAt: e.at,
+    }));
 
-function buildHistorySyncPayload(hist: RatingEntry[]): Record<string, unknown> {
-  const sessionId = getLlmSessionId();
-  let synced = getSyncedRatingCount();
-  if (synced > hist.length) synced = 0;
+  const allRated = [...seenEntries, ...unseenEntries].sort((a, b) => {
+    const ta = a.presentedAt ? new Date(a.presentedAt).getTime() : 0;
+    const tb = b.presentedAt ? new Date(b.presentedAt).getTime() : 0;
+    return ta - tb;
+  });
 
-  if (hist.length === 0) {
-    return { sessionId, historySync: "full", history: [] };
-  }
-  if (synced === 0) {
-    return { sessionId, historySync: "full", history: hist };
-  }
-  if (synced < hist.length) {
-    return {
-      sessionId,
-      historySync: "delta",
-      baseLength: synced,
-      historyAppend: hist.slice(synced),
-    };
-  }
   return {
-    sessionId,
-    historySync: "reuse",
-    baseLength: hist.length,
+    channelHistory: allRated.filter(e => !e.presentedAt || new Date(e.presentedAt).getTime() < SESSION_START_MS),
+    sessionHistory: allRated.filter(e => !!e.presentedAt && new Date(e.presentedAt).getTime() >= SESSION_START_MS),
   };
 }
 
@@ -344,7 +335,7 @@ const PASSED_KEY = "movie-recs-passed";
 const WATCHLIST_KEY = "movie-recs-watchlist";
 const NOTSEEN_KEY = "movie-recs-notseen";
 const NOT_INTERESTED_KEY = "movie-recs-not-interested"; // {title, rtScore}[] for high-RT taste signal
-const TASTE_SUMMARY_KEY = "movie-recs-taste-summary";   // string: LLM's running taste profile
+const tasteSummaryKey = (channelId: string) => `movie-recs-taste-summary-${channelId}`;
 const SETTINGS_KEY = "movie-recs-settings";
 const RECONSIDER_KEY = "movie-recs-reconsider";
 /** Per channel + title: last trailer watch position (0–1) when you leave the channel, restored when you return. */
@@ -690,15 +681,15 @@ function MovieCardSkeleton({ mode }: { mode: "trailers" | "posters" }) {
 
   if (mode === "trailers") {
     const trailerBarSkeleton = (
-      <div className="border-b border-zinc-800/90 bg-zinc-950/60 py-2.5 sm:py-3" aria-hidden>
-        <div className="mx-auto flex min-w-0 max-w-3xl flex-col gap-2">
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-            <div className="h-8 w-24 animate-pulse rounded-lg bg-zinc-800" />
-            <div className="h-8 w-24 animate-pulse rounded-lg bg-zinc-800" />
+      <div className="border-b border-zinc-800/90 bg-zinc-950/60 py-1.5 sm:py-2" aria-hidden>
+        <div className="mx-auto flex min-w-0 max-w-3xl flex-col items-center gap-1.5 px-2 sm:flex-row sm:gap-x-4 sm:px-3">
+          <div className="flex shrink-0 gap-x-4">
+            <div className="h-8 w-20 animate-pulse rounded-lg bg-zinc-800" />
+            <div className="h-8 w-20 animate-pulse rounded-lg bg-zinc-800" />
           </div>
-          <div className="flex min-w-0 items-center justify-between gap-3">
-            <div className="mx-auto h-10 max-w-md flex-1 animate-pulse rounded-lg bg-zinc-800" />
-            <div className="h-11 w-20 shrink-0 animate-pulse rounded-xl bg-zinc-800" />
+          <div className="flex w-full min-w-0 items-center justify-between gap-1 sm:flex-1">
+            <div className="h-10 max-w-md flex-1 animate-pulse rounded-lg bg-zinc-800" />
+            <div className="h-11 w-16 shrink-0 animate-pulse rounded-xl bg-zinc-800" />
           </div>
         </div>
       </div>
@@ -921,6 +912,7 @@ const TrailerPlayer = memo(function TrailerPlayer({
   onProgress,
   onPlaybackError,
   resumeFromFraction,
+  onEnded,
 }: {
   videoId: string;
   onProgress?: (frac: number) => void;
@@ -928,17 +920,21 @@ const TrailerPlayer = memo(function TrailerPlayer({
   onPlaybackError?: () => void;
   /** 0–1. When resuming a channel, seek here once after the video is ready (e.g. last watch point before you switched away). */
   resumeFromFraction?: number;
+  /** Called once when the video reaches its end (YouTube PlayerState.ENDED = 0). */
+  onEnded?: () => void;
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const videoIdRef = useRef(videoId);
   const onProgressRef = useRef(onProgress);
   const onPlaybackErrorRef = useRef(onPlaybackError);
+  const onEndedRef = useRef(onEnded);
   const resumeFromFractionRef = useRef(resumeFromFraction);
   const resumeDoneKeyRef = useRef<string | null>(null);
   const errorReportedForVideoIdRef = useRef<string | null>(null);
   useEffect(() => { onProgressRef.current = onProgress; }, [onProgress]);
   useEffect(() => { onPlaybackErrorRef.current = onPlaybackError; }, [onPlaybackError]);
+  useEffect(() => { onEndedRef.current = onEnded; }, [onEnded]);
   useEffect(() => { resumeFromFractionRef.current = resumeFromFraction; }, [resumeFromFraction]);
 
   useEffect(() => {
@@ -1011,6 +1007,9 @@ const TrailerPlayer = memo(function TrailerPlayer({
             const s = e.data;
             if (s === Y.PlayerState.PLAYING || s === Y.PlayerState.BUFFERING || s === Y.PlayerState.CUED) {
               tryApplyResume(e.target);
+            }
+            if (s === 0) { // ENDED
+              onEndedRef.current?.();
             }
           },
           onError: () => {
@@ -1136,30 +1135,38 @@ const TrailerMediaActions = memo(function TrailerMediaActions({
   onShare,
   shareToast,
   showFullscreen = true,
+  leftSlot,
+  rightSlot,
 }: {
   onFullscreen: () => void;
   onShare: () => void;
   shareToast: "copying" | "copied" | null;
   showFullscreen?: boolean;
+  leftSlot?: React.ReactNode;
+  rightSlot?: React.ReactNode;
 }) {
   return (
-    <div className="flex w-full shrink-0 items-center justify-end gap-1.5 border-b border-zinc-700 bg-zinc-900 px-3 py-2 sm:gap-2 sm:px-4">
-      {showFullscreen && (
-        <button
-          type="button"
-          onPointerDown={(e) => e.preventDefault()}
-          onClick={onFullscreen}
-          className="flex items-center gap-1.5 rounded-lg border border-zinc-600 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700 hover:text-white"
-          title="Enter fullscreen"
-          aria-label="Enter fullscreen"
-        >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-          </svg>
-          Fullscreen
-        </button>
-      )}
-      <ShareButton onClick={onShare} toast={shareToast} />
+    <div className="flex w-full shrink-0 items-center justify-between gap-1.5 border-b border-zinc-700 bg-zinc-900 px-3 py-2 sm:gap-2 sm:px-4">
+      <div>{leftSlot}</div>
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        {rightSlot}
+        {showFullscreen && (
+          <button
+            type="button"
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={onFullscreen}
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-600 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700 hover:text-white"
+            title="Enter fullscreen"
+            aria-label="Enter fullscreen"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+            Fullscreen
+          </button>
+        )}
+        <ShareButton onClick={onShare} toast={shareToast} />
+      </div>
     </div>
   );
 });
@@ -1401,7 +1408,7 @@ const PosterMovieTop = memo(function PosterMovieTop({
 
 /** Trailer: directly under the video, above title row -- border separates from metadata. */
 const TRAILER_BAR_OUTER =
-  "w-full border-b border-zinc-800/90 bg-zinc-950/60 py-2 sm:py-3";
+  "w-full border-b border-zinc-800/90 bg-zinc-950/60 py-1.5 sm:py-2";
 
 const MovieRatingBlock = memo(function MovieRatingBlock({
   passCurrentCardStable,
@@ -1423,6 +1430,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   careerNextDisabled = false,
   controlsVisible = true,
   onControlActivity,
+  hideRating = false,
 }: {
   passCurrentCardStable: () => void;
   onRate: (stars: number, mode: "seen" | "unseen") => void;
@@ -1451,6 +1459,8 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   controlsVisible?: boolean;
   /** Fullscreen: reset auto-hide timer on control use. */
   onControlActivity?: () => void;
+  /** Hide stars and seen/unseen toggle (e.g. Coming Soon where rating has no effect). */
+  hideRating?: boolean;
 }) {
   const seenRadioGroupName = useId();
   const hasPrev = previousRating !== undefined && previousRating > 0;
@@ -1495,6 +1505,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
       key={`${starKeyPrefix}-seen-${movieTitle}`}
       compact
       careerNavTight={navPairTight}
+      hideLabel={isTrailerStrip}
       filled={displayFilled}
       color="red"
       label="Seen it"
@@ -1508,6 +1519,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
       key={`${starKeyPrefix}-unseen-${movieTitle}`}
       compact
       careerNavTight={navPairTight}
+      hideLabel={isTrailerStrip}
       filled={displayFilled}
       color="blue"
       label="Not yet"
@@ -1545,9 +1557,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
             }}
             disabled={prevNav.disabled}
             direction="prev"
-            compact={!isTrailerStrip && layout !== "fullscreenOverlay"}
-            muted={isTrailerStrip}
-            prominent={false}
+            compact={layout !== "fullscreenOverlay"}
             ghost={layout === "fullscreenOverlay"}
           />
         </div>
@@ -1570,9 +1580,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
               bumpControlActivity();
               passCurrentCardStable();
             }}
-            compact={!isTrailerStrip && layout !== "fullscreenOverlay"}
-            muted={isTrailerStrip}
-            prominent={false}
+            compact={layout !== "fullscreenOverlay"}
             ghost={layout === "fullscreenOverlay"}
             disabled={careerNextDisabled}
           />
@@ -1591,7 +1599,32 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
   if (layout === "trailerBar") {
     return (
       <div className={TRAILER_BAR_OUTER}>
-        <div className="mx-auto w-full min-w-0 max-w-3xl px-2 sm:px-3">{ratingBody}</div>
+        <div className="mx-auto w-full min-w-0 max-w-3xl px-2 sm:px-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-center gap-2 sm:gap-3">
+            {prevNav && (
+              <PassNextButton
+                onPass={() => { bumpControlActivity(); prevNav.onPass(); }}
+                disabled={prevNav.disabled}
+                direction="prev"
+                compact
+              />
+            )}
+            <SeenModeSegment
+              value={seenStatus}
+              onChange={(v) => { bumpControlActivity(); onSeenStatusChange(v); }}
+            />
+            <div className="rounded-lg border border-zinc-600 bg-zinc-800/60 px-2 py-1 shadow-sm">
+              {starBlock}
+            </div>
+            {showNextInRating && (
+              <PassNextButton
+                onPass={() => { bumpControlActivity(); passCurrentCardStable(); }}
+                compact
+                disabled={careerNextDisabled}
+              />
+            )}
+          </div>
+        </div>
       </div>
     );
   }
@@ -1639,15 +1672,19 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
               ghost
             />
           )}
-          <SeenModeSegment
-            value={seenStatus}
-            onChange={(v) => {
-              bumpControlActivity();
-              onSeenStatusChange(v);
-            }}
-            ghost
-          />
-          <div className="rounded-lg border border-zinc-600 bg-zinc-900/90 px-2 py-1 shadow-md">{fsStars}</div>
+          {!hideRating && (
+            <>
+              <SeenModeSegment
+                value={seenStatus}
+                onChange={(v) => {
+                  bumpControlActivity();
+                  onSeenStatusChange(v);
+                }}
+                ghost
+              />
+              <div className="rounded-lg border border-zinc-600 bg-zinc-900/90 px-2 py-1 shadow-md">{fsStars}</div>
+            </>
+          )}
           {showNextInRating && (
             <PassNextButton
               onPass={() => {
@@ -1686,6 +1723,7 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
   pendingStars,
   prevNav,
   careerNextDisabled,
+  hideRating,
 }: {
   /** Poster-only fullscreen still wraps content; trailer video stays mounted as a sibling. */
   children?: React.ReactNode;
@@ -1702,9 +1740,11 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
   pendingStars?: number;
   prevNav: { onPass: () => void; disabled: boolean } | null;
   careerNextDisabled: boolean;
+  hideRating?: boolean;
 }) {
   const [controlsVisible, setControlsVisible] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keyboardTrapRef = useRef<HTMLDivElement>(null);
 
   const bumpControlsVisible = useCallback(() => {
     setControlsVisible(true);
@@ -1723,13 +1763,19 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
 
   useEffect(() => {
     bumpControlsVisible();
+    keyboardTrapRef.current?.focus();
     return () => {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     };
   }, [bumpControlsVisible, movieTitle]);
 
   useEffect(() => {
-    const onActivity = () => bumpControlsVisible();
+    const onActivity = () => {
+      bumpControlsVisible();
+      // Recapture keyboard focus from the YouTube iframe (cross-origin, blocks parent keydown)
+      // whenever the user moves the mouse — so arrow keys immediately work again.
+      keyboardTrapRef.current?.focus({ preventScroll: true });
+    };
     const opts: AddEventListenerOptions = { capture: true, passive: true };
     document.addEventListener("mousemove", onActivity, opts);
     document.addEventListener("pointermove", onActivity, opts);
@@ -1756,6 +1802,18 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
 
   return (
     <>
+      {/* Keyboard trap: pointer-events-none so it never blocks mouse/touch, but holds
+          keyboard focus so ArrowLeft/ArrowRight work even after the iframe steals focus.
+          Mouse-move recaptures focus here via the activity listener above. */}
+      <div
+        ref={keyboardTrapRef}
+        tabIndex={-1}
+        className="fixed inset-0 z-[44] outline-none pointer-events-none"
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight") { e.preventDefault(); bumpControlsVisible(); passCurrentCardStable(); }
+          if (e.key === "ArrowLeft" && prevNav && !prevNav.disabled) { e.preventDefault(); bumpControlsVisible(); prevNav.onPass(); }
+        }}
+      />
       {children ? (
         <div className="relative flex min-h-0 flex-1 flex-col w-full bg-black">
           {children}
@@ -1800,6 +1858,7 @@ const TrailerFullscreenChrome = memo(function TrailerFullscreenChrome({
         careerNextDisabled={careerNextDisabled}
         controlsVisible={controlsVisible}
         onControlActivity={bumpControlsVisible}
+        hideRating={hideRating}
       />
     </>
   );
@@ -1922,23 +1981,17 @@ const ChannelsToolbar = memo(function ChannelsToolbar({
   channels,
   activeChannelId,
   onLoadStarter,
-  onMergeStarters,
-  showMergeStarterPack,
   onSelectChannel,
   onRequestDeleteChannel,
 }: {
   channels: Channel[];
   activeChannelId: string;
   onLoadStarter: () => void;
-  /** Same as Settings → Merge starter channels: add missing factory channels, keep current active channel. */
-  onMergeStarters: () => void;
-  showMergeStarterPack: boolean;
   onSelectChannel: (id: string) => void;
   onRequestDeleteChannel: (ch: Channel) => void;
 }) {
   const list = normalizeChannelList(channels);
   const customChannels = list.filter((c) => c.id !== "all");
-  const allChannel = list.find((c) => c.id === "all");
 
   const renderChannelButton = (ch: Channel) => {
     const deletable = ch.id !== "all";
@@ -1987,7 +2040,6 @@ const ChannelsToolbar = memo(function ChannelsToolbar({
       role="toolbar"
       aria-label="Channels"
     >
-      {allChannel ? renderChannelButton(allChannel) : null}
       {customChannels.length === 0 ? (
         <>
           <button
@@ -2008,16 +2060,6 @@ const ChannelsToolbar = memo(function ChannelsToolbar({
         </>
       ) : (
         <>
-          {showMergeStarterPack && (
-            <button
-              type="button"
-              onClick={onMergeStarters}
-              className="shrink-0 rounded-full border border-zinc-600 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:bg-zinc-800 hover:text-zinc-100 lg:w-full lg:shrink-0 lg:rounded-xl lg:py-2 lg:text-left"
-              title="Add bundled example channels you don’t already have (same as Settings → Starter channel pack)"
-            >
-              Merge starter pack
-            </button>
-          )}
           {customChannels.map(renderChannelButton)}
           <Link
             href="/channels?new=1"
@@ -2091,12 +2133,15 @@ export default function Home() {
       channelsRef.current = chs;
       setChannels(chs);
       const active = localStorage.getItem(ACTIVE_CHANNEL_KEY);
-      const fallback = chs[0]?.id ?? "all";
-      if (!active || !chs.some((c) => c.id === active)) {
+      const firstReal = chs.find((c) => c.id !== "all");
+      const fallback = firstReal?.id ?? chs[0]?.id ?? "all";
+      const resolvedActive = (!active || active === "all") ? fallback : active;
+      if (!chs.some((c) => c.id === resolvedActive)) {
         localStorage.setItem(ACTIVE_CHANNEL_KEY, fallback);
         setActiveChannelId(fallback);
-      } else if (active !== activeChannelIdRef.current) {
-        setActiveChannelId(active);
+      } else if (resolvedActive !== activeChannelIdRef.current) {
+        localStorage.setItem(ACTIVE_CHANNEL_KEY, resolvedActive);
+        setActiveChannelId(resolvedActive);
       }
     } catch {
       /* ignore */
@@ -2139,6 +2184,9 @@ export default function Home() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"both" | "movie" | "tv">("both");
   const [displayMode, setDisplayMode] = useState<"trailers" | "posters">("trailers");
+  const [autoAdvance, setAutoAdvance] = useState(false);
+  const autoAdvanceRef = useRef(false);
+  autoAdvanceRef.current = autoAdvance;
   const [llm, setLlm] = useState<string>("deepseek");
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isTrailerFullscreen, setIsTrailerFullscreen] = useState(false);
@@ -2168,12 +2216,15 @@ export default function Home() {
   const replenishGenRef = useRef(0);
   const savedPrefetchChannelRef = useRef<string | null>(null);
   const replenishInFlight = useRef(0);
+  /** Which TMDB /upcoming page to fetch next for the Coming Soon channel. Resets on channel change. */
+  const comingSoonPageRef = useRef(1);
   /** In-flight replenish count for the current gen -- reset to 0 on every gen bump so fetchNext knows when to kick off a fresh batch. */
   const replenishGenInFlight = useRef(0);
   const batchYieldRef = useRef<number[]>([]); // rolling yield fractions (fresh / requested)
 
   const tasteSummaryRef = useRef(tasteSummary);
-  const categoryTreeRef = useRef<CategoryTree | null>(null);
+  /** Taste profile frozen at session/channel start — sent in system prompt context (stable, cacheable). */
+  const prevSessionTasteSummaryRef = useRef<string | null>(null);
 
   const [userRequest, setUserRequest] = useState<string>("");
   const userRequestRef = useRef("");
@@ -2182,20 +2233,15 @@ export default function Home() {
   const prevUserRequestForFlushRef = useRef<string | undefined>(undefined);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [mounted, setMounted] = useState(false);
-  const [factoryPackFullyMerged, setFactoryPackFullyMerged] = useState<boolean | null>(null);
   const [channelPendingDelete, setChannelPendingDelete] = useState<Channel | null>(null);
 
-  useEffect(() => {
-    setFactoryPackFullyMerged(isFactoryStarterPackFullyMerged());
-  }, [channels]);
   const channelsRef = useRef<Channel[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string>("");
   const [newChannelText, setNewChannelText] = useState<string>("");
   const activeChannelIdRef = useRef<string>("");
   activeChannelIdRef.current = activeChannelId;
   channelsRef.current = channels;
-
-  /** Same as "What you want" in the channel editor: All → settings `userRequest`; else → this channel’s `freeText`. */
+/** Same as "What you want" in the channel editor: All → settings `userRequest`; else → this channel’s `freeText`. */
   const channelPromptValue = useMemo(() => {
     if (activeChannelId === "all") return userRequest;
     const ch = channels.find((c) => c.id === activeChannelId);
@@ -2259,7 +2305,24 @@ export default function Home() {
   const zeroYieldStreakRef = useRef(0); // consecutive batches with 0 fresh items -- stop daisy-chaining when high
   tasteSummaryRef.current = tasteSummary;
 
+  // Load per-channel taste summary whenever the active channel changes.
+  // Freeze prevSessionTasteSummaryRef at channel-switch time (never updated mid-session).
+  useEffect(() => {
+    if (!activeChannelId) return;
+    const stored = localStorage.getItem(tasteSummaryKey(activeChannelId)) ?? null;
+    setTasteSummary(stored);
+    tasteSummaryRef.current = stored;
+    prevSessionTasteSummaryRef.current = stored;
+  }, [activeChannelId]);
+
   const loadPrefetchIntoRefForChannel = useCallback((channelId: string) => {
+    const chName = channelsRef.current.find((c) => c.id === channelId)?.name ?? "";
+    if (chName === "Coming Soon") {
+      // Real-time TMDB feed — never restore stale stored queue, always fetch fresh
+      prefetchRef.current = [];
+      try { localStorage.removeItem(prefetchQueueStorageKey(channelId)); } catch { /* ignore */ }
+      return;
+    }
     const k = prefetchQueueStorageKey(channelId);
     let raw = localStorage.getItem(k);
     if (!raw) {
@@ -2281,11 +2344,15 @@ export default function Home() {
       const q = JSON.parse(raw) as CurrentMovie[];
       if (Array.isArray(q) && q.every((m) => m && typeof m.title === "string")) {
         const seen = new Set<string>();
+        const chName = channelsRef.current.find((c) => c.id === channelId)?.name ?? "";
+        const requiresTrailer = chName === "Coming Soon";
         prefetchRef.current = q
           .filter((m) => {
             const k = canonicalTitleKey(m.title);
             if (seen.has(k)) return false;
             seen.add(k);
+            if (!m.trailerKey && !m.posterUrl) return false;
+            if (requiresTrailer && !m.trailerKey) return false;
             return true;
           })
           .slice(0, HIGH_WATER_MARK);
@@ -2472,6 +2539,7 @@ export default function Home() {
     try {
       setMediaType(loadSetting("mediaType", "both" as const));
       setDisplayMode(loadSetting("displayMode", "trailers" as const));
+      setAutoAdvance(loadSetting("autoAdvance", false));
       setLlm(loadSetting("llm", "deepseek"));
       setUserRequest(loadSetting("userRequest", ""));
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -2488,10 +2556,11 @@ export default function Home() {
       if (storedNotSeen) notSeenRef.current = JSON.parse(storedNotSeen);
       const storedNotInterested = localStorage.getItem(NOT_INTERESTED_KEY);
       if (storedNotInterested) notInterestedRef.current = JSON.parse(storedNotInterested);
-      const storedTasteSummary = localStorage.getItem(TASTE_SUMMARY_KEY);
-      if (storedTasteSummary) { setTasteSummary(storedTasteSummary); tasteSummaryRef.current = storedTasteSummary; }
+      // Taste summary is loaded per-channel after activeChannelId is set (see useEffect below).
       if (hasNoChannelsPersisted()) {
         applyFactoryBootstrap();
+      } else if (!isFactoryStarterPackFullyMerged()) {
+        mergeFactoryChannelsAndQueues();
       }
       let loadedChannels: Channel[] = [];
       const storedChannels = localStorage.getItem(CHANNELS_KEY);
@@ -2508,8 +2577,10 @@ export default function Home() {
       setChannels(loadedChannels);
       channelsRef.current = loadedChannels;
       const storedActiveChannel = localStorage.getItem(ACTIVE_CHANNEL_KEY);
-      const defaultChannelId = loadedChannels.length > 0 ? loadedChannels[0].id : "all";
-      const activeId = storedActiveChannel || defaultChannelId;
+      const firstRealChannel = loadedChannels.find((c) => c.id !== "all");
+      const defaultChannelId = firstRealChannel?.id ?? loadedChannels[0]?.id ?? "all";
+      const rawActiveId = storedActiveChannel || defaultChannelId;
+      const activeId = rawActiveId === "all" ? defaultChannelId : rawActiveId;
       setActiveChannelId(activeId);
       activeChannelIdRef.current = activeId;
       setHistoryRevision((n) => n + 1);
@@ -2526,25 +2597,39 @@ export default function Home() {
 
   /** Fire-and-forget: ask the LLM to summarize taste. Called after ratings hit 1, 5, 10, 15 ... */
   const updateTasteSummary = useCallback((hist: RatingEntry[], currentLlm: string) => {
-    const wl = watchlistRef.current;
-    const ni = notInterestedRef.current;
+    const channelId = activeChannelIdRef.current?.trim() || "";
+    if (!channelId) return;
+    const channelMatch = (id?: string) => id === channelId || !id || id === "all";
+    const seenEntries = hist
+      .filter(e => channelMatch(e.channelId) && typeof e.userRating === "number")
+      .map(e => ({ ...e, userRating: e.userRating as number }));
+    const unseenEntries = loadUnseenInterestLog()
+      .filter(e => channelMatch(e.channelId) && e.interestStars != null)
+      .map(e => ({
+        title: e.title, type: e.type,
+        userRating: e.interestStars as number,
+        predictedRating: 3,
+        rtScore: e.rtScore,
+        ratingMode: "unseen" as const,
+        categories: undefined as string[] | undefined,
+      }));
+    const allRated = [...seenEntries, ...unseenEntries];
+    if (allRated.length === 0) return;
+    const key = tasteSummaryKey(channelId);
+    const existingSummary = localStorage.getItem(key) ?? undefined;
     fetch("/api/taste-summary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        history: hist,
-        watchlistSignals: wl.map((w) => ({ title: w.title, rtScore: w.rtScore })),
-        notInterestedSignals: ni,
-        existingSummary: tasteSummaryRef.current ?? undefined,
-        llm: currentLlm,
-      }),
+      body: JSON.stringify({ history: allRated, existingSummary, llm: currentLlm }),
     })
       .then((r) => r.ok ? r.json() : null)
       .then((d: { tasteSummary?: string | null } | null) => {
-        if (d?.tasteSummary) {
-          localStorage.setItem(TASTE_SUMMARY_KEY, d.tasteSummary);
-          tasteSummaryRef.current = d.tasteSummary;
-          setTasteSummary(d.tasteSummary);
+        if (d?.tasteSummary && channelId) {
+          localStorage.setItem(key, d.tasteSummary);
+          if (activeChannelIdRef.current?.trim() === channelId) {
+            tasteSummaryRef.current = d.tasteSummary;
+            setTasteSummary(d.tasteSummary);
+          }
         }
       })
       .catch(() => {});
@@ -2559,26 +2644,65 @@ export default function Home() {
     skipped: string[];
   }): Promise<CurrentMovie[] | null> => {
     const timeoutMs = 180_000;
+
+    // Coming Soon uses TMDB /upcoming instead of the LLM
+    const activeChName = channelsRef.current.find(
+      (c) => c.id === activeChannelIdRef.current
+    )?.name ?? "";
+    if (activeChName === "Coming Soon") {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const channel = channelsRef.current.find((c) => c.id === activeChannelIdRef.current);
+        const page = comingSoonPageRef.current;
+        const res = await fetch("/api/upcoming", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            page,
+            genres: channel?.genres ?? [],
+            language: channel?.language ?? "",
+            skipped: opts.skipped,
+          }),
+        });
+        if (!res.ok) return null;
+        const data = (await res.json()) as { movies?: CurrentMovie[]; totalPages?: number };
+        const totalPages = data.totalPages ?? 1;
+        comingSoonPageRef.current = page >= totalPages ? 1 : page + 1;
+        return data.movies?.filter((m) => m?.title) ?? [];
+      } catch (e) {
+        if (e instanceof Error && e.name === "AbortError") {
+          console.warn("[upcoming] request timed out");
+        }
+        return null;
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+
     for (let attempt = 0; attempt < 2; attempt++) {
       const controller = new AbortController();
       const timer = window.setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const hist = historyRef.current;
         const wl = watchlistRef.current;
-        const ni = notInterestedRef.current;
+        const channelId = activeChannelIdRef.current?.trim() || "";
+        const unseenLog = loadUnseenInterestLog();
+        const { channelHistory, sessionHistory } = buildChannelHistoryPayload(historyRef.current, unseenLog, channelId);
         const res = await fetch("/api/next-movie", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
-            ...buildHistorySyncPayload(hist),
+            channelHistory,
+            sessionHistory,
             skipped: opts.skipped,
             watchlistTitles: wl.map((w) => ({ title: w.title, rtScore: w.rtScore })),
-            notInterestedItems: ni,
+            prevSessionTasteSummary: prevSessionTasteSummaryRef.current ?? undefined,
             tasteSummary: tasteSummaryRef.current ?? undefined,
             userRequest: userRequestRef.current.trim() || undefined,
             activeChannel: (() => {
-              const id = activeChannelIdRef.current?.trim();
+              const id = channelId;
               if (!id) return undefined;
               let ch = channelsRef.current.find((c) => c.id === id);
               if (!ch) {
@@ -2598,17 +2722,17 @@ export default function Home() {
             mediaType: opts.mediaType,
             llm: opts.llm,
             count: LLM_BATCH_SIZE,
-            categoryTree: categoryTreeRef.current ?? undefined,
           }),
         });
-        if (res.status === 409) {
-          setSyncedRatingCount(0);
-          continue;
-        }
         if (!res.ok) continue;
-        setSyncedRatingCount(historyRef.current.length);
-        const data = (await res.json()) as { movies?: CurrentMovie[]; categoryTree?: CategoryTree };
-        if (data.categoryTree) categoryTreeRef.current = data.categoryTree;
+        const data = (await res.json()) as { movies?: CurrentMovie[]; debug?: { systemPrompt?: string; systemPromptContext?: string | null; userMessage?: string } };
+        if (data.debug) {
+          window.localStorage.setItem('__debug_full_prompt', JSON.stringify({
+            systemPrompt: data.debug.systemPrompt ?? null,
+            systemPromptContext: data.debug.systemPromptContext ?? null,
+            userMessage: data.debug.userMessage ?? null,
+          }));
+        }
         const movies = data.movies?.filter((m) => m?.title) ?? [];
         if (movies.length > 0) return movies;
       } catch (e) {
@@ -2677,6 +2801,11 @@ export default function Home() {
         const cur = currentRef.current;
         if (cur?.title) excluded.add(canonicalTitleKey(cur.title));
 
+        const activeChName = channelsRef.current.find(
+          (c) => c.id === activeChannelIdRef.current
+        )?.name ?? "";
+        const requiresTrailer = activeChName === "Coming Soon";
+
         for (const movie of movies) {
           if (prefetchRef.current.length >= HIGH_WATER_MARK) break;
           const key = canonicalTitleKey(movie.title);
@@ -2684,6 +2813,8 @@ export default function Home() {
           if (prefetchRef.current.some((m) => canonicalTitleKey(m.title) === key)) continue;
           if (excluded.has(key)) continue;
           excluded.add(key);
+          if (!movie.trailerKey && !movie.posterUrl) continue; // nothing to show
+          if (requiresTrailer && !movie.trailerKey) continue;
           prefetchRef.current = [...prefetchRef.current, movie];
           freshCount++;
         }
@@ -2722,9 +2853,13 @@ export default function Home() {
     }
     try {
       // Drain the queue, skipping any title the user already decided on (guards against stale prefetch entries).
+      const activeChName = channelsRef.current.find((c) => c.id === activeChannelIdRef.current)?.name ?? "";
+      const requiresTrailerForNext = activeChName === "Coming Soon";
       while (prefetchRef.current.length > 0) {
         const [next, ...rest] = prefetchRef.current;
         prefetchRef.current = rest;
+        if (!next.trailerKey && !next.posterUrl) continue; // nothing to show -- discard
+        if (requiresTrailerForNext && !next.trailerKey) continue; // Coming Soon requires trailer
         const excluded = new Set<string>();
         for (const h of historyRef.current) excluded.add(canonicalTitleKey(h.title));
         for (const s of skippedRef.current) excluded.add(canonicalTitleKey(s));
@@ -2862,9 +2997,11 @@ export default function Home() {
     } catch {
       /* ignore */
     }
-    const defaultCh = chs.length > 0 ? chs[0].id : "all";
+    const firstRealCh = chs.find((c) => c.id !== "all");
+    const defaultCh = firstRealCh?.id ?? chs[0]?.id ?? "all";
     const storedActive = localStorage.getItem(ACTIVE_CHANNEL_KEY);
-    const activeForPrefetch = storedActive || defaultCh;
+    const rawActiveForPrefetch = storedActive || defaultCh;
+    const activeForPrefetch = rawActiveForPrefetch === "all" ? defaultCh : rawActiveForPrefetch;
     activeChannelIdRef.current = activeForPrefetch;
     if (chs.length > 0) {
       channelsRef.current = chs;
@@ -3097,6 +3234,7 @@ export default function Home() {
       }
       replenishGenRef.current += 1;
       replenishGenInFlight.current = 0;
+      comingSoonPageRef.current = 1;
       try {
         localStorage.setItem(prefetchQueueStorageKey(prev), JSON.stringify(prefetchRef.current));
       } catch {
@@ -3138,25 +3276,12 @@ export default function Home() {
     channelsRef.current = next;
 
     if (activeChannelId === id) {
-      const fallback = next[0]?.id ?? "all";
+      const fallback = next.find((c) => c.id !== "all")?.id ?? next[0]?.id ?? "all";
       localStorage.setItem(ACTIVE_CHANNEL_KEY, fallback);
       setActiveChannelId(fallback);
     }
     setChannelPendingDelete(null);
   }, [channelPendingDelete, channels, activeChannelId]);
-
-  const mergeStartersKeepActive = useCallback(() => {
-    mergeFactoryChannelsAndQueues();
-    try {
-      const raw = localStorage.getItem(CHANNELS_KEY);
-      const next = normalizeChannelList(raw ? (JSON.parse(raw) as Channel[]) : []).map(normalizeChannel);
-      localStorage.setItem(CHANNELS_KEY, JSON.stringify(next));
-      setChannels(next);
-      channelsRef.current = next;
-    } catch {
-      /* ignore */
-    }
-  }, []);
 
   const loadStarterChannelsFromFactory = useCallback(() => {
     mergeFactoryChannelsAndQueues();
@@ -3721,7 +3846,7 @@ export default function Home() {
                     createChannelFromHomePrompt(newChannelText);
                     setNewChannelText("");
                   }}
-                  placeholder="Genres, era, directors…"
+                  placeholder="movie, TV show, actor, director, mood, era, genre…"
                   className="min-h-8 max-h-16 w-full resize-none rounded-lg border border-zinc-600 bg-zinc-900 px-2 py-1.5 pr-7 text-xs leading-snug text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 sm:min-h-9 sm:max-h-none sm:resize-y sm:px-3 sm:py-2 sm:pr-9 sm:text-sm"
                 />
                 {newChannelText.length > 0 && (
@@ -3757,8 +3882,6 @@ export default function Home() {
             channels={channels}
             activeChannelId={activeChannelId}
             onLoadStarter={loadStarterChannelsFromFactory}
-            onMergeStarters={mergeStartersKeepActive}
-            showMergeStarterPack={factoryPackFullyMerged === false}
             onSelectChannel={selectChannel}
             onRequestDeleteChannel={requestDeleteChannel}
           />
@@ -3828,6 +3951,7 @@ export default function Home() {
                           resumeFromFraction={
                             trailerResumeByChannel[activeChannelId]?.[canonicalTitleKey(current.title)]
                           }
+                          onEnded={() => { if (autoAdvanceRef.current) passCurrentCardStable(); }}
                         />
                       </div>
                       {trailerFsUi && (
@@ -3845,17 +3969,19 @@ export default function Home() {
                           ratingResetKey={ratingCardKey}
                           prevNav={prevNav}
                           careerNextDisabled={careerAtLastFilm}
+                          hideRating={channels.find(c => c.id === activeChannelId)?.name === "Coming Soon"}
                         />
                       )}
                     </div>
-                  ) : current.posterUrl && !current.trailerKey ? (
+                  ) : (
+                    /* No trailer — show poster if available, otherwise a placeholder */
                     <div
                       ref={videoContainerRef}
                       className={`flex min-h-0 flex-col bg-black ${
                         pseudoTrailerFullscreen ? "fixed inset-0 z-[70] overflow-y-auto overscroll-y-contain" : ""
                       }`}
                     >
-                      {trailerFsUi ? (
+                      {trailerFsUi && current.posterUrl ? (
                         <TrailerFullscreenChrome
                           onExit={() => void exitTrailerFullscreen()}
                           passCurrentCardStable={passCurrentCardStable}
@@ -3870,6 +3996,7 @@ export default function Home() {
                           ratingResetKey={ratingCardKey}
                           prevNav={prevNav}
                           careerNextDisabled={careerAtLastFilm}
+                          hideRating={channels.find(c => c.id === activeChannelId)?.name === "Coming Soon"}
                         >
                           <div className="relative flex min-h-0 flex-1 items-center justify-center bg-black px-4 pb-36 pt-16">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -3881,7 +4008,7 @@ export default function Home() {
                             />
                           </div>
                         </TrailerFullscreenChrome>
-                      ) : (
+                      ) : current.posterUrl ? (
                         <div className="border-b border-zinc-800/80 bg-zinc-950 p-4 sm:p-6">
                           <PosterMovieTop
                             movie={current}
@@ -3892,13 +4019,11 @@ export default function Home() {
                             detailsLoading={careerLoading}
                           />
                         </div>
+                      ) : (
+                        <div className="flex aspect-video w-full items-center justify-center bg-zinc-950 text-sm text-zinc-500">
+                          {careerLoading ? "Loading trailer…" : "No trailer available"}
+                        </div>
                       )}
-                    </div>
-                  ) : (
-                    <div ref={videoContainerRef} className="relative bg-black">
-                      <div className="flex aspect-video w-full items-center justify-center bg-zinc-950 text-sm text-zinc-500">
-                        {careerLoading ? "Loading trailer…" : null}
-                      </div>
                     </div>
                   )}
                   {!trailerFsUi && (current.trailerKey || current.posterUrl) && (
@@ -3906,21 +4031,34 @@ export default function Home() {
                       onFullscreen={() => void enterTrailerFullscreen()}
                       onShare={handleShare}
                       shareToast={shareToast}
+                      leftSlot={!careerMode && (
+                        <div className="flex rounded-2xl overflow-hidden border border-zinc-700 w-fit">
+                          {(["posters", "trailers"] as const).map(mode => (
+                            <button key={mode} type="button"
+                              onClick={() => { setDisplayMode(mode); saveSetting("displayMode", mode); }}
+                              className={`px-3 py-2 text-xs font-semibold capitalize transition-colors ${displayMode === mode ? "bg-zinc-200 text-zinc-900" : "bg-transparent text-zinc-500 hover:text-zinc-200"}`}
+                            >{mode}</button>
+                          ))}
+                        </div>
+                      )}
+                      rightSlot={displayMode === "trailers" && (
+                        <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-600 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700 select-none">
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5 accent-blue-500"
+                            checked={autoAdvance}
+                            onChange={(e) => {
+                              const v = e.target.checked;
+                              setAutoAdvance(v);
+                              saveSetting("autoAdvance", v);
+                            }}
+                          />
+                          Auto
+                        </label>
+                      )}
                     />
                   )}
-                  {!trailerFsUi && !careerMode && (
-                    <div className="px-3 pt-2 sm:px-6">
-                      <div className="flex rounded-2xl overflow-hidden border border-zinc-700 w-fit">
-                        {(["posters", "trailers"] as const).map(mode => (
-                          <button key={mode} type="button"
-                            onClick={() => { setDisplayMode(mode); saveSetting("displayMode", mode); }}
-                            className={`px-3 py-2 text-xs font-semibold capitalize transition-colors ${displayMode === mode ? "bg-zinc-200 text-zinc-900" : "bg-transparent text-zinc-500 hover:text-zinc-200"}`}
-                          >{mode}</button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {!trailerFsUi && (
+                  {!trailerFsUi && channels.find(c => c.id === activeChannelId)?.name !== "Coming Soon" && (
                     <MovieRatingBlock
                       layout="trailerBar"
                       passCurrentCardStable={passCurrentCardStable}
@@ -3980,26 +4118,6 @@ export default function Home() {
                       />
                     )}
                   </div>
-                  {current.trailerKey && current.posterUrl && (
-                    <div className="flex w-full min-w-0 justify-center border-t border-zinc-800 bg-zinc-950 px-3 pb-4 pt-3 sm:px-6 sm:pb-5 sm:pt-3">
-                      <button
-                        type="button"
-                        onPointerDown={(e) => e.preventDefault()}
-                        onClick={() => openPosterLightbox(current.posterUrl!)}
-                        className="w-1/2 min-w-0 max-w-full cursor-zoom-in overflow-hidden rounded-lg border border-zinc-800/90 shadow-sm transition-shadow hover:border-zinc-600"
-                        title="View poster"
-                        aria-label={`View ${current.title} poster full size`}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={current.posterUrl}
-                          alt={`${current.title} poster`}
-                          referrerPolicy="no-referrer"
-                          className="mx-auto block h-auto w-full max-h-72 object-contain object-top sm:max-h-80"
-                        />
-                      </button>
-                    </div>
-                  )}
                   </>
                   )}
                 </div>
@@ -4040,21 +4158,23 @@ export default function Home() {
                       </div>
                     </div>
                   )}
-                  <MovieRatingBlock
-                    passCurrentCardStable={passCurrentCardStable}
-                    onRate={handlePendingChange}
-                    movieTitle={current.title}
-                    starKeyPrefix="po"
-                    seenStatus={currentSeenStatus}
-                    onSeenStatusChange={handleSeenStatusChange}
-                    lockStarsOnRate={false}
-                    pendingStars={currentPendingStars}
-                    previousRating={committedDisplayRating?.stars}
-                    previousMode={committedDisplayRating?.mode}
-                    ratingResetKey={ratingCardKey}
-                    prevNav={prevNav}
-                    careerNextDisabled={careerAtLastFilm}
-                  />
+                  {channels.find(c => c.id === activeChannelId)?.name !== "Coming Soon" && (
+                    <MovieRatingBlock
+                      passCurrentCardStable={passCurrentCardStable}
+                      onRate={handlePendingChange}
+                      movieTitle={current.title}
+                      starKeyPrefix="po"
+                      seenStatus={currentSeenStatus}
+                      onSeenStatusChange={handleSeenStatusChange}
+                      lockStarsOnRate={false}
+                      pendingStars={currentPendingStars}
+                      previousRating={committedDisplayRating?.stars}
+                      previousMode={committedDisplayRating?.mode}
+                      ratingResetKey={ratingCardKey}
+                      prevNav={prevNav}
+                      careerNextDisabled={careerAtLastFilm}
+                    />
+                  )}
                   {careerMode ? (
                     <CareerFilmographyPanel
                       career={careerMode}

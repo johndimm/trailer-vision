@@ -33,9 +33,9 @@ export async function POST(request: Request) {
 
   const userMessage = `The user is building a film channel. Use the description and filters below. Their current input is: ${active.join("; ")}.
 
-Suggest up to 20 notable directors and/or actors whose work fits this overall theme.
+Suggest up to 20 notable directors and/or actors whose work fits this overall theme. Only include real, recognizable filmmakers and actors (e.g., "Stanley Kubrick", "Meryl Streep"). Never include partial names, abbreviations, or fragments.
 
-Return JSON: {"artists":["Name",...]}`;
+Return JSON: {"artists":["Full Name",...]}`;
 
   try {
     const text = await callLLM(llm, systemPrompt, userMessage, { maxTokens: 400 });
@@ -43,7 +43,13 @@ Return JSON: {"artists":["Name",...]}`;
     if (!match) return Response.json({ artists: [] });
     const parsed = JSON.parse(match[0]) as { artists?: unknown };
     const artists = Array.isArray(parsed.artists)
-      ? parsed.artists.filter((a): a is string => typeof a === "string" && a.trim().length > 0)
+      ? parsed.artists
+          .filter((a): a is string => typeof a === "string" && a.trim().length > 0)
+          .filter((name) => {
+            // Only accept names that look like real people: must have a space (first + last name)
+            // This rejects single words, abbreviations, and title fragments
+            return name.includes(" ");
+          })
       : [];
     return Response.json({ artists });
   } catch (e) {

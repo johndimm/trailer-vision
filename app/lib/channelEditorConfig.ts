@@ -47,7 +47,7 @@ export const TRAILER_CHANNEL_EDITOR_CONFIG: ChannelEditorConfig = {
     "Short label shown on the home screen. Give it a clear, specific title—no need to paste it again in the description above.",
   namePlaceholder: "e.g. 70s paranoid thrillers, cozy British mysteries",
   freeTextPlaceholder:
-    "E.g. slow-burn Euro crime from the 70s, morally gray leads, not big franchise IP…",
+    "movie, TV show, actor, director, mood, era, genre…",
   refineHelp:
     "use the checkboxes to match the description, or set them by hand. You can add more in the main text if needed; you don't need to restate the channel name there.",
   artistsLabel: "Directors / Actors",

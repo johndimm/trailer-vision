@@ -1,19 +1,4 @@
-import type { CategoryPath, CategoryTree } from "../../lib/categoryTree";
-import {
-  buildChannelTreeTaggingSection,
-  buildRoundOneSlots,
-  buildTreeExplorationSection,
-  formatRoundOneSlotRequirements,
-  formatSlotValidationFeedback,
-  formatTreeForPrompt,
-  generateCategoryTree,
-  resolveTreeForPreference,
-  parseCategoryPathsFromRaw,
-  pathsToDisplayCategories,
-  superKey,
-  validateBatchAgainstSlots,
-} from "../../lib/categoryTree";
-import { getSessionCategoryTree, saveSessionCategoryTree } from "./historySessionStore";
+import type { CategoryPath } from "../../lib/categoryTree";
 
 export interface RatingEntry {
   title: string;
@@ -22,6 +7,8 @@ export interface RatingEntry {
   userRating: number;
   predictedRating: number;
   rtScore?: string | null;
+  /** "seen" = red-star rating after watching; "unseen" = blue-star interest rating */
+  ratingMode?: "seen" | "unseen";
   categories?: string[];
   categoryPaths?: CategoryPath[];
 }
@@ -42,7 +29,7 @@ export interface NextMovieResponse {
   streaming: string[];
   /** Genre/category tags returned by the LLM */
   categories: string[];
-  /** Hierarchical paths in the session category tree */
+  /** Kept for backward compat with stored history — always empty from this route now */
   categoryPaths: CategoryPath[];
 }
 
@@ -52,7 +39,6 @@ interface RawItem {
   type?: "movie" | "tv";
   year?: number | null;
   director?: string | null;
-  predicted_rating?: number;
   actors?: string[];
   plot?: string;
   rt_score?: string | null;
@@ -60,12 +46,10 @@ interface RawItem {
   streaming_services?: unknown;
   /** 2–4 short genre/category tags assigned by the LLM */
   categories?: string[];
-  category_paths?: unknown;
 }
 
 import {
   migrateRatingValue,
-  normalizePredictedRating,
   rtTomatometerPercentToStars,
 } from "../../lib/ratingScale";
 import { fetchTmdbAssets, resolveMovieFromTmdbByTitle } from "../../lib/tmdbAssets";
@@ -76,15 +60,12 @@ import { directTitlePromptFromRequest, directTitleConstraintLine, llmTitlePrefix
  */
 const DEFAULT_BATCH = 5;
 const MAX_BATCH = 8;
-/** Max rated lines in prompt — highest |user−RT| first (then |user−AI| if no RT). */
-const MAX_HISTORY_DIVERGENCE_LINES = 32;
-/** Curated unseen signals (low-RT saves, high-RT dismissals). */
-const MAX_LOW_RT_WANT_LINES = 28;
-const MAX_HIGH_RT_SKIP_LINES = 28;
-const LOW_RT_THRESHOLD = 60; // want-to-watch: RT below this is a strong signal
-const HIGH_RT_THRESHOLD = 70; // not interested: RT at/above this is a strong signal
+/** Max entries in system prompt context history (selected by recency + RT divergence). */
+const MAX_HISTORY_LINES = 50;
+/** Max entries shown in user message for ratings added this session. */
+const MAX_SESSION_HISTORY_LINES = 25;
 /** Scales with batch size (8 titles × short JSON + reasons + categories). */
-const LLM_OUTPUT_MAX_TOKENS = 3500;
+const LLM_OUTPUT_MAX_TOKENS = 3000;
 
 function stripMarkdownJsonFence(text: string): string {
   return text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
@@ -280,21 +261,14 @@ function parseRtPercent(rtScore: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/**
- * Taste information density: prefer |user − RT| (RT % mapped to same half-star scale); else |user − AI|.
- */
 function divergenceScore(entry: RatingEntry): number {
   const u = migrateRatingValue(entry.userRating);
   const rt = parseRtPercent(entry.rtScore);
-  if (rt !== null) {
-    return Math.abs(u - rtTomatometerPercentToStars(rt));
-  }
-  return Math.abs(u - migrateRatingValue(entry.predictedRating));
+  return rt !== null ? Math.abs(u - rtTomatometerPercentToStars(rt)) : 0;
 }
 
 function selectInformativeHistory(history: RatingEntry[], maxEntries: number): RatingEntry[] {
   if (history.length <= maxEntries) return history;
-  // Reserve ~1/4 of slots for recency signal; fill the rest with highest-divergence entries.
   const recentCount = Math.min(Math.floor(maxEntries / 4), 10);
   const recentEntries = history.slice(-recentCount);
   const recentKeys = new Set(recentEntries.map((e) => e.title.toLowerCase()));
@@ -302,155 +276,10 @@ function selectInformativeHistory(history: RatingEntry[], maxEntries: number): R
   const remainingSlots = maxEntries - recentEntries.length;
   const scored = olderEntries.map((entry) => ({ entry, divergence: divergenceScore(entry) }));
   scored.sort((a, b) => b.divergence - a.divergence);
-  const divergentEntries = scored.slice(0, remainingSlots).map((s) => s.entry);
-  // Divergent first (context), recent last (freshest signal)
-  return [...divergentEntries, ...recentEntries];
+  return [...scored.slice(0, remainingSlots).map((s) => s.entry), ...recentEntries];
 }
 
 import { callLLM } from "./llm";
-import { resolveHistoryForPrompt } from "./historySessionStore";
-
-/**
- * In exploration mode (<20 ratings), ask the LLM to identify which categories/regions
- * we should explore NEXT, excluding ones already tried.
- */
-/**
- * Analyze ratings to understand preference patterns using 20Q logic:
- * - Which categories user loves (4-5★)
- * - Which they avoid (1-2★)
- */
-function analyzePreferenceSignals(history: RatingEntry[]): {
-  loved: Map<string, number>;
-  avoided: Map<string, number>;
-  /** Tags that ever scored 3+ — never deprioritize these after a single low rating elsewhere */
-  warmTags: Set<string>;
-  hasSignal: boolean;
-  topLoved: string[];
-} {
-  const lovedCats = new Map<string, number[]>();
-  const avoidedCats = new Map<string, number[]>();
-  const warmTags = new Set<string>();
-
-  for (const entry of history) {
-    if (!entry.categories?.length) continue;
-    const rating = entry.userRating;
-    for (const cat of entry.categories) {
-      if (rating >= 3) warmTags.add(cat);
-      if (rating >= 4) {
-        if (!lovedCats.has(cat)) lovedCats.set(cat, []);
-        lovedCats.get(cat)!.push(rating);
-      } else if (rating <= 2) {
-        if (!avoidedCats.has(cat)) avoidedCats.set(cat, []);
-        avoidedCats.get(cat)!.push(rating);
-      }
-    }
-  }
-
-  const loved = new Map(
-    [...lovedCats.entries()].map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length])
-  );
-  const avoided = new Map(
-    [...avoidedCats.entries()].map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length])
-  );
-
-  const topLoved = [...loved.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([cat]) => cat);
-
-  return { loved, avoided, warmTags, hasSignal: loved.size > 0, topLoved };
-}
-
-/**
- * Generate strategic hypotheses to test using 20Q logic.
- */
-function generateTestHypotheses(topLoved: string[]): string[] {
-  if (topLoved.length === 0) return [];
-
-  const hypotheses: string[] = [];
-
-  // Core hypothesis: what's the primary dimension?
-  if (topLoved.length >= 2) {
-    const [primary, secondary] = topLoved;
-    hypotheses.push(
-      `Is it specifically "${primary}" or more broadly "${secondary}"-style content?`,
-      `Does removing ${primary} break the appeal, or is ${secondary} enough?`
-    );
-  } else if (topLoved.length === 1) {
-    hypotheses.push(
-      `Is it specifically the "${topLoved[0]}" category or a broader pattern?`,
-      `What's the core appeal: the cultural origin, the genre, the tone, or the production style?`
-    );
-  }
-
-  // Dimensional hypotheses
-  hypotheses.push(
-    "Is it the storytelling tone (romantic, epic, comedy) or the category itself?",
-    "Is it the region/culture or the specific genre conventions?",
-    "Is it the production scale (spectacle, music, choreography) or the plot type?"
-  );
-
-  return hypotheses.slice(0, 5);
-}
-
-/**
- * In hypothesis-testing phase, ask LLM to design films that isolate dimensions.
- * Suggest exploring variations/sub-categories of what they love.
- */
-async function generateHypothesisTestingPrompt(
-  topLoved: string[],
-  history: RatingEntry[],
-  llm: string,
-): Promise<string | null> {
-  const hypotheses = generateTestHypotheses(topLoved);
-  if (hypotheses.length === 0) return null;
-
-  const lovedFilmExamples = history
-    .filter(e => e.userRating >= 4 && e.categories?.length)
-    .slice(-3)
-    .map(e => `"${e.title}" (${e.categories?.join(", ")})`)
-    .join(", ");
-
-  // Ask LLM to suggest variations of loved categories
-  const variationHint = topLoved.length > 0
-    ? `Also explore variations within "${topLoved[0]}" that they haven't tried yet (sub-genres, adjacent eras, or same appeal from a different region).`
-    : '';
-
-  const systemPrompt = `You are designing strategic films to isolate which dimension of a user's taste matters most.
-This is like 20 Questions: each film should test a specific hypothesis about why they love what they love.
-Design films where the results (4★ vs 1★) will teach us something definitive.`;
-
-  const prompt = `User LOVES: ${topLoved.join(", ")}
-Examples: ${lovedFilmExamples}
-
-${variationHint}
-
-Test these hypotheses with 5 strategic films:
-1. CONFIRM: Another example of exactly what they love (validate the pattern)
-2. ISOLATE-DIMENSION-1: Same appeal but different dimension
-3. ISOLATE-DIMENSION-2: Related but flip one key attribute
-4. ISOLATE-TONE: Similar tone/emotion but different category (test if it's emotion or category)
-5. BOUNDARY-TEST: Edge case that challenges the hypothesis (what breaks the spell?)
-
-For each film, explain which hypothesis it tests.
-
-Reply ONLY with JSON array:
-[
-  {"title": "Film Name", "year": 2020, "type": "movie", "hypothesis_tests": "CONFIRM: validates the loved pattern"},
-  {"title": "Film Name", "year": 2015, "type": "movie", "hypothesis_tests": "ISOLATE-DIMENSION: is it genre or region?"},
-  ...
-]`;
-
-  try {
-    const response = await callLLM(llm, systemPrompt, prompt, {
-      maxTokens: 500,
-    });
-    return response;
-  } catch (e) {
-    console.error("[generateHypothesisTestingPrompt] error:", e);
-    return null;
-  }
-}
 
 interface ChannelPayload {
   id: string;
@@ -483,13 +312,25 @@ function buildChannelConstraint(ch: ChannelPayload, mediaType: "movie" | "tv" | 
   const lines: string[] = [];
   const mediumLine = buildMediumsConstraintLine(ch.mediums);
   if (mediumLine) lines.push(mediumLine);
+
+  // Check channel name first (may be a direct movie title like "The Thing")
+  const name = ch.name.trim();
+  const nameAsTitle = name && !name.toLowerCase().endsWith("channel") ? parseDirectTitleRequest(name, mediaType) : null;
+
   const freeText = ch.freeText.trim();
   const directTitle = freeText ? parseDirectTitleRequest(freeText, mediaType) : null;
+
   if (directTitle) {
     lines.push(`- ${directTitleConstraintLine(directTitle)}`);
+  } else if (nameAsTitle) {
+    lines.push(`- ${directTitleConstraintLine(nameAsTitle)}`);
   } else if (freeText) {
     lines.push(
       `- What they want (primary — align genres/era/etc. below with this): ${freeText}`,
+    );
+  } else if (name) {
+    lines.push(
+      `- What they want (primary): ${name}`,
     );
   }
   if (ch.genres.length) lines.push(`- Genres: ${ch.genres.join(", ")}`);
@@ -512,26 +353,28 @@ function buildChannelConstraint(ch: ChannelPayload, mediaType: "movie" | "tv" | 
 
 export async function POST(request: Request) {
   const raw = (await request.json()) as {
-    sessionId?: string;
-    historySync?: "full" | "delta" | "reuse";
-    history?: RatingEntry[];
-    baseLength?: number;
-    historyAppend?: RatingEntry[];
+    /** Unified rated history from before this session (seen + unseen) — sent in system prompt context (stable, cacheable). */
+    channelHistory?: RatingEntry[];
+    /** Unified ratings made this session (seen + unseen) — sent in user message. */
+    sessionHistory?: RatingEntry[];
     skipped?: string[];
     watchlistTitles?: Array<string | { title: string; rtScore?: string | null }>;
-    notInterestedItems?: Array<{ title: string; rtScore?: string | null }>;
+    /** Taste profile from the end of the previous session — frozen at session start, goes in system prompt context. */
+    prevSessionTasteSummary?: string;
+    /** Taste profile from the last LLM call this session — updated each replenishment, goes in user message. */
     tasteSummary?: string;
     userRequest?: string;
     activeChannel?: ChannelPayload;
     mediaType?: "movie" | "tv" | "both";
     llm?: string;
     count?: number;
-    triedCategories?: string[];
     /** CLI taste tests: skip TMDB poster/trailer enrichment (avoids YouTube API calls). */
     skipAssets?: boolean;
-    /** Session taxonomy — generated once per session if omitted */
-    categoryTree?: CategoryTree;
   };
+
+  const channelHistory: RatingEntry[] = raw.channelHistory ?? [];
+  const sessionHistory: RatingEntry[] = raw.sessionHistory ?? [];
+  const history = [...channelHistory, ...sessionHistory];
 
   const skipped = raw.skipped ?? [];
   // Support both legacy string[] and new {title, rtScore}[] formats
@@ -540,8 +383,8 @@ export async function POST(request: Request) {
     typeof item === "string" ? { title: item } : item
   );
   const watchlistTitles = watchlistItems.map((w) => w.title);
-  const notInterestedItems: { title: string; rtScore?: string | null }[] = raw.notInterestedItems ?? [];
-  const existingTasteSummary = raw.tasteSummary?.trim() || null;
+  const prevSessionTasteSummary = raw.prevSessionTasteSummary?.trim() || null;
+  const inSessionTasteSummary = raw.tasteSummary?.trim() || null;
   const userRequest = raw.userRequest?.trim() || null;
   const activeChannel = raw.activeChannel ?? null;
   const mediaType = raw.mediaType ?? "both";
@@ -549,56 +392,6 @@ export async function POST(request: Request) {
   const llm = raw.llm ?? "deepseek";
   const countRaw = raw.count;
   const skipAssets = raw.skipAssets === true;
-
-  const merged = resolveHistoryForPrompt(raw.sessionId, raw.historySync, {
-    history: raw.history,
-    baseLength: raw.baseLength,
-    historyAppend: raw.historyAppend,
-  });
-
-  if (!merged.ok) {
-    return Response.json(
-      { error: "session_resync", reason: merged.reason, message: "Send historySync full with complete history" },
-      { status: 409 }
-    );
-  }
-
-  const history = merged.history;
-  const triedCategories = [
-    ...new Set([
-      ...(raw.triedCategories ?? []),
-      ...history.flatMap((e) => e.categories ?? []),
-    ]),
-  ];
-
-  let categoryTree: CategoryTree | null =
-    raw.categoryTree ?? (raw.sessionId ? getSessionCategoryTree(raw.sessionId) : null) ?? null;
-
-  if (!categoryTree) {
-    try {
-      if (!channelConstraint && !userRequest) {
-        categoryTree = await generateCategoryTree(llm);
-      } else if (channelConstraint && activeChannel) {
-        const anchor = activeChannel.freeText.trim() || activeChannel.name.trim();
-        if (anchor) {
-          const base = await generateCategoryTree(llm, { anchorPreference: anchor });
-          const resolved = await resolveTreeForPreference(base, anchor, llm);
-          categoryTree = resolved.tree;
-        }
-      }
-      if (categoryTree && raw.sessionId) saveSessionCategoryTree(raw.sessionId, categoryTree);
-    } catch (e) {
-      console.error("[next-movie] category tree generation failed:", e);
-    }
-  } else if (categoryTree && raw.sessionId && raw.categoryTree) {
-    saveSessionCategoryTree(raw.sessionId, categoryTree);
-  }
-
-  const triedSuperKeys = [
-    ...new Set([
-      ...history.flatMap((e) => (e.categoryPaths ?? []).map(superKey)),
-    ]),
-  ];
 
   const batchCount = Math.min(MAX_BATCH, Math.max(1, Math.floor(Number(countRaw) || DEFAULT_BATCH)));
 
@@ -651,53 +444,27 @@ export async function POST(request: Request) {
 
   const titlePrefixCandidates = llmTitlePrefixCandidates({ activeChannel, userRequest, mediaType });
 
-  // --- Informative taste-signal sections (token-efficient; full exclusion lists not sent) ---
+  // --- History sections ---
 
-  const informativeHistory = selectInformativeHistory(history, MAX_HISTORY_DIVERGENCE_LINES);
-  const historyTrimmed = history.length > informativeHistory.length;
+  // Unified channel history (seen + unseen, pre-session) → system prompt context (cached by Anthropic).
+  const informativeChannelHistory = selectInformativeHistory(channelHistory, MAX_HISTORY_LINES);
+  const channelHistorySection = (() => {
+    if (channelHistory.length === 0) return "";
+    const lines = informativeChannelHistory
+      .map((h) => {
+        const u = migrateRatingValue(h.userRating);
+        const label = h.ratingMode === "unseen" ? " interest" : " seen";
+        const rt = h.rtScore ? ` RT:${h.rtScore}` : "";
+        return `- "${h.title}" (${h.type}): ★${u}/5${label}${rt}`;
+      })
+      .join("\n");
+    const note = informativeChannelHistory.length < channelHistory.length
+      ? `\n[${informativeChannelHistory.length} of ${channelHistory.length} shown — highest user/RT divergence plus most recent]`
+      : "";
+    return `CHANNEL RATING HISTORY (${channelHistory.length} title${channelHistory.length === 1 ? "" : "s"} rated before this session):\n${lines}${note}`;
+  })();
 
-  const historyText =
-    informativeHistory.length === 0
-      ? "No ratings yet."
-      : informativeHistory
-          .map((h) => {
-            const rt = h.rtScore ? ` RT:${h.rtScore}` : "";
-            const rt_n = parseRtPercent(h.rtScore);
-            const u = migrateRatingValue(h.userRating);
-            const rtAsStars = rt_n !== null ? rtTomatometerPercentToStars(rt_n) : null;
-            const gap =
-              rtAsStars !== null
-                ? ` |user−RT★|=${Math.abs(u - rtAsStars)} (Tomatometer → ${rtAsStars}/5 stars)`
-                : ` |user−AI|=${Math.abs(u - migrateRatingValue(h.predictedRating))} (no RT)`;
-            return `- "${h.title}" (${h.type}): user ${u}/5, AI ${migrateRatingValue(h.predictedRating)}/5${rt}${gap}`;
-          })
-          .join("\n");
-
-  const historyNote = historyTrimmed
-    ? `[Subset: ${informativeHistory.length} of ${history.length} rated — kept those with largest divergence from RT (or from AI if RT missing)]`
-    : "";
-
-  const lowRtCandidates = watchlistItems
-    .map((w) => ({ ...w, rtN: parseRtPercent(w.rtScore) }))
-    .filter((w): w is typeof w & { rtN: number } => w.rtN !== null && w.rtN < LOW_RT_THRESHOLD)
-    .sort((a, b) => a.rtN - b.rtN)
-    .slice(0, MAX_LOW_RT_WANT_LINES);
-
-  const lowRtWantText =
-    lowRtCandidates.length === 0
-      ? "None."
-      : lowRtCandidates.map((w) => `"${w.title}" (RT:${w.rtScore})`).join(", ");
-
-  const highRtCandidates = notInterestedItems
-    .map((n) => ({ ...n, rtN: parseRtPercent(n.rtScore) }))
-    .filter((n): n is typeof n & { rtN: number } => n.rtN !== null && n.rtN >= HIGH_RT_THRESHOLD)
-    .sort((a, b) => b.rtN - a.rtN)
-    .slice(0, MAX_HIGH_RT_SKIP_LINES);
-
-  const highRtSkipText =
-    highRtCandidates.length === 0
-      ? "None."
-      : highRtCandidates.map((n) => `"${n.title}" (RT:${n.rtScore})`).join(", ");
+  // --- Constraints ---
 
   const mediaConstraint =
     mediaType === "movie"
@@ -719,50 +486,42 @@ export async function POST(request: Request) {
       );
     }
   }
+  // Running taste profile from previous session — frozen at session start, stable for Anthropic caching.
+  if (prevSessionTasteSummary) {
+    systemPromptContextParts.push(
+      `RUNNING TASTE PROFILE (from previous session — treat as primary signal):\n${prevSessionTasteSummary}`
+    );
+  }
+  // Unified channel rating history (seen + unseen, pre-session) — stable, cached by Anthropic.
+  if (channelHistorySection) systemPromptContextParts.push(channelHistorySection);
+
   const systemPromptContext =
     systemPromptContextParts.length > 0 ? systemPromptContextParts.join("\n\n") : null;
 
-  const systemPrompt = `You are calibrating a movie/TV recommendation system to a specific user's taste.
-
-The user rates with **half stars from 0.5 to 5** (not percentages). Rotten Tomatoes Tomatometer scores are percentages; the app converts them to the same star scale for comparison.
-
-Many cards have no Rotten Tomatoes score — that is normal.
+  const systemPrompt = `You are a movie/TV recommendation engine. Your job is to suggest titles that genuinely fit this user's taste, based on their rating history.
 
 Your job each turn:
-1. Propose ${batchCount} titles (aim for variety). The client removes duplicates against a large exclusion set you do not receive in full — repeats are OK; the app will filter.
-2. For each title, predict the rating they would give on a **0.5–5 star scale (half-star steps only)**.
-3. Return title, year, director, top 3-4 actors, a 1-2 sentence plot summary, Rotten Tomatoes Tomatometer when known, and a one-sentence reason explaining why this title fits the user's taste — write it in second person, addressing the user as "you" (e.g. "You rated X highly" not "The user rated X highly").
-4. For **each title** include **streaming_services**: a JSON array of US streaming platform names where the viewer can watch now — use short names: Netflix, Max, Hulu, Disney+, Apple TV+, Amazon Prime Video, Peacock, Paramount+, AMC+, STARZ, Tubi, Pluto TV. Use [] if unsure.
-5. Respond with ONLY valid JSON — no markdown, no explanation:
-{"items":[{"title":"...","type":"movie","year":1994,"director":"...","predicted_rating":3.5,"actors":["...","..."],"plot":"...","rt_score":"94%","reason":"...","streaming_services":["Netflix"],"categories":["tag1","tag2"],"category_paths":[{"dimension":"region","super":"south_asian","leaf":"bollywood musical"}]}]}
+1. Propose ${batchCount} titles. The client removes duplicates against a large exclusion set you do not receive in full — repeats are OK; the app will filter.
+2. Return title, year, director, top 3-4 actors, a 1-2 sentence plot summary, Rotten Tomatoes Tomatometer when known, and a one-sentence reason explaining why this title fits the user's taste — write it in second person, addressing the user as "you" (e.g. "You rated X highly" not "The user rated X highly").
+3. For **each title** include **streaming_services**: a JSON array of US streaming platform names where the viewer can watch now — use short names: Netflix, Max, Hulu, Disney+, Apple TV+, Amazon Prime Video, Peacock, Paramount+, AMC+, STARZ, Tubi, Pluto TV. Use [] if unsure.
+4. Respond with ONLY valid JSON — no markdown, no explanation:
+{"items":[{"title":"...","type":"movie","year":1994,"director":"...","actors":["...","..."],"plot":"...","rt_score":"94%","reason":"...","streaming_services":["Netflix"],"categories":["tag1","tag2"]}]}
 
 Rules:
 - Return exactly ${batchCount} objects in "items" (unless absolutely impossible — then return as many distinct valid picks as you can)
-- Avoid duplicate titles within "items". Do not worry about overlap with the user's full past list — the app enforces that separately
+- Avoid duplicate titles within "items" and try to avoid titles already in the channel history above — the app will filter duplicates as a safety net, but make your best effort
 - "type" must be exactly "movie" or "tv"
 - "title" must be the exact official release name only — never a sentence, channel label, or "description: title" format
 - "year" is a number; "director" is a single string — if multiple directors, combine them: "A, B" (never two separate JSON values)
-- "predicted_rating" is a number from 0.5 to 5 in steps of 0.5 (half stars) — never use 0–100
 - "rt_score" is the Tomatometer percentage (e.g. "94%") or null if unknown
 - "categories" is an array of 2–4 short genre/category tags you assign for this title
-- "category_paths" is an array of 1–3 objects {dimension, super, leaf} from the SESSION CATEGORY TREE when one is provided — required in exploration mode
 - All string values must be on a single line — no newline characters inside strings
-- Maximize diversity across regions, eras, genres, languages, and traditions. You choose what to explore based on the rating history — the app does not prescribe categories
-- Vary genres, eras, and (if media allows) movie vs TV to calibrate faster
-- Predict honestly — vary predictions; the midpoint is not always 3
-- Taste data below is intentionally small: high-divergence ratings, low-RT wants, high-RT dismissals. Full exclusion is not listed.
-- AVOID CATEGORIES LISTED: These consistently get 1-2★ ratings, so deprioritize them in favor of new areas. But they're not absolute bans — it's okay to suggest one occasionally if it genuinely fits exploration or contrast testing. Just don't cluster them.
-- IMPORTANT: If CATEGORY PREFERENCES are provided below, treat them as the strongest signal — they show exactly what this viewer loves and avoids. Align your picks accordingly.
-- IMPORTANT: If 20Q HYPOTHESIS TESTING is described, design films that isolate different dimensions. Each film tests whether the appeal is due to region, genre, tone, spectacle, etc. A 4★ vs 1★ rating for strategically different films teaches us which dimension matters most.`;
+- Maximize diversity across regions, eras, genres, languages, and traditions
+- Vary genres, eras, and (if media allows) movie vs TV
+- IMPORTANT: If CATEGORY PREFERENCES are provided below, treat them as the strongest signal — they show exactly what this viewer loves and avoids. Align your picks accordingly.`;
 
-  const tasteSummarySection = existingTasteSummary
-    ? `RUNNING TASTE PROFILE (your summary from the previous session — treat as primary signal, refine it):
-${existingTasteSummary}
+  // --- Category preferences from rated history ---
 
-`
-    : "";
-
-  // Compute category preferences from rated history entries that have categories
   const categoryPrefsSection = (() => {
     const catMap = new Map<string, number[]>();
     for (const e of history) {
@@ -796,112 +555,47 @@ ${existingTasteSummary}
     ? `The user asked specifically for "${directTitleAlreadySeen.title}"${directTitleAlreadySeen.year ? ` (${directTitleAlreadySeen.year})` : ""}, which they have already seen. Suggest ${batchCount} similar titles instead. Each "title" must be the exact official name only.\n\n`
     : "";
 
-  // In exploration mode: use 20Q strategy based on what user has shown they love
-  let exploreCategoriesSection = "";
-  let avoidCategoriesSection = "";
-
-  if (history.length < 20 && channelConstraint && categoryTree) {
-    exploreCategoriesSection = `${buildChannelTreeTaggingSection(categoryTree)}
-
-`;
-  } else if (history.length < 20 && !channelConstraint && !userRequest) {
-    const { avoided, warmTags } = analyzePreferenceSignals(history);
-
-    const avoidedCats = [...avoided.entries()]
-      .filter(([cat, avg]) => {
-        const lows = history.filter(
-          (e) => e.userRating <= 2 && e.categories?.includes(cat),
-        ).length;
-        return lows >= 2 && avg <= 2.0 && !warmTags.has(cat);
-      })
-      .sort((a, b) => a[1] - b[1])
-      .slice(0, 5)
-      .map(([cat]) => cat);
-
-    if (avoidedCats.length > 0) {
-      avoidCategoriesSection = `DEPRIORITIZE — these category tags from past picks consistently get 1-2★. Lean toward new areas, but occasional recommendations from these are okay if they genuinely fit exploration or testing:
-${avoidedCats.map(c => `- ${c}`).join("\n")}
-
-`;
-    }
-
-    if (categoryTree) {
-      exploreCategoriesSection = `${buildTreeExplorationSection(categoryTree, history, batchCount, triedSuperKeys)}
-
-`;
-    } else if (history.length >= 5) {
-      const { topLoved } = analyzePreferenceSignals(history);
-      const hypothesisPromptResponse = await generateHypothesisTestingPrompt(topLoved, history, llm);
-
-      if (hypothesisPromptResponse) {
-        try {
-          const match = hypothesisPromptResponse.match(/\[[\s\S]*\]/);
-          if (match) {
-            const parsed = JSON.parse(match[0]) as Array<{ hypothesis_tests?: string }>;
-            const hypotheses = parsed
-              .map(item => item.hypothesis_tests)
-              .filter((h): h is string => typeof h === "string")
-              .slice(0, 5)
-              .join("\n");
-
-            if (hypotheses) {
-              exploreCategoriesSection = `20Q HYPOTHESIS TESTING:
-User clearly loves: ${topLoved.join(", ")}
-
-This round, each film tests a specific dimension to isolate what matters:
-${hypotheses}
-
-Design films that distinguish between these hypotheses. A 4★ vs 1★ result for contrasting films teaches us which dimension drives their taste.
-
-`;
-            }
-          }
-        } catch (e) {
-          console.error("[20Q parse] failed:", e);
-        }
-      }
-    }
-  }
-
   const channelLockSection = channelConstraint
     ? `CHANNEL LOCK: All ${batchCount} titles MUST satisfy the channel requirements above. Stay within the requested style, era, and region — vary specific titles and filmmakers, not the genre. Do not wander outside the channel for "variety".\n\n`
     : "";
-
-  const channelFirstTurnSection =
-    channelConstraint && history.length === 0
-      ? `FIRST TURN: All ${batchCount} titles must fit the channel. Pick well-known, on-target exemplars (canonical films for this taste — not adjacent genres). Tag category_paths from the tree above when provided.\n\n`
-      : "";
 
   const batchAskLine = channelConstraint
     ? `Suggest ${batchCount} on-channel candidates (vary specific titles and filmmakers, not genre or era).`
     : `Suggest ${batchCount} diverse candidates.`;
 
-  const userMessage = `${avoidCategoriesSection}${exploreCategoriesSection}${channelLockSection}${channelFirstTurnSection}${directTitleNote}${categoryPrefsSection}${tasteSummarySection}RATED TITLES — selected for largest |user−RT| divergence, plus most recent (most informative per token):
-${historyText}
-${historyNote}
+  const recentSessionHistory = sessionHistory.slice(-MAX_SESSION_HISTORY_LINES);
+  const sessionHistoryText = recentSessionHistory.length === 0
+    ? ""
+    : recentSessionHistory.map((h) => {
+        const u = migrateRatingValue(h.userRating);
+        const label = h.ratingMode === "unseen" ? " interest" : " seen";
+        const rt = h.rtScore ? ` RT:${h.rtScore}` : "";
+        return `- "${h.title}" (${h.type}): ★${u}/5${label}${rt}`;
+      }).join("\n");
 
-UNSEEN SIGNALS — where this user disagrees with critics (curated, strongest first):
-Want to watch despite LOW RT (below ${LOW_RT_THRESHOLD}%): ${lowRtWantText}
-Not interested despite HIGH RT (${HIGH_RT_THRESHOLD}%+): ${highRtSkipText}
+  const newRatingsSection = sessionHistoryText
+    ? `NEW RATINGS THIS SESSION:\n${sessionHistoryText}\n\n`
+    : "";
 
-EXCLUSION (counts only — the app drops any repeat client-side):
+  const inSessionTasteSummarySection = inSessionTasteSummary
+    ? `UPDATED TASTE PROFILE (refined this session):\n${inSessionTasteSummary}\n\n`
+    : "";
+
+  const userMessage = `${channelLockSection}${directTitleNote}${categoryPrefsSection}${inSessionTasteSummarySection}${newRatingsSection}EXCLUSION (counts only — the app drops any repeat client-side):
 ${allExcluded.length} titles already decided (${ratedTitles.length} rated, ${watchlistTitles.length} on watchlist, ${skipped.length} skipped/dismissed). ${batchAskLine}
 
-${history.length < 20
+${history.length === 0
   ? channelConstraint
-    ? `CHANNEL MODE (${history.length} ratings): Every pick must fit the channel. Tag every item with category_paths from the tree above when provided.${history.length === 0 ? " Round 1: prioritize famous exemplars of this exact taste." : ""}`
-    : categoryTree
-      ? `EXPLORATION MODE (${history.length} ratings): Follow the SESSION CATEGORY TREE and 20Q instructions above. Tag every item with category_paths.`
-      : `EXPLORATION MODE (${history.length} ratings so far): Study the rated titles and category tags below. Each pick in this batch should explore a different area of cinema — regions, eras, genres, languages, traditions — that is underrepresented in their history so far. You decide which dimensions to vary; spread the batch wide and avoid clustering on one tradition.
-${triedCategories.length > 0 ? `Category tags already attached to rated titles: ${triedCategories.join(", ")}. Prefer fresh areas not yet represented there.` : ""}`
-  : `Analyze all signals above and pick ${batchCount} titles that will confirm or usefully challenge your model of their taste. Spread picks across disparate areas of cinema unless channel or user constraints say otherwise.`}`;
+    ? `No ratings yet. Pick well-known, on-target exemplars of this channel's style.`
+    : `No ratings yet. Spread picks widely across different regions, eras, and genres to calibrate taste quickly.`
+  : `Pick titles that match this user's taste based on the channel history above. Spread picks across diverse genres, eras, and regions unless the channel constrains otherwise.`}`;
 
 
   // Set NEXT_MOVIE_LOG_LLM_PROMPTS=1 in .env.local to re-enable prompt logging when debugging.
   const logLlmPrompts = process.env.NEXT_MOVIE_LOG_LLM_PROMPTS === "1" || process.env.NEXT_MOVIE_LOG_LLM_PROMPTS === "true";
   if (logLlmPrompts) {
     console.log(
-      `[next-movie] LLM submit (${llm}): ${batchCount} titles requested. sync=${raw.historySync ?? "legacy"} rated=${ratedTitles.length} promptLines=${informativeHistory.length} skipped=${skipped.length} watchlist=${watchlistTitles.length} notInterested=${notInterestedItems.length} excluded=${allExcluded.length}`
+      `[next-movie] LLM submit (${llm}): ${batchCount} titles requested. context=${channelHistory.length} session=${sessionHistory.length} skipped=${skipped.length} excluded=${allExcluded.length}`
     );
     console.log("[next-movie] --- system prompt (base) ---\n" + systemPrompt);
     if (systemPromptContext) {
@@ -909,11 +603,6 @@ ${triedCategories.length > 0 ? `Category tags already attached to rated titles: 
     }
     console.log("[next-movie] --- user message ---\n" + userMessage);
   }
-
-  const roundOneSlots =
-    categoryTree && history.length === 0 && !channelConstraint && !userRequest
-      ? buildRoundOneSlots(categoryTree, batchCount, triedSuperKeys)
-      : null;
 
   function normalizeRawItems(rawItems: RawItem[]): NextMovieResponse[] {
     const seenKeys = new Set<string>();
@@ -927,19 +616,16 @@ ${triedCategories.length > 0 ? `Category tags already attached to rated titles: 
       if (seenKeys.has(key)) continue;
       seenKeys.add(key);
 
-      const categoryPaths = parseCategoryPathsFromRaw(raw.category_paths);
-      const flatCategories = Array.isArray(raw.categories)
+      const categories = Array.isArray(raw.categories)
         ? (raw.categories as unknown[]).filter((s): s is string => typeof s === "string" && !!s.trim()).map((s) => s.toLowerCase())
         : [];
-      const categories =
-        flatCategories.length > 0 ? flatCategories : pathsToDisplayCategories(categoryPaths);
 
       out.push({
         title: cleanedTitle,
         type: raw.type,
         year: raw.year ?? null,
         director: raw.director ?? null,
-        predictedRating: normalizePredictedRating(raw.predicted_rating, 3),
+        predictedRating: 3,
         actors: raw.actors ?? [],
         plot: raw.plot ?? "",
         posterUrl: null,
@@ -950,92 +636,44 @@ ${triedCategories.length > 0 ? `Category tags already attached to rated titles: 
           ? (raw.streaming_services as unknown[]).filter((s): s is string => typeof s === "string" && !!s.trim())
           : [],
         categories,
-        categoryPaths,
+        categoryPaths: [],
       });
     }
     return out;
   }
 
-  let normalized: NextMovieResponse[] = [];
-  let userMessageForLlm = userMessage;
-  const maxAttempts = roundOneSlots?.length ? 3 : 1;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    let text: string;
-    const llmStart = Date.now();
-    try {
-      text = await callLLM(llm, systemPrompt, userMessageForLlm, {
-        maxTokens: LLM_OUTPUT_MAX_TOKENS,
-        systemPromptContext,
-      });
-      const llmMs = Date.now() - llmStart;
-      console.log(
-        `[next-movie] LLM done (${llm}) in ${(llmMs / 1000).toFixed(1)}s — output ${text.length} chars${attempt > 1 ? ` (attempt ${attempt})` : ""}`,
-      );
-    } catch (err) {
-      const llmMs = Date.now() - llmStart;
-      console.error(`[next-movie] LLM failed (${llm}) after ${(llmMs / 1000).toFixed(1)}s:`, err);
-      return Response.json({ error: String(err) }, { status: 500 });
-    }
-
-    const fallbackObjects = extractAllJsonObjects(stripMarkdownJsonFence(text));
-
-    let rawItems: RawItem[];
-    try {
-      rawItems = parseLlmResponse(text, fallbackObjects).items;
-    } catch (e) {
-      console.error(
-        "Failed to parse LLM response as JSON:",
-        e,
-        "\n--- response preview ---\n",
-        text.slice(0, 1200),
-        text.length > 1200 ? "\n...(truncated log)" : ""
-      );
-      return Response.json({ error: "Failed to parse response", raw: text.slice(0, 2000) }, { status: 500 });
-    }
-
-    normalized = normalizeRawItems(rawItems);
-
-    if (!roundOneSlots?.length || attempt === maxAttempts) break;
-
-    const validation = validateBatchAgainstSlots(normalized, roundOneSlots);
-    if (validation.ok) break;
-
-    console.warn(`[next-movie] round-1 slot validation failed (attempt ${attempt}):`, validation.failures);
-    userMessageForLlm = `${userMessage}\n\n${formatSlotValidationFeedback(validation.failures, roundOneSlots)}`;
+  let text: string;
+  const llmStart = Date.now();
+  try {
+    text = await callLLM(llm, systemPrompt, userMessage, {
+      maxTokens: LLM_OUTPUT_MAX_TOKENS,
+      systemPromptContext,
+    });
+    console.log(
+      `[next-movie] LLM done (${llm}) in ${((Date.now() - llmStart) / 1000).toFixed(1)}s — output ${text.length} chars`,
+    );
+  } catch (err) {
+    console.error(`[next-movie] LLM failed (${llm}) after ${((Date.now() - llmStart) / 1000).toFixed(1)}s:`, err);
+    return Response.json({ error: String(err) }, { status: 500 });
   }
 
-  if (roundOneSlots?.length && categoryTree && normalized.length > 0) {
-    const finalValidation = validateBatchAgainstSlots(normalized, roundOneSlots);
-    if (!finalValidation.ok) {
-      console.warn("[next-movie] round-1 batch invalid after retries — per-slot fallback");
-      const slotPicks: NextMovieResponse[] = [];
-      for (const slot of roundOneSlots) {
-        const slotUserMessage = `${formatTreeForPrompt(categoryTree)}
+  const fallbackObjects = extractAllJsonObjects(stripMarkdownJsonFence(text));
 
-${formatRoundOneSlotRequirements([slot])}
-
-Return exactly 1 object in "items". Choose a well-known real film/TV title that genuinely belongs in this slot.`;
-        try {
-          const slotText = await callLLM(llm, systemPrompt, slotUserMessage, {
-            maxTokens: 900,
-            systemPromptContext,
-          });
-          const slotRaw = parseLlmResponse(
-            slotText,
-            extractAllJsonObjects(stripMarkdownJsonFence(slotText)),
-          ).items;
-          const slotNorm = normalizeRawItems(slotRaw);
-          if (slotNorm[0]) slotPicks.push(slotNorm[0]);
-        } catch (err) {
-          console.warn(`[next-movie] round-1 slot ${slot.slot} fallback failed:`, err);
-        }
-      }
-      if (slotPicks.length >= Math.ceil(roundOneSlots.length / 2)) {
-        normalized = slotPicks;
-      }
-    }
+  let rawItems: RawItem[];
+  try {
+    rawItems = parseLlmResponse(text, fallbackObjects).items;
+  } catch (e) {
+    console.error(
+      "Failed to parse LLM response as JSON:",
+      e,
+      "\n--- response preview ---\n",
+      text.slice(0, 1200),
+      text.length > 1200 ? "\n...(truncated log)" : ""
+    );
+    return Response.json({ error: "Failed to parse response", raw: text.slice(0, 2000) }, { status: 500 });
   }
+
+  const normalized = normalizeRawItems(rawItems);
 
   if (normalized.length === 0) {
     console.error("LLM returned no valid items");
@@ -1047,12 +685,23 @@ Return exactly 1 object in "items". Choose a well-known real film/TV title that 
       normalized.map((m) => fetchTmdbAssets(m.title, m.type, m.year, m.director)),
     );
     for (let i = 0; i < normalized.length; i++) {
-      normalized[i] = { ...normalized[i], posterUrl: assets[i].posterUrl, trailerKey: assets[i].trailerKey };
+      const asset = assets[i];
+      normalized[i] = {
+        ...normalized[i],
+        posterUrl: asset.posterUrl,
+        trailerKey: asset.trailerKey,
+        // Prefer TMDB year (authoritative) over LLM year (often hallucinated).
+        year: asset.year ?? normalized[i].year,
+      };
     }
   }
 
   return Response.json({
     movies: normalized,
-    categoryTree: categoryTree ?? undefined,
+    debug: {
+      systemPrompt,
+      systemPromptContext: systemPromptContext ?? null,
+      userMessage,
+    },
   });
 }

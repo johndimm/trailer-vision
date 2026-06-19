@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/watchlist", label: "Watchlist" },
   { href: "/settings", label: "Settings" },
   { href: "/help", label: "Help" },
+  { href: "/debug", label: "Debug" },
 ];
 
 /** Player home and full-screen graph use the dark chrome; utility pages use light chrome. */
@@ -34,7 +35,7 @@ export default function NavBar({ hubUrl }: { hubUrl?: string }) {
 
   return (
     <nav
-      className={`sticky top-0 z-40 w-full min-w-0 shrink-0 border-b backdrop-blur-sm ${
+      className={`sticky top-0 z-[50] w-full min-w-0 shrink-0 border-b backdrop-blur-sm ${
         dark ? "border-zinc-800 bg-black/90" : "border-zinc-200 bg-white/95"
       }`}
     >

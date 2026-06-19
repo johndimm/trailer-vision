@@ -13,6 +13,9 @@ function getYoutubeDataApiKey(): string | undefined {
   return process.env.YOUTUBE_API_KEY || process.env.YOUTUBE_DATA_API_KEY;
 }
 
+/** Flipped to true on first 400/403 from YouTube Data API — key is misconfigured, stop calling it. */
+let youtubeDataApiDisabled = false;
+
 function normalizeTitleForMatch(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
 }
@@ -95,7 +98,7 @@ export async function youtubeVideoIsEmbeddableForSite(videoId: string): Promise<
   if (oembed === false) return false;
 
   const key = getYoutubeDataApiKey();
-  if (!key) return true;
+  if (!key || youtubeDataApiDisabled) return true;
 
   try {
     const url = new URL("https://www.googleapis.com/youtube/v3/videos");
@@ -104,7 +107,14 @@ export async function youtubeVideoIsEmbeddableForSite(videoId: string): Promise<
     url.searchParams.set("key", key);
     const res = await fetch(url.toString());
     if (!res.ok) {
-      console.warn("[tmdbAssets] YouTube Data API HTTP", res.status);
+      if (res.status === 400 || res.status === 403) {
+        youtubeDataApiDisabled = true;
+        console.warn(
+          `[tmdbAssets] YouTube Data API returned ${res.status} — key may not have YouTube Data API v3 enabled. Disabling for this process.`,
+        );
+      } else {
+        console.warn("[tmdbAssets] YouTube Data API HTTP", res.status);
+      }
       return true;
     }
     const data = (await res.json()) as {
@@ -164,7 +174,7 @@ async function searchTmdb(
   return data.results ?? [];
 }
 
-async function fetchTrailerFromTmdbVideos(
+export async function fetchTrailerFromTmdbVideos(
   apiKey: string,
   tmdbId: number,
   type: MediaType,
@@ -210,7 +220,7 @@ async function searchYoutubeTrailer(
       const url = new URL("https://www.googleapis.com/youtube/v3/search");
       url.searchParams.set("part", "snippet");
       url.searchParams.set("type", "video");
-      url.searchParams.set("maxResults", "8");
+      url.searchParams.set("maxResults", "15");
       url.searchParams.set("q", q.trim());
       url.searchParams.set("key", key);
       const res = await fetch(url.toString());
@@ -239,7 +249,10 @@ function snippetMatchesTitle(snippetTitle: string, queryTitle: string): boolean 
   const norm = normalizeTitleForMatch(queryTitle);
   if (!norm) return true;
   const snippet = normalizeTitleForMatch(snippetTitle);
-  return snippet.includes(norm);
+  // Match if query is in snippet, or if first 3+ chars of query match snippet
+  if (snippet.includes(norm)) return true;
+  const shortNorm = norm.substring(0, Math.min(3, norm.length));
+  return shortNorm.length >= 3 && snippet.startsWith(shortNorm);
 }
 
 async function searchSerperTrailer(
@@ -445,12 +458,12 @@ export async function fetchTmdbAssets(
   type: MediaType,
   year: number | null,
   director: string | null = null,
-): Promise<{ posterUrl: string | null; trailerKey: string | null }> {
+): Promise<{ posterUrl: string | null; trailerKey: string | null; year: number | null }> {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) {
     const posterUrl = await fetchPosterFromSerper(title, type, year);
     const trailerKey = await resolveTrailerFallback(title, type, year, director, null);
-    return { posterUrl, trailerKey };
+    return { posterUrl, trailerKey, year: null };
   }
 
   try {
@@ -471,13 +484,14 @@ export async function fetchTmdbAssets(
         return {
           posterUrl: serperPoster,
           trailerKey: await resolveTrailerFallback(title, type, year, director, null),
+          year: null,
         };
       }
     }
 
-    return { posterUrl, trailerKey };
+    return { posterUrl, trailerKey, year: tmdbReleaseYear };
   } catch (e) {
     console.error("[tmdbAssets] TMDB assets fetch failed:", e);
-    return { posterUrl: null, trailerKey: null };
+    return { posterUrl: null, trailerKey: null, year: null };
   }
 }

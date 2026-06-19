@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  channelNameAsArtistHint,
   findArtistMatchingChannelName,
   mergeChannelNameArtistMatch,
 } from '@/app/lib/artistHintsFromNotes'
@@ -273,10 +272,9 @@ export default function ChannelEditorForm({
     for (const a of llmSuggestions) push(a)
     for (const a of staticOptions) push(a)
     for (const a of form.artists) push(a)
-    const nameHint = channelNameAsArtistHint(form.name)
-    if (nameHint) push(nameHint)
+    // Don't add channel name as artist hint - it creates unwanted substring variations
     return out
-  }, [llmSuggestions, staticOptions, form.artists, form.name])
+  }, [llmSuggestions, staticOptions, form.artists])
 
   const toggleArtist = (name: string) => {
     field(
