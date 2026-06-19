@@ -1562,17 +1562,19 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
           />
         </div>
       )}
-      <div
-        className={
-          isTrailerStrip
-            ? "flex min-w-0 flex-1 justify-center overflow-hidden"
-            : navPair
-              ? "flex min-w-0 flex-1 justify-center sm:flex-initial"
-              : "min-w-0 flex shrink"
-        }
-      >
-        {starBlock}
-      </div>
+      {!hideRating && (
+        <div
+          className={
+            isTrailerStrip
+              ? "flex min-w-0 flex-1 justify-center overflow-hidden"
+              : navPair
+                ? "flex min-w-0 flex-1 justify-center sm:flex-initial"
+                : "min-w-0 flex shrink"
+          }
+        >
+          {starBlock}
+        </div>
+      )}
       {showNextInRating && (
         <div className="shrink-0 self-center">
           <PassNextButton
@@ -1591,7 +1593,7 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
 
   const ratingBody = (
     <div className="flex min-w-0 flex-col gap-2 sm:gap-3">
-      <SeenOrNotRadios name={seenRadioGroupName} value={seenStatus} onChange={onSeenStatusChange} />
+      {!hideRating && <SeenOrNotRadios name={seenRadioGroupName} value={seenStatus} onChange={onSeenStatusChange} />}
       {navRow}
     </div>
   );
@@ -1609,13 +1611,17 @@ const MovieRatingBlock = memo(function MovieRatingBlock({
                 compact
               />
             )}
-            <SeenModeSegment
-              value={seenStatus}
-              onChange={(v) => { bumpControlActivity(); onSeenStatusChange(v); }}
-            />
-            <div className="rounded-lg border border-zinc-600 bg-zinc-800/60 px-2 py-1 shadow-sm">
-              {starBlock}
-            </div>
+            {!hideRating && (
+              <>
+                <SeenModeSegment
+                  value={seenStatus}
+                  onChange={(v) => { bumpControlActivity(); onSeenStatusChange(v); }}
+                />
+                <div className="rounded-lg border border-zinc-600 bg-zinc-800/60 px-2 py-1 shadow-sm">
+                  {starBlock}
+                </div>
+              </>
+            )}
             {showNextInRating && (
               <PassNextButton
                 onPass={() => { bumpControlActivity(); passCurrentCardStable(); }}
@@ -4058,7 +4064,7 @@ export default function Home() {
                       )}
                     />
                   )}
-                  {!trailerFsUi && channels.find(c => c.id === activeChannelId)?.name !== "Coming Soon" && (
+                  {!trailerFsUi && (
                     <MovieRatingBlock
                       layout="trailerBar"
                       passCurrentCardStable={passCurrentCardStable}
@@ -4075,6 +4081,7 @@ export default function Home() {
                       ratingResetKey={ratingCardKey}
                       prevNav={prevNav}
                       careerNextDisabled={careerAtLastFilm}
+                      hideRating={channels.find(c => c.id === activeChannelId)?.name === "Coming Soon"}
                     />
                   )}
                   {!trailerFsUi && (
@@ -4158,23 +4165,22 @@ export default function Home() {
                       </div>
                     </div>
                   )}
-                  {channels.find(c => c.id === activeChannelId)?.name !== "Coming Soon" && (
-                    <MovieRatingBlock
-                      passCurrentCardStable={passCurrentCardStable}
-                      onRate={handlePendingChange}
-                      movieTitle={current.title}
-                      starKeyPrefix="po"
-                      seenStatus={currentSeenStatus}
-                      onSeenStatusChange={handleSeenStatusChange}
-                      lockStarsOnRate={false}
-                      pendingStars={currentPendingStars}
-                      previousRating={committedDisplayRating?.stars}
-                      previousMode={committedDisplayRating?.mode}
-                      ratingResetKey={ratingCardKey}
-                      prevNav={prevNav}
-                      careerNextDisabled={careerAtLastFilm}
-                    />
-                  )}
+                  <MovieRatingBlock
+                    passCurrentCardStable={passCurrentCardStable}
+                    onRate={handlePendingChange}
+                    movieTitle={current.title}
+                    starKeyPrefix="po"
+                    seenStatus={currentSeenStatus}
+                    onSeenStatusChange={handleSeenStatusChange}
+                    lockStarsOnRate={false}
+                    pendingStars={currentPendingStars}
+                    previousRating={committedDisplayRating?.stars}
+                    previousMode={committedDisplayRating?.mode}
+                    ratingResetKey={ratingCardKey}
+                    prevNav={prevNav}
+                    careerNextDisabled={careerAtLastFilm}
+                    hideRating={channels.find(c => c.id === activeChannelId)?.name === "Coming Soon"}
+                  />
                   {careerMode ? (
                     <CareerFilmographyPanel
                       career={careerMode}
