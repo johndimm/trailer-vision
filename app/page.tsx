@@ -2212,6 +2212,8 @@ export default function Home() {
   const careerTrailerBlockRef = useRef<HTMLDivElement>(null);
   const [careerTrailerBlockStableH, setCareerTrailerBlockStableH] = useState(0);
   const prefetchRef = useRef<CurrentMovie[]>([]);
+  const playlistRef = useRef<CurrentMovie[]>([]);
+  const playlistModeRef = useRef(false);
   const [prefetchQueueUi, setPrefetchQueueUi] = useState<CurrentMovie[]>([]);
   /** Titles the user left via Next / queue pick -- Prev walks back through this stack. */
   const navBackStackRef = useRef<CurrentMovie[]>([]);
@@ -2858,6 +2860,18 @@ export default function Home() {
       setIsAdvancingCard(true);
     }
     try {
+      // Drain playlist queue first (no history exclusion — user explicitly selected these).
+      if (playlistModeRef.current && playlistRef.current.length > 0) {
+        const [next, ...rest] = playlistRef.current;
+        playlistRef.current = rest;
+        if (rest.length === 0) playlistModeRef.current = false;
+        pushNavBack(currentRef.current);
+        setCurrent(next);
+        setInitialLoading(false);
+        return;
+      }
+      playlistModeRef.current = false;
+
       // Drain the queue, skipping any title the user already decided on (guards against stale prefetch entries).
       const activeChName = channelsRef.current.find((c) => c.id === activeChannelIdRef.current)?.name ?? "";
       const requiresTrailerForNext = activeChName === "Coming Soon";
@@ -3014,6 +3028,23 @@ export default function Home() {
     }
     loadPrefetchIntoRefForChannel(activeForPrefetch);
     persistPrefetchQueue();
+
+    // Check for history playlist
+    const storedPlaylist = localStorage.getItem("movie-recs-playlist");
+    if (storedPlaylist) {
+      try {
+        const movies = JSON.parse(storedPlaylist) as CurrentMovie[];
+        if (Array.isArray(movies) && movies.length > 0) {
+          setCurrent(movies[0]);
+          playlistRef.current = movies.slice(1);
+          playlistModeRef.current = movies.length > 1;
+          localStorage.removeItem("movie-recs-playlist");
+          setInitialLoading(false);
+          return;
+        }
+      } catch { /* ignore */ }
+      localStorage.removeItem("movie-recs-playlist");
+    }
 
     // Check for stored movie from history click-to-play
     const storedPlayMovie = localStorage.getItem("movie-recs-play");

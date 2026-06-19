@@ -33,6 +33,8 @@ export interface HistoryViewProps {
   onUpdateUnseen?: (title: string, newRating: number | null) => void;
   /** Optional callback to play a movie. */
   onPlayMovie?: (entry: StoredRatingEntry | UnseenInterestEntry) => void;
+  /** Optional callback to play selected entries as a playlist. */
+  onPlayPlaylist?: (entries: (StoredRatingEntry | UnseenInterestEntry)[]) => void;
   /** Optional channel map for displaying channel names. */
   channelMap?: Map<string, string>;
   /** Extra content rendered inside the toolbar card (above the filter row). */
@@ -48,6 +50,7 @@ export default function HistoryView({
   onUpdateRating,
   onUpdateUnseen,
   onPlayMovie,
+  onPlayPlaylist,
   channelMap,
   toolbarSlot,
   emptyMessage = "No activity yet.",
@@ -124,6 +127,13 @@ export default function HistoryView({
     setSelectedKeys(new Set());
   }, [selectedKeys, onDeleteSeen, onDeleteUnseen]);
 
+  const playSelected = useCallback(() => {
+    const entries = unified
+      .filter((row) => selectedKeys.has(rowKey(row)))
+      .map((row) => row.entry);
+    onPlayPlaylist?.(entries);
+  }, [unified, selectedKeys, onPlayPlaylist]);
+
   const deleteSingle = useCallback((row: UnifiedRow) => {
     if (row.kind === "seen")   onDeleteSeen([row.origIndex]);
     else                       onDeleteUnseen([row.origIndex]);
@@ -189,10 +199,18 @@ export default function HistoryView({
             </span>
           </div>
           {selectedKeys.size > 0 && (
-            <button type="button" onClick={deleteSelected}
-              className="text-xs font-semibold text-rose-600 hover:text-rose-800 transition-colors">
-              Delete selected ({selectedKeys.size})
-            </button>
+            <div className="flex items-center gap-3">
+              {onPlayPlaylist && (
+                <button type="button" onClick={playSelected}
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                  ▶ Play ({selectedKeys.size})
+                </button>
+              )}
+              <button type="button" onClick={deleteSelected}
+                className="text-xs font-semibold text-rose-600 hover:text-rose-800 transition-colors">
+                Delete ({selectedKeys.size})
+              </button>
+            </div>
           )}
         </div>
 

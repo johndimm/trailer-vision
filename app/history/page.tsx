@@ -19,6 +19,7 @@ import { Channel, normalizeChannel, CHANNELS_KEY } from "../channels/page";
 import HistoryView from "../components/HistoryView";
 
 const PLAY_KEY = "movie-recs-play";
+const PLAYLIST_KEY = "movie-recs-playlist";
 
 export default function HistoryPage() {
   const pathname = usePathname();
@@ -101,6 +102,26 @@ export default function HistoryPage() {
     router.push("/");
   }, [router]);
 
+  const handlePlayPlaylist = useCallback((entries: (StoredRatingEntry | UnseenInterestEntry)[]) => {
+    const movies = entries.map((e) => ({
+      title: e.title,
+      type: e.type,
+      year: (e as UnseenInterestEntry).year ?? null,
+      director: (e as UnseenInterestEntry).director ?? null,
+      predictedRating: (e as StoredRatingEntry).predictedRating ?? 3,
+      actors: (e as UnseenInterestEntry).actors ?? [],
+      plot: (e as UnseenInterestEntry).plot ?? "",
+      posterUrl: e.posterUrl ?? null,
+      trailerKey: null,
+      rtScore: (e as StoredRatingEntry).rtScore ?? null,
+      reason: null,
+      streaming: [],
+      categories: (e as StoredRatingEntry).categories,
+    }));
+    localStorage.setItem(PLAYLIST_KEY, JSON.stringify(movies));
+    router.push("/");
+  }, [router]);
+
   const totalCount = history.length + unseenLog.length;
 
   return (
@@ -134,6 +155,7 @@ export default function HistoryPage() {
             onUpdateRating={handleUpdateRating}
             onUpdateUnseen={handleUpdateUnseen}
             onPlayMovie={handlePlayMovie}
+            onPlayPlaylist={handlePlayPlaylist}
             channelMap={channelMap}
           />
         )}
