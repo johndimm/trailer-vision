@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 60;
+
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const EXTERNAL_BASE = process.env.CONSTELLATIONS_EXTERNAL_URL ?? "https://constellations-beaf.onrender.com";
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
 
 type GeminiPerson = {
   name: string;
@@ -122,12 +134,12 @@ async function forwardToExternal(req: NextRequest, body: unknown): Promise<NextR
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(55_000),
     });
     const json = await res.json();
-    return NextResponse.json(json, { status: res.status });
+    return NextResponse.json(json, { status: res.status, headers: CORS_HEADERS });
   } catch {
-    return NextResponse.json({ people: [] });
+    return NextResponse.json({ people: [] }, { headers: CORS_HEADERS });
   }
 }
 
@@ -140,7 +152,7 @@ export async function POST(req: NextRequest) {
       const result = await tmdbConnections(apiKey, body.nodeName);
       if (result && result.people.length > 0) {
         console.log(`[ai/connections] TMDB hit for "${body.nodeName}": ${result.people.length} people`);
-        return NextResponse.json(result);
+        return NextResponse.json(result, { headers: CORS_HEADERS });
       }
     } catch (e) {
       console.warn("[ai/connections] TMDB lookup failed:", e);
