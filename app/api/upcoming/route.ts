@@ -122,9 +122,20 @@ async function fetchItems(
   kind: "movie" | "tv",
   page: number,
 ): Promise<{ items: TmdbItem[]; totalPages: number }> {
-  const endpoint = kind === "movie"
-    ? `${TMDB_BASE}/movie/upcoming?api_key=${apiKey}&language=en-US&page=${page}`
-    : `${TMDB_BASE}/tv/on_the_air?api_key=${apiKey}&language=en-US&page=${page}`;
+  // For TV use /discover/tv with a date window so we get genuinely new series,
+  // not long-running shows that happen to have an episode airing this week.
+  let endpoint: string;
+  if (kind === "movie") {
+    endpoint = `${TMDB_BASE}/movie/upcoming?api_key=${apiKey}&language=en-US&page=${page}`;
+  } else {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const fourWeeksOut = new Date();
+    fourWeeksOut.setDate(fourWeeksOut.getDate() + 28);
+    const gte = sixMonthsAgo.toISOString().slice(0, 10);
+    const lte = fourWeeksOut.toISOString().slice(0, 10);
+    endpoint = `${TMDB_BASE}/discover/tv?api_key=${apiKey}&language=en-US&page=${page}&sort_by=first_air_date.desc&first_air_date.gte=${gte}&first_air_date.lte=${lte}`;
+  }
 
   const res = await fetch(endpoint);
   if (!res.ok) {
@@ -201,20 +212,18 @@ export async function POST(req: NextRequest) {
 
   const totalPages = Math.max(movieResult.totalPages, tvResult.totalPages);
 
-  // Filter movies
+  // Filter movies — include anything releasing from 2 weeks ago onward
+  // (TMDB's upcoming window can trail slightly behind today's date)
+  const twoWeeksAgo = new Date();
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+  const twoWeeksAgoStr = twoWeeksAgo.toISOString().slice(0, 10);
   let movies = movieResult.items as TmdbMovieItem[];
-  movies = movies.filter((m) => !m.release_date || m.release_date >= today);
+  movies = movies.filter((m) => !m.release_date || m.release_date >= twoWeeksAgoStr);
   if (filterMovieGenreIds.length > 0) movies = movies.filter((m) => m.genre_ids.some((g) => filterMovieGenreIds.includes(g)));
   if (filterLangCodes.size > 0) movies = movies.filter((m) => filterLangCodes.has(m.original_language));
   movies = movies.filter((m) => !skippedKeys.has(normTitle(m.title)));
 
-  // Filter TV shows — only include shows that premiered within the last 2 years
-  // /tv/on_the_air includes any show with episodes airing this week, including decades-old series
-  const twoYearsAgo = new Date();
-  twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
-  const twoYearsAgoStr = twoYearsAgo.toISOString().slice(0, 10);
   let shows = tvResult.items as TmdbTvItem[];
-  shows = shows.filter((s) => s.first_air_date && s.first_air_date >= twoYearsAgoStr);
   if (filterTvGenreIds.length > 0) shows = shows.filter((s) => s.genre_ids.some((g) => filterTvGenreIds.includes(g)));
   if (filterLangCodes.size > 0) shows = shows.filter((s) => filterLangCodes.has(s.original_language));
   shows = shows.filter((s) => !skippedKeys.has(normTitle(s.name)));
