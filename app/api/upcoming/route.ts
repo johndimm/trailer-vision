@@ -208,8 +208,13 @@ export async function POST(req: NextRequest) {
   if (filterLangCodes.size > 0) movies = movies.filter((m) => filterLangCodes.has(m.original_language));
   movies = movies.filter((m) => !skippedKeys.has(normTitle(m.title)));
 
-  // Filter TV shows
+  // Filter TV shows — only include shows that premiered within the last 2 years
+  // /tv/on_the_air includes any show with episodes airing this week, including decades-old series
+  const twoYearsAgo = new Date();
+  twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+  const twoYearsAgoStr = twoYearsAgo.toISOString().slice(0, 10);
   let shows = tvResult.items as TmdbTvItem[];
+  shows = shows.filter((s) => s.first_air_date && s.first_air_date >= twoYearsAgoStr);
   if (filterTvGenreIds.length > 0) shows = shows.filter((s) => s.genre_ids.some((g) => filterTvGenreIds.includes(g)));
   if (filterLangCodes.size > 0) shows = shows.filter((s) => filterLangCodes.has(s.original_language));
   shows = shows.filter((s) => !skippedKeys.has(normTitle(s.name)));

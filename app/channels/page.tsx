@@ -416,7 +416,7 @@ export default function ChannelsPage() {
 
       {/* ── Channel list + editor (has custom channels) ── */}
       {hasCustomChannels && (
-      <div className="max-w-4xl mx-auto flex h-[calc(100dvh-2.75rem)] sm:h-[calc(100vh-2.75rem)] flex-col sm:flex-row min-h-0">
+      <div className="max-w-4xl mx-auto flex flex-col sm:flex-row">
 
         {/* Mobile: compact channel picker — full-width select + new (sidebar hidden on small screens) */}
         <div className="shrink-0 border-b border-zinc-200 bg-white sm:hidden">
@@ -485,7 +485,7 @@ export default function ChannelsPage() {
               title="New channel"
             >+</button>
           </div>
-          <div className="flex-1 overflow-y-auto py-1 min-h-0 px-1">
+          <div className="py-1 px-1">
             {channels.map((ch) => channelListRow(ch))}
             {channels.length === 0 && (
               <p className="px-4 py-3 text-xs text-zinc-400">No channels yet.</p>
@@ -497,7 +497,7 @@ export default function ChannelsPage() {
         </div>
 
         {/* ── Main panel ── */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex-1">
 
           {showNew && (
             <div className="p-4 sm:p-6">
