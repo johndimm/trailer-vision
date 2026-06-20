@@ -132,8 +132,10 @@ function buildChannelHistoryPayload(
   seenHistory: RatingEntry[],
   unseenLog: UnseenInterestEntry[],
   channelId: string,
+  excludeChannelId?: string,
 ): { channelHistory: RatingEntry[]; sessionHistory: RatingEntry[] } {
-  const channelMatch = (id?: string) => id === channelId || !id || id === "all";
+  const channelMatch = (id?: string) =>
+    id !== excludeChannelId && (id === channelId || !id || id === "all");
 
   const seenEntries: RatingEntry[] = seenHistory
     .filter(e => channelMatch(e.channelId) && typeof e.userRating === "number")
@@ -2545,7 +2547,6 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      setMediaType(loadSetting("mediaType", "both" as const));
       setDisplayMode(loadSetting("displayMode", "trailers" as const));
       setAutoAdvance(loadSetting("autoAdvance", false));
       setLlm(loadSetting("llm", "deepseek"));
@@ -2671,6 +2672,7 @@ export default function Home() {
             page,
             genres: channel?.genres ?? [],
             language: channel?.language ?? "",
+            mediums: channel?.mediums ?? [],
             skipped: opts.skipped,
           }),
         });
@@ -2696,7 +2698,8 @@ export default function Home() {
         const wl = watchlistRef.current;
         const channelId = activeChannelIdRef.current?.trim() || "";
         const unseenLog = loadUnseenInterestLog();
-        const { channelHistory, sessionHistory } = buildChannelHistoryPayload(historyRef.current, unseenLog, channelId);
+        const comingSoonId = channelsRef.current.find((c) => c.name === "Coming Soon")?.id;
+        const { channelHistory, sessionHistory } = buildChannelHistoryPayload(historyRef.current, unseenLog, channelId, comingSoonId);
         const res = await fetch("/api/next-movie", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

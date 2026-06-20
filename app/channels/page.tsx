@@ -19,6 +19,7 @@ import {
 import { clearChannelPersistedData, clearChannelsPersistedData } from "../lib/storageKeys";
 import {
   TRAILER_CHANNEL_EDITOR_CONFIG,
+  COMING_SOON_CHANNEL_EDITOR_CONFIG,
   channelToEditorValues,
   editorValuesToChannel,
   emptyTrailerEditorValues,
@@ -529,7 +530,7 @@ export default function ChannelsPage() {
                   <ChannelEditorForm
                     key={selected.id}
                     initial={channelToEditorValues(selected)}
-                    config={TRAILER_CHANNEL_EDITOR_CONFIG}
+                    config={selected.name === "Coming Soon" ? COMING_SOON_CHANNEL_EDITOR_CONFIG : TRAILER_CHANNEL_EDITOR_CONFIG}
                     onSave={(values) => updateChannel(selected.id, values)}
                   />
                 </div>

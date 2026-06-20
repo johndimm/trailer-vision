@@ -32,6 +32,8 @@ export type ChannelEditorConfig = {
   artistsNeedInputHint: string
   genreOptions: string[]
   timePeriodOptions: string[]
+  showTimePeriods?: boolean
+  showArtists?: boolean
   showRegions?: boolean
   regionOptions?: string[]
   showLanguage?: boolean
@@ -375,16 +377,18 @@ export default function ChannelEditorForm({
           />
         </div>
 
-        <div>
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-            Time periods
-          </label>
-          <ChipRow
-            options={config.timePeriodOptions}
-            selected={form.timePeriods}
-            onToggle={t => field('timePeriods', toggleArr(form.timePeriods, t))}
-          />
-        </div>
+        {(config.showTimePeriods ?? true) && (
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              Time periods
+            </label>
+            <ChipRow
+              options={config.timePeriodOptions}
+              selected={form.timePeriods}
+              onToggle={t => field('timePeriods', toggleArr(form.timePeriods, t))}
+            />
+          </div>
+        )}
 
         {config.showRegions && config.regionOptions && (
           <div>
@@ -412,21 +416,23 @@ export default function ChannelEditorForm({
           </div>
         )}
 
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              {config.artistsLabel}
-            </label>
-            {loadingSuggestions && <span className="text-xs text-zinc-400">updating…</span>}
+        {(config.showArtists ?? true) && (
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                {config.artistsLabel}
+              </label>
+              {loadingSuggestions && <span className="text-xs text-zinc-400">updating…</span>}
+            </div>
+            {artistOptions.length > 0 ? (
+              <ChipRow options={artistOptions} selected={form.artists} onToggle={toggleArtist} />
+            ) : (
+              <p className="mt-1 text-xs text-zinc-400">
+                {hasSelections ? config.artistsEmptyHint : config.artistsNeedInputHint}
+              </p>
+            )}
           </div>
-          {artistOptions.length > 0 ? (
-            <ChipRow options={artistOptions} selected={form.artists} onToggle={toggleArtist} />
-          ) : (
-            <p className="mt-1 text-xs text-zinc-400">
-              {hasSelections ? config.artistsEmptyHint : config.artistsNeedInputHint}
-            </p>
-          )}
-        </div>
+        )}
 
         <div>
           <div className="flex items-center justify-between mb-1">

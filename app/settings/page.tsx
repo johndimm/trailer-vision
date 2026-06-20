@@ -236,31 +236,6 @@ export default function SettingsPage() {
             />
           </section>
 
-          {/* Playback preferences (Trailer Vision only) */}
-          <section className="flex flex-col gap-3">
-            <div>
-              <h2 className="text-sm font-semibold">Playback</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">What to show in the player.</p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <div>
-                <p className="text-xs font-medium text-zinc-600 mb-2">Content type</p>
-                <div className="flex flex-wrap gap-2">
-                  {(["both", "movie", "tv"] as const).map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => patchSettings("mediaType", opt)}
-                      className={`px-4 py-2 rounded-lg border text-sm transition-colors ${pillClass(settings.mediaType === opt)}`}
-                    >
-                      {opt === "both" ? "Movies & TV" : opt === "movie" ? "Movies" : "TV Series"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
           {/* Data backup */}
           <section className="flex flex-col gap-3">
             <div>
