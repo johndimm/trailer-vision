@@ -133,6 +133,8 @@ export default function ChannelsPage() {
   };
 
   const updateChannel = (id: string, values: ChannelEditorValues) => {
+    // Clear the channel's prefetch queue so it refetches with the new definition
+    clearChannelPersistedData(id);
     saveChannels(channels.map((c) => (c.id === id ? editorValuesToChannel(id, values) : c)));
     localStorage.setItem(ACTIVE_CHANNEL_KEY, id);
     router.push("/");

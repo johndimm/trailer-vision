@@ -165,6 +165,14 @@ export default function ChannelEditorForm({
     setForm(initial)
   }, [initial])
 
+  // Auto-populate name from first few words of freeText if name is empty
+  useEffect(() => {
+    if (form.name.trim() === '' && form.freeText.trim() !== '') {
+      const words = form.freeText.trim().split(/\s+/).slice(0, 4).join(' ')
+      setForm(f => ({ ...f, name: words }))
+    }
+  }, [form.freeText])
+
   const toggleArr = (arr: string[], val: string) =>
     arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]
 
