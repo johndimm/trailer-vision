@@ -38,7 +38,11 @@ export function normalizeChannel(c: Channel & { region?: string }): Channel {
   const mediums = Array.isArray(raw)
     ? raw.filter((x): x is ChannelMedium => typeof x === "string" && VALID_MEDIUMS.has(x as ChannelMedium))
     : [];
-  return { ...rest, mediums };
+  const rawStreaming = (c as { streaming?: unknown }).streaming;
+  const streaming = Array.isArray(rawStreaming)
+    ? rawStreaming.filter((x): x is string => typeof x === "string")
+    : [];
+  return { ...rest, mediums, streaming };
 }
 
 export const CHANNELS_KEY = "movie-recs-channels";

@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import type { Channel } from "./channels/page";
 import { ALL_CHANNEL, normalizeChannel, CHANNELS_KEY, ACTIVE_CHANNEL_KEY } from "./channels/page";
-import { insertChannelAfterAll, hydrateChannelsOnLoad, normalizeChannelList, countCustomChannels } from "./lib/channelBulkActions";
-import { channelDraftFromPrompt } from "./lib/channelFromPrompt";
+import { hydrateChannelsOnLoad, normalizeChannelList, countCustomChannels } from "./lib/channelBulkActions";
 import { queueNewChannelFromGraphNode } from "./lib/newChannelFromGraphNode";
 import {
   queueNewChannelFromMovie,
@@ -2247,7 +2246,8 @@ export default function Home() {
 
   const channelsRef = useRef<Channel[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string>("");
-  const [newChannelText, setNewChannelText] = useState<string>("");
+  const [searchText, setSearchText] = useState<string>("");
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   const activeChannelIdRef = useRef<string>("");
   activeChannelIdRef.current = activeChannelId;
   channelsRef.current = channels;
@@ -3816,32 +3816,71 @@ export default function Home() {
     void fetchNext({ mediaType, llm }, true);
   }, [mediaType, llm, fetchNext, persistPrefetchQueue]);
 
-  const createChannelFromHomePrompt = useCallback((text: string) => {
-    const t = text.trim();
-    if (!t) return;
-    let list: Channel[] = [];
+  // Search box: look the text up (TMDB titles first, LLM as a fallback for moods/vibes)
+  // and drop the results straight into the current channel's queue so they play now.
+  const searchAndQueue = useCallback(async (text: string) => {
+    const q = text.trim();
+    if (!q) return;
+    setIsSearching(true);
+    setFetchError(null);
     try {
-      const raw = localStorage.getItem(CHANNELS_KEY);
-      list = raw ? (JSON.parse(raw) as Channel[]).map(normalizeChannel) : [];
-      if (!list.some((c) => c.id === "all")) {
-        list = [ALL_CHANNEL, ...list];
+      let movies: CurrentMovie[] = [];
+
+      // 1. TMDB direct title/name search -- nails exact and brand-new titles.
+      try {
+        const res = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: q }),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as { movies?: CurrentMovie[] };
+          movies = (data.movies ?? []).filter((m) => m?.title && (m.trailerKey || m.posterUrl));
+        }
+      } catch {
+        /* fall through to the LLM */
       }
-    } catch {
-      list = [ALL_CHANNEL];
+
+      // 2. LLM fallback -- handles moods, genres, "like X but funnier", etc.
+      if (movies.length === 0) {
+        try {
+          const res = await fetch("/api/next-movie", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userRequest: q,
+              llm,
+              mediaType,
+              count: LLM_BATCH_SIZE,
+              activeChannel: channelsRef.current.find((c) => c.id === activeChannelIdRef.current),
+            }),
+          });
+          if (res.ok) {
+            const data = (await res.json()) as { movies?: CurrentMovie[] };
+            movies = (data.movies ?? []).filter((m) => m?.title && (m.trailerKey || m.posterUrl));
+          }
+        } catch {
+          /* ignore -- handled below */
+        }
+      }
+
+      if (movies.length === 0) {
+        setFetchError(`No results for "${q}". Try a different search.`);
+        return;
+      }
+
+      // Drop results into the queue: play the first now, rest go to the front of the
+      // upcoming queue (visible and clickable) ahead of the channel's auto-picks.
+      setCareerMode(null);
+      pushNavBack(currentRef.current);
+      prefetchRef.current = [...movies.slice(1), ...prefetchRef.current];
+      persistPrefetchQueue();
+      setCurrent(movies[0]);
+      setInitialLoading(false);
+    } finally {
+      setIsSearching(false);
     }
-    const data = channelDraftFromPrompt(t);
-    const ch = normalizeChannel({ ...data, id: crypto.randomUUID() });
-    const next = insertChannelAfterAll(list, ch);
-    try {
-      localStorage.setItem(CHANNELS_KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
-    }
-    setChannels(next);
-    channelsRef.current = next;
-    localStorage.setItem(ACTIVE_CHANNEL_KEY, ch.id);
-    setActiveChannelId(ch.id);
-  }, []);
+  }, [llm, mediaType, pushNavBack, persistPrefetchQueue]);
 
   const openNewChannelFromMovie = useCallback(
     (movie: MovieChannelSeedInput) => {
@@ -3869,7 +3908,7 @@ export default function Home() {
           </p>
           <div className="shrink-0 rounded-xl border border-zinc-800/90 bg-zinc-950/80 p-2 sm:rounded-2xl sm:p-3">
             <label htmlFor="channel-what-you-want" className="mb-1 hidden text-xs font-medium text-zinc-400 sm:block">
-              New channel
+              Search
             </label>
             <div className="flex flex-row items-stretch gap-1.5 sm:flex-col sm:gap-2">
               <div className="relative min-w-0 flex-1">
@@ -3877,23 +3916,23 @@ export default function Home() {
                   id="channel-what-you-want"
                   autoComplete="off"
                   rows={1}
-                  value={newChannelText}
-                  onChange={(e) => setNewChannelText(e.target.value)}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key !== "Enter" || e.shiftKey) return;
                     e.preventDefault();
-                    if (!newChannelText.trim()) return;
-                    createChannelFromHomePrompt(newChannelText);
-                    setNewChannelText("");
+                    if (!searchText.trim() || isSearching) return;
+                    searchAndQueue(searchText);
+                    setSearchText("");
                   }}
                   placeholder="movie, TV show, actor, director, mood, era, genre…"
                   className="min-h-8 max-h-16 w-full resize-none rounded-lg border border-zinc-600 bg-zinc-900 px-2 py-1.5 pr-7 text-xs leading-snug text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 sm:min-h-9 sm:max-h-none sm:resize-y sm:px-3 sm:py-2 sm:pr-9 sm:text-sm"
                 />
-                {newChannelText.length > 0 && (
+                {searchText.length > 0 && (
                   <button
                     type="button"
                     onPointerDown={(e) => e.preventDefault()}
-                    onClick={() => setNewChannelText("")}
+                    onClick={() => setSearchText("")}
                     className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded text-sm leading-none text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200 sm:right-1.5 sm:top-1.5 sm:h-7 sm:w-7 sm:text-base"
                     title="Clear"
                     aria-label="Clear"
@@ -3905,15 +3944,14 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => {
-                  createChannelFromHomePrompt(newChannelText);
-                  setNewChannelText("");
+                  searchAndQueue(searchText);
+                  setSearchText("");
                 }}
-                disabled={!newChannelText.trim()}
-                title="Create a new channel with this text"
+                disabled={!searchText.trim() || isSearching}
+                title="Search and add results to the queue"
                 className="h-8 shrink-0 self-stretch rounded-lg bg-indigo-600 px-2.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-40 sm:h-10 sm:w-full sm:px-3 sm:text-sm"
               >
-                <span className="sm:hidden">Add</span>
-                <span className="hidden sm:inline">Create channel</span>
+                {isSearching ? "Searching…" : "Search"}
               </button>
             </div>
           </div>

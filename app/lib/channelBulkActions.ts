@@ -9,6 +9,7 @@ export function createAllChannel(): Channel {
     mediums: [],
     genres: [],
     timePeriods: [],
+    streaming: [],
     language: "",
     artists: "",
     freeText: "",

@@ -37,4 +37,28 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Trailer Vision
 
-Next.js app for trailer-first movie/TV taste calibration. Local data lives under `movie-recs-*` localStorage keys (legacy name) for backward compatibility.
+TikTok-style, trailer-first movie/TV discovery. You rate titles (red stars = seen, blue = unseen
+interest) and a language model learns your taste by **content similarity** — not collaborative
+filtering — serving the next batch from a per-channel prefetch queue. Trailers autoplay; an **Auto**
+toggle + Fullscreen lets you watch hands-free. All data lives in the browser under `movie-recs-*`
+localStorage keys — no accounts, no server database, no ads.
+
+### Features
+- **Channels** — independent "taste islands", each with its own filters, queue, and ratings.
+- **Coming Soon** — a special channel that skips the LLM and pulls new/upcoming titles from TMDB
+  (`/api/upcoming`). See raw sample payloads at `/tmdb-sample`.
+- **Constellations graph** — embedded below the player, mapping cast/director/related films
+  (`@johndimm/constellations`), with AI/cache calls proxied through this app's own routes.
+- **History as playlist** — select past titles and play them back-to-back.
+- **Export / Import** — back up or move all data as JSON from Settings.
+
+### Docs
+- In-app **Help** (`/help`), the build **Prompt History + full spec** (`/prompt`), and the
+  **Dev Journal** (`/journal`).
+- Architecture principles in `ARCHITECTURE.md`; agent/runtime notes in `AGENTS.md`.
+
+### Key env vars
+See the full list at the bottom of `/prompt`. Most important: `DEEPSEEK_API_KEY` (default LLM,
+plus optional `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY`), `TMDB_API_KEY` (posters,
+trailers, Coming Soon, Constellations credits), `NEXT_PUBLIC_APP_URL` (same-origin Constellations
+proxy base), and `CONSTELLATIONS_EXTERNAL_URL` (upstream graph backend).

@@ -23,15 +23,22 @@ window over recent decisions, not a lifetime average.
 
 When something lands on my watchlist, look up streaming services (US) when possible.
 
-Filter movies / TV / both. Pick an LLM (DeepSeek, Claude, GPT-4o, Gemini) if I have keys.
+Pick an LLM (DeepSeek, Claude, GPT-4o, Gemini) if I have keys. Recommendations should be
+based on content similarity as judged by the model, not collaborative filtering.
 
 Multiple taste channels with per-channel prefetch queues — same title can have different
-ratings per channel. A starter pack can merge example channels without wiping my data.
+ratings per channel. Each channel sets its own format (movies / TV / both), genres, era,
+language. A starter pack can merge example channels without wiping my data. One special
+"Coming Soon" channel skips the AI and pulls genuinely new/upcoming titles from TMDB.
+
+Trailers autoplay; an Auto toggle + Fullscreen lets me watch hands-free, one trailer
+flowing into the next. Below the player, a graph (Constellations) maps connections between
+the current title and its cast, director, and related films.
 
 Nav includes a dedicated Watchlist page (global list) plus Channels, Settings, Help.
 Ratings page: Seen (signed delta vs AI), Watchlist, Not interested.
 
-Keep all data in localStorage — no accounts, no server database.`;
+Keep all data in localStorage — no accounts, no server database, no ads.`;
 
 const PROMPT = `# Trailer Vision — full spec
 
@@ -205,6 +212,16 @@ Ratings (/ratings) is not in the bar. Active page is highlighted.
 - Each channel has its own prefetch queue in localStorage: movie-recs-prefetch-queue:{channelId}
   (legacy key movie-recs-prefetch-queue may be migrated on read). Replenish and card pop use
   the active channel's queue; switching channel persists the previous queue and loads the new one.
+- Channel editor (ChannelEditorForm + channelEditorConfig): typing a description into the freeText
+  box auto-fills an empty name with its first ~4 words. Saving an edited channel clears that
+  channel's queue + stored current card (clearChannelPersistedData) so the next titles reflect the
+  new definition; returning home triggers a fresh replenish.
+- **Coming Soon** is a special bundled channel (matched by name "Coming Soon"). It does NOT call
+  the LLM — fetchMovieBatch routes it to POST /api/upcoming (TMDB). Cards require a trailerKey.
+  Its editor uses COMING_SOON_CHANNEL_EDITOR_CONFIG which hides Time periods and Artists (new
+  titles have no meaningful era and often-unknown casts) and it shows no star ratings. Its
+  history is excluded from the LLM context of other channels (we don't rate these). Filterable
+  by genre, language, and format (movies / TV).
 - Client dedupe for the *next card* still merges canonical title keys from the **full** history
   plus skipped/watchlist/passed — so in normal browsing a title already decided in one channel
   is not offered again as a fresh pick until that history row is removed (e.g. reconsider flow).
@@ -245,23 +262,27 @@ Each row shows blue StaticStars and pills (Added / Not on list for saves vs Not 
 with interest ≥ threshold — **skip** rows and **want** rows you removed from the watchlist — then
 removes promoted skips from skipped + not-interested and POST /api/streaming per new entry.
 
-## Controls (below nav, above card)
-Segmented control: Movies & TV | Movies | TV Series
-When type changes, if the current card doesn't match, re-fetch immediately.
+## Controls
+Content format (movie / TV / both) is NOT a global control — it is set per channel via the
+channel's mediums[]. The prefetch request for a channel honors its mediums. (A legacy global
+mediaType state remains in code, defaults to "both", and has no UI.)
 
-Segmented control for LLM: populated from GET /api/config which checks which
-of DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY exist
-in env and returns { llms: [{ id, label }] }. Only show if >1 key configured.
+Display mode segmented control Trailers | Posters lives in the player's media-actions toolbar
+(displayMode state, default "trailers", persisted in settings). When "posters" is selected,
+always use the poster layout even if trailerKey is available.
 
-Segmented control: Trailers | Posters (displayMode state, default "trailers").
-When "posters" is selected, always use the poster layout even if trailerKey is available.
+Auto-advance: in trailer mode the media-actions toolbar shows an "Auto" checkbox (autoAdvance
+state, persisted). When checked, the trailer's onEnded handler passes to the next card so the
+user can watch hands-free; pairs well with Fullscreen.
 
-User request text input: full-width input below the segmented controls.
-Placeholder: 'Request something specific… free text only, no preset categories'.
-Shows a × clear button when non-empty. Value is read from a ref (userRequestRef) at
-fetch time so background replenish calls always use the latest text.
-When the value changes, flush the prefetch queue after a 600ms debounce so upcoming
-cards come from a batch that knew about the request.
+LLM choice and a Global request (free-text steer applied to every recommendation) live on the
+Settings page. The LLM list is populated from GET /api/config which checks which of
+DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY exist in env and returns
+{ llms: [{ id, label }] }. When the global request value changes, flush the prefetch queue
+(debounced 600ms) so upcoming cards come from a batch that knew about it.
+
+The Global request value is read from a ref (userRequestRef) at fetch time so background
+replenish calls always use the latest text, and is appended to the system prompt as a hard steer.
 
 ## Re-rate / reconsider
 The "All ratings" list and the "Not interested" list below the card are fully clickable rows
@@ -305,8 +326,43 @@ wrap the system prompt as { type: "text", text: systemPrompt, cache_control: { t
 OpenAI automatically caches prompt prefixes ≥1024 tokens. Gemini uses the systemInstruction
 field. DeepSeek uses the standard system/user message array.
 
+## Coming Soon channel  POST /api/upcoming
+TMDB-backed feed for genuinely new/upcoming titles (no LLM). Request body:
+{ page, genres[], language (CSV), mediums[] ("movie"|"tv"), skipped[] }.
+- Movies: /movie/upcoming, filtered to release_date >= ~2 weeks ago.
+- TV: /discover/tv sorted by first_air_date desc within a recent window
+  (first_air_date.gte = 6 months ago, .lte = ~4 weeks out) — NOT /tv/on_the_air, which
+  surfaces decades-old shows that merely have an episode airing this week.
+- Genre filter uses separate movie vs TV genre-id maps (same name → different id).
+- Language filter splits the CSV and matches original_language (ISO 639-1).
+- Credits: director (movie) or created_by (TV) + top cast; trailer key via /videos.
+Returns { movies: CurrentMovie[], totalPages, page }; the client pages through results and
+requires a trailerKey to show a card. A sample of the raw TMDB payloads is documented at
+/tmdb-sample (linked from Help) to guide future filters (e.g. region/country).
+
+## Constellations graph (embedded)
+TrailerVisionConstellationsEmbed renders the @johndimm/constellations host below the player,
+seeded with the now-playing title; it maps cast / director / related films and expands on
+interaction. "Open full screen" hands off via sessionStorage to /constellations.
+The package proxies its AI + cache calls to same-origin routes (NEXT_PUBLIC_VITE_CACHE_URL is
+set to the app's own origin so calls stay same-origin and CORS-safe):
+- POST /api/ai/connections — intercepted: resolves the node to a TMDB title and returns real
+  credits (director + cast + writers) instead of the external LLM, which hallucinates people
+  for newer films not in Wikipedia. Falls back to the external server when TMDB finds nothing.
+- /api/ai/[...path] — catch-all forwarder for classify / classify-start / works, etc.
+- /node and /expansion — forwarders for the package's cache service.
+All proxy routes set permissive CORS headers, handle OPTIONS, and use maxDuration 60 to absorb
+cold starts of the external Constellations backend (CONSTELLATIONS_EXTERNAL_URL).
+
+## History as playlist
+On /history and /channel-history, selecting rows and pressing Play writes the chosen titles to
+localStorage key movie-recs-playlist and navigates home. The player drains a playlistRef first
+(bypassing the normal history-exclusion in fetchNext, since the user picked these explicitly),
+playing them in order before resuming normal recommendations.
+
 ## localStorage keys
 movie-recs-history        — RatingEntry[] (includes rtScore per entry)
+movie-recs-playlist       — CurrentMovie[] (history titles queued to play back-to-back)
 movie-recs-skipped        — string[] (all excluded titles)
 movie-recs-watchlist      — WatchlistEntry[]
 movie-recs-notseen        — NotSeenEvent[] (for chart plotting)
@@ -315,15 +371,21 @@ movie-recs-not-interested — { title, rtScore }[] (for high-RT taste signal)
 movie-recs-taste-summary  — string (LLM-generated taste profile, second person)
 movie-recs-llm-session-id — UUID for server-side history session
 movie-recs-llm-history-synced — number of ratings confirmed synced to server
+movie-recs-settings       — { llm, displayMode, autoAdvance, userRequest, mediaType(legacy) }
+movie-recs-channels       — MovieChannel[]; movie-recs-active-channel — active channel id
 
 ## Required env vars
 DEEPSEEK_API_KEY       — DeepSeek (default LLM)
 ANTHROPIC_API_KEY      — Claude (optional)
 OPENAI_API_KEY         — GPT-4o (optional)
 GEMINI_API_KEY         — Gemini (optional)
-TMDB_API_KEY           — TMDB poster lookup (recommended)
+TMDB_API_KEY           — TMDB posters, trailers, Coming Soon feed, Constellations credits (recommended)
 SERPER_API_KEY         — Serper Images fallback for posters (optional)
-NEXT_MOVIE_LOG_LLM_PROMPTS — set to "1" to log full prompts to server console (debug only)`;
+NEXT_MOVIE_LOG_LLM_PROMPTS — set to "1" to log full prompts to server console (debug only)
+NEXT_PUBLIC_APP_URL    — app's own production origin; used as the Constellations proxy base so
+                         AI/cache calls stay same-origin (avoids CORS). Falls back to
+                         VERCEL_PROJECT_PRODUCTION_URL, then VERCEL_URL, then localhost.
+CONSTELLATIONS_EXTERNAL_URL — upstream Constellations backend the proxy routes forward to.`;
 
 export default function PromptPage() {
   const [copiedNatural, setCopiedNatural] = useState(false);

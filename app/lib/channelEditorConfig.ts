@@ -15,6 +15,11 @@ export const TIME_OPTIONS = [
   "1980s", "1990s", "2000s", "2010s", "2020s",
 ];
 
+export const STREAMING_OPTIONS = [
+  "Netflix", "Amazon Prime", "Apple TV+", "Disney+", "HBO Max",
+  "Hulu", "Paramount+", "Peacock",
+];
+
 export const MEDIUM_OPTIONS: { id: ChannelMedium; label: string; hint: string }[] = [
   { id: "movie", label: "Movies", hint: "Theatrical feature films" },
   { id: "tv", label: "TV series", hint: "Episodic / ongoing TV series" },
@@ -57,6 +62,8 @@ export const TRAILER_CHANNEL_EDITOR_CONFIG: ChannelEditorConfig = {
     "Add a title, a description, or a filter in the sections on this form to see director and actor ideas.",
   genreOptions: GENRE_OPTIONS,
   timePeriodOptions: TIME_OPTIONS,
+  showStreaming: true,
+  streamingOptions: STREAMING_OPTIONS,
   showLanguage: true,
   languageOptions: LANGUAGE_OPTIONS,
   showMediums: true,
@@ -75,6 +82,7 @@ export const TRAILER_CHANNEL_EDITOR_CONFIG: ChannelEditorConfig = {
 export const COMING_SOON_CHANNEL_EDITOR_CONFIG: ChannelEditorConfig = {
   ...TRAILER_CHANNEL_EDITOR_CONFIG,
   showTimePeriods: false,
+  showStreaming: false,
   showArtists: false,
 };
 
@@ -90,6 +98,7 @@ export function channelToEditorValues(ch: MovieChannel): ChannelEditorValues {
     freeText: ch.freeText,
     genres: ch.genres,
     timePeriods: ch.timePeriods,
+    streaming: ch.streaming ?? [],
     regions: [],
     language: ch.language,
     mediums: ch.mediums,
@@ -108,6 +117,7 @@ export function editorValuesToChannel(
     mediums: values.mediums as ChannelMedium[],
     genres: values.genres,
     timePeriods: values.timePeriods,
+    streaming: values.streaming,
     language: values.language,
     artists: values.artists.join(", "),
     freeText: values.freeText.trim(),
@@ -122,6 +132,7 @@ export function prefillToEditorValues(partial: unknown): ChannelEditorValues {
     freeText: m.freeText,
     genres: m.genres,
     timePeriods: m.timePeriods,
+    streaming: (m as { streaming?: string[] }).streaming ?? [],
     regions: [],
     language: m.language,
     mediums: m.mediums,
@@ -139,6 +150,7 @@ export function emptyTrailerEditorValues(): ChannelEditorValues {
     freeText: "",
     genres: [],
     timePeriods: [],
+    streaming: [],
     regions: [],
     language: "",
     mediums: [],

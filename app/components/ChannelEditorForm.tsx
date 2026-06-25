@@ -12,6 +12,7 @@ export type ChannelEditorValues = {
   freeText: string
   genres: string[]
   timePeriods: string[]
+  streaming: string[]
   regions: string[]
   language: string
   mediums: string[]
@@ -33,6 +34,8 @@ export type ChannelEditorConfig = {
   genreOptions: string[]
   timePeriodOptions: string[]
   showTimePeriods?: boolean
+  showStreaming?: boolean
+  streamingOptions?: string[]
   showArtists?: boolean
   showRegions?: boolean
   regionOptions?: string[]
@@ -384,6 +387,19 @@ export default function ChannelEditorForm({
             onToggle={g => field('genres', toggleArr(form.genres, g))}
           />
         </div>
+
+        {config.showStreaming && config.streamingOptions && config.streamingOptions.length > 0 && (
+          <div>
+            <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              Streaming
+            </label>
+            <ChipRow
+              options={config.streamingOptions}
+              selected={form.streaming}
+              onToggle={s => field('streaming', toggleArr(form.streaming, s))}
+            />
+          </div>
+        )}
 
         {(config.showTimePeriods ?? true) && (
           <div>

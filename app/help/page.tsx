@@ -31,15 +31,38 @@ export default function HelpPage() {
             After <strong className="text-zinc-800">Not yet</strong>, blue stars rate interest; use <strong className="text-zinc-800">I have seen it</strong> to go back.
             Unseen: high blue stars add the title to your watchlist; low stars mark not interested. The app learns from your history and suggests new titles.
           </p>
+          <p className="text-sm text-zinc-600 leading-relaxed">
+            Recommendations come from a language model judging <strong className="text-zinc-800">content similarity</strong> to what
+            you&apos;ve liked — not from &quot;people who watched this also watched&quot; collaborative filtering. Trailers autoplay.
+            Tick <strong className="text-zinc-800">Auto</strong> and hit <strong className="text-zinc-800">Fullscreen</strong> to
+            sit back and watch hands-free — each trailer advances to the next when it ends.
+          </p>
         </section>
 
         <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5 sm:p-6 space-y-3">
           <h2 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide">Channels</h2>
           <p className="text-sm text-zinc-600 leading-relaxed">
-            Create filters (genres, era, language, etc.) so recommendations stay on-topic. Pick a channel from
+            Create filters (genres, era, language, format, etc.) so recommendations stay on-topic. Pick a channel from
             the chips on the main page. Each channel is its own <strong className="text-zinc-800">recommendation island</strong>: its own
             prefetch queue (upcoming titles) and its own saved ratings, so the same film can end up with different stars
             in different channels when you&apos;re judging it under different taste lenses. Switching channels saves the old queue and restores the new one.
+            Editing a channel and saving clears its queue, so the next titles reflect the new definition. When you create a channel,
+            just describe what you want — the first few words become the channel name automatically.
+          </p>
+          <p className="text-sm text-zinc-600 leading-relaxed">
+            The bundled <strong className="text-zinc-800">Coming Soon</strong> channel is special: instead of the AI, it pulls genuinely new
+            and upcoming titles straight from TMDB (coming attractions in theatres and on streaming). Because these aren&apos;t films you&apos;ve
+            seen, it hides star ratings, time-period and actor filters — you just browse trailers. Filter it by genre, language, and format
+            (movies / TV series).
+          </p>
+        </section>
+
+        <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5 sm:p-6 space-y-3">
+          <h2 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide">Graph</h2>
+          <p className="text-sm text-zinc-600 leading-relaxed">
+            Below the player, a <strong className="text-zinc-800">Constellations</strong> graph maps connections between the current
+            title and its actors, director, and related films. It expands as you explore. Tap{" "}
+            <strong className="text-zinc-800">Open full screen</strong> for the standalone view.
           </p>
         </section>
 
@@ -58,6 +81,17 @@ export default function HelpPage() {
             Choose trailers vs posters and which LLM to use. <strong className="text-zinc-800">Global request</strong> adds free-text
             instructions for every recommendation. <strong className="text-zinc-800">Export / Import</strong> saves your data as JSON (channels,
             queues, history, etc.); import overwrites only keys present in the file. <strong className="text-zinc-800">Reset</strong> clears everything.
+          </p>
+        </section>
+
+        <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5 sm:p-6 space-y-3">
+          <h2 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide">Your data</h2>
+          <p className="text-sm text-zinc-600 leading-relaxed">
+            No login, no accounts, no ads. Everything — ratings, watchlist, channels, taste profile — lives in your browser&apos;s
+            local storage, not on a server. When your queue runs low, your ratings are sent to the language model so it can pick the
+            next batch, but nothing is kept server-side afterward: it&apos;s stateless, more like an early chat session than a platform
+            building a permanent profile of you. Use <strong className="text-zinc-800">Export</strong> in Settings to back up or move your
+            data between browsers.
           </p>
         </section>
 
@@ -88,6 +122,7 @@ export default function HelpPage() {
               Define filters per channel and open <strong className="text-zinc-800">Channel history</strong>: seen rows match Ratings → Seen (delta + sort); unseen rows show blue-star interest and pills (
               <strong className="text-zinc-800">Added</strong> / <strong className="text-zinc-800">Not on list</strong> for saves, <strong className="text-zinc-800">Not interested</strong> for passes).{" "}
               <strong className="text-zinc-800">Add to watchlist</strong> uses a minimum interest threshold and adds titles <em>not</em> already on your global watchlist (high-interest skips and removed saves you want back). Create or delete channels here.
+              Select rows in a history list and hit <strong className="text-zinc-800">Play</strong> to queue them up and watch them back-to-back as a playlist.
             </li>
           </ul>
         </section>

@@ -288,6 +288,8 @@ interface ChannelPayload {
   mediums?: ("movie" | "tv")[];
   genres: string[];
   timePeriods: string[];
+  /** Streaming services the title must be available on (empty = no filter). */
+  streaming?: string[];
   language: string;
   artists: string;
   freeText: string;
@@ -335,6 +337,7 @@ function buildChannelConstraint(ch: ChannelPayload, mediaType: "movie" | "tv" | 
   }
   if (ch.genres.length) lines.push(`- Genres: ${ch.genres.join(", ")}`);
   if (ch.timePeriods.length) lines.push(`- Time periods: ${ch.timePeriods.join(", ")}`);
+  if (ch.streaming?.length) lines.push(`- Streaming availability: Only recommend titles currently available to stream on ${ch.streaming.join(" or ")} (in the US). Skip anything not on these services.`);
   if (ch.language.trim()) lines.push(`- Language: ${ch.language.trim()}`);
   if (ch.artists.trim()) lines.push(`- Focus on work by: ${ch.artists.trim()}`);
 
