@@ -28,8 +28,14 @@ based on content similarity as judged by the model, not collaborative filtering.
 
 Multiple taste channels with per-channel prefetch queues — same title can have different
 ratings per channel. Each channel sets its own format (movies / TV / both), genres, era,
-language. A starter pack can merge example channels without wiping my data. One special
-"Coming Soon" channel skips the AI and pulls genuinely new/upcoming titles from TMDB.
+language, and which streaming services it should be on (Netflix, Amazon Prime, Apple TV+,
+Disney+, HBO Max, Hulu, Paramount+, Peacock). A starter pack can merge example channels
+without wiping my data, including a per-service channel for each major streamer. One special
+"Coming Soon" channel skips the AI and pulls genuinely new/upcoming titles from TMDB, and can
+likewise be narrowed to a streaming service.
+
+A search box on the home screen drops results straight into the queue — type a title, actor,
+or vibe and it plays. Try TMDB first (exact/new titles), fall back to the LLM (moods, genres).
 
 Trailers autoplay; an Auto toggle + Fullscreen lets me watch hands-free, one trailer
 flowing into the next. Below the player, a graph (Constellations) maps connections between
@@ -198,7 +204,9 @@ Help explains end-user usage and links to Dev Journal (/journal) and Prompt Hist
 Ratings (/ratings) is not in the bar. Active page is highlighted.
 
 ## Channels (/channels) and per-channel prefetch
-- Channel model: id, name, mediums[], genres[], timePeriods[], language, artists, freeText, popularity.
+- Channel model: id, name, mediums[], genres[], timePeriods[], streaming[], language, artists, freeText, popularity.
+  streaming[] holds service names (Netflix, Amazon Prime, Apple TV+, Disney+, HBO Max, Hulu,
+  Paramount+, Peacock); normalizeChannel backfills it to [] for legacy channels.
 - Immutable first channel id "all" named "All". CRUD for other channels; export/import includes
   movie-recs-channels and movie-recs-active-channel.
 - **Recommendation islands:** Each channel is an independent recommendation context: its own
@@ -213,15 +221,20 @@ Ratings (/ratings) is not in the bar. Active page is highlighted.
   (legacy key movie-recs-prefetch-queue may be migrated on read). Replenish and card pop use
   the active channel's queue; switching channel persists the previous queue and loads the new one.
 - Channel editor (ChannelEditorForm + channelEditorConfig): typing a description into the freeText
-  box auto-fills an empty name with its first ~4 words. Saving an edited channel clears that
-  channel's queue + stored current card (clearChannelPersistedData) so the next titles reflect the
-  new definition; returning home triggers a fresh replenish.
+  box auto-fills an empty name with its first ~4 words. A "Streaming" chip row (showStreaming +
+  streamingOptions, STREAMING_OPTIONS) lets the user require a title be on one of the named
+  services. Saving an edited channel clears that channel's queue + stored current card
+  (clearChannelPersistedData) so the next titles reflect the new definition; returning home
+  triggers a fresh replenish. For LLM channels, the selected services become a hard constraint
+  in buildChannelConstraint ("Only recommend titles currently available to stream on X or Y in
+  the US"); for Coming Soon they map to TMDB watch-provider IDs (see /api/upcoming).
 - **Coming Soon** is a special bundled channel (matched by name "Coming Soon"). It does NOT call
   the LLM — fetchMovieBatch routes it to POST /api/upcoming (TMDB). Cards require a trailerKey.
   Its editor uses COMING_SOON_CHANNEL_EDITOR_CONFIG which hides Time periods and Artists (new
   titles have no meaningful era and often-unknown casts) and it shows no star ratings. Its
   history is excluded from the LLM context of other channels (we don't rate these). Filterable
-  by genre, language, and format (movies / TV).
+  by genre, language, format (movies / TV), and streaming service (its editor shows the Streaming
+  chips but still hides Time periods + Artists).
 - Client dedupe for the *next card* still merges canonical title keys from the **full** history
   plus skipped/watchlist/passed — so in normal browsing a title already decided in one channel
   is not offered again as a fresh pick until that history row is removed (e.g. reconsider flow).
@@ -230,7 +243,10 @@ Ratings (/ratings) is not in the bar. Active page is highlighted.
 
 ## Factory starter channels (factory-channels.json)
 Bundled JSON in the same shape as a v1 export (data object with channel list, active channel,
-prefetch keys, etc.).
+prefetch keys, etc.). The starter set includes a per-service channel for each major streamer
+(Netflix, Amazon Prime, Apple TV+ → "Apple TV", Disney+, HBO Max → "HBO") whose streaming[] is
+set to that one service, alongside taste channels (Film Noir, Spaghetti Westerns, Korean Horror,
+Nouvelle Vague, Kaiju/Tokusatsu, Euphoria) and the special Coming Soon channel.
 - First visit: if movie-recs-channels has never been written (getItem === null), copy every
   key from data into localStorage once (applyFactoryBootstrap) on home and channels hydrate.
 - Settings: "Merge starter channels" appends any bundled non-All channels whose ids are not
@@ -244,6 +260,19 @@ prefetch keys, etc.).
 - Pills: text-sm font-semibold; inactive text-zinc-800; selected bg-zinc-900 text-white.
 - Deletable channels: × control on hover (sm+); ConfirmDialog before delete; if active channel
   deleted, fall back to first remaining channel and fix prefetch/active key.
+- Above the channel pills sits a **Search** box (searchAndQueue). Typing text + Enter / the
+  Search button drops results straight into the current channel's queue: the first result becomes
+  the current card immediately (bypassing history exclusion), the rest are unshifted to the front
+  of the prefetch queue (visible + clickable), ahead of the channel's auto-replenished picks.
+
+## Home search box  POST /api/search
+TMDB-first, LLM-fallback search feeding the player queue.
+- Client searchAndQueue(text): POST /api/search { query } first; if it returns no usable result
+  (title with trailer or poster), fall back to POST /api/next-movie { userRequest: text, llm,
+  mediaType, count, activeChannel } so moods / genres / "like X" still resolve.
+- /api/search: TMDB /search/multi, keep movie + TV hits (drop people), sort by popularity, top 8;
+  fetch trailers (/videos) + credits in parallel; return { movies: CurrentMovie[] } for hits with
+  a poster or trailer. Nails exact and brand-new titles the LLM may not know.
 
 ## Ratings (/ratings) and channel history (/channels)
 Seen tab on /ratings and the **Seen** block inside /channels **Channel history**:
@@ -328,11 +357,16 @@ field. DeepSeek uses the standard system/user message array.
 
 ## Coming Soon channel  POST /api/upcoming
 TMDB-backed feed for genuinely new/upcoming titles (no LLM). Request body:
-{ page, genres[], language (CSV), mediums[] ("movie"|"tv"), skipped[] }.
+{ page, genres[], language (CSV), mediums[] ("movie"|"tv"), streaming[], skipped[] }.
 - Movies: /movie/upcoming, filtered to release_date >= ~2 weeks ago.
 - TV: /discover/tv sorted by first_air_date desc within a recent window
   (first_air_date.gte = 6 months ago, .lte = ~4 weeks out) — NOT /tv/on_the_air, which
   surfaces decades-old shows that merely have an episode airing this week.
+- Streaming filter: streaming[] names map to TMDB watch-provider IDs (STREAMING_PROVIDER_IDS,
+  US region) joined with "|" (= available on any). When set, both movies AND TV use /discover
+  with with_watch_providers + watch_region=US over the recent-release window (movies switch off
+  /movie/upcoming, since genuinely-upcoming theatrical films aren't on a service yet; the 2-week
+  floor is skipped because the discover window already bounds dates).
 - Genre filter uses separate movie vs TV genre-id maps (same name → different id).
 - Language filter splits the CSV and matches original_language (ISO 639-1).
 - Credits: director (movie) or created_by (TV) + top cast; trailer key via /videos.
@@ -415,10 +449,11 @@ export default function PromptPage() {
         {/* Natural language prompt */}
         <div className="mb-7">
           <h1 className="text-[1.4rem] font-bold text-zinc-900 tracking-tight">
-            Prompt History
+            App Prompt History
           </h1>
           <p className="mt-1.5 text-sm text-zinc-500">
-            Original idea in plain English — then the full technical spec used to build the app.
+            The prompts used to build this app with Claude and Cursor — the original idea in plain
+            English, then the full technical spec.
           </p>
         </div>
         <div className="flex justify-end mb-2.5">

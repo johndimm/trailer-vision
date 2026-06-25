@@ -188,7 +188,7 @@ export default function JournalPage() {
             <span className="j-tag prompt">Prompt</span>
             <h3>Build this app from scratch</h3>
             <p>A complete specification you can paste into any coding agent to rebuild a near-identical app.</p>
-            <p style={{ marginTop: 10 }}><a href="/prompt" style={{ color: "#7e22ce", fontWeight: 600 }}>Prompt History &rarr;</a></p>
+            <p style={{ marginTop: 10 }}><a href="/prompt" style={{ color: "#7e22ce", fontWeight: 600 }}>App Prompt History &rarr;</a></p>
           </div>
         </div>
 

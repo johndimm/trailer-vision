@@ -45,15 +45,23 @@ localStorage keys — no accounts, no server database, no ads.
 
 ### Features
 - **Channels** — independent "taste islands", each with its own filters, queue, and ratings.
+  Filters include genres, era, language, format (movies / TV), and **streaming service**
+  (Netflix, Amazon Prime, Apple TV+, Disney+, HBO Max, Hulu, Paramount+, Peacock). The starter
+  pack ships a ready-made channel per major streamer.
+- **Search** — a home-screen box that drops results straight into the queue and plays them:
+  TMDB title/name lookup first (exact and brand-new titles), LLM fallback for moods and genres
+  (`/api/search`).
 - **Coming Soon** — a special channel that skips the LLM and pulls new/upcoming titles from TMDB
-  (`/api/upcoming`). See raw sample payloads at `/tmdb-sample`.
+  (`/api/upcoming`), filterable by streaming service via TMDB watch providers. See raw sample
+  payloads at `/tmdb-sample`.
 - **Constellations graph** — embedded below the player, mapping cast/director/related films
   (`@johndimm/constellations`), with AI/cache calls proxied through this app's own routes.
 - **History as playlist** — select past titles and play them back-to-back.
 - **Export / Import** — back up or move all data as JSON from Settings.
 
 ### Docs
-- In-app **Help** (`/help`), the build **Prompt History + full spec** (`/prompt`), and the
+- In-app **Help** (`/help`), the **App Prompt History + full spec** (`/prompt`, the prompts used
+  to build the app with Claude and Cursor), and the
   **Dev Journal** (`/journal`).
 - Architecture principles in `ARCHITECTURE.md`; agent/runtime notes in `AGENTS.md`.
 

@@ -37,12 +37,17 @@ export default function HelpPage() {
             Tick <strong className="text-zinc-800">Auto</strong> and hit <strong className="text-zinc-800">Fullscreen</strong> to
             sit back and watch hands-free — each trailer advances to the next when it ends.
           </p>
+          <p className="text-sm text-zinc-600 leading-relaxed">
+            Looking for something specific? The <strong className="text-zinc-800">Search</strong> box (above the channel list) drops
+            results straight into the queue and starts playing — type a title, an actor, or just a vibe. It checks the movie database
+            first (great for exact or brand-new titles), then falls back to the language model for moods and genres.
+          </p>
         </section>
 
         <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5 sm:p-6 space-y-3">
           <h2 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide">Channels</h2>
           <p className="text-sm text-zinc-600 leading-relaxed">
-            Create filters (genres, era, language, format, etc.) so recommendations stay on-topic. Pick a channel from
+            Create filters (genres, era, language, format, <strong className="text-zinc-800">streaming service</strong>, etc.) so recommendations stay on-topic. Pick a channel from
             the chips on the main page. Each channel is its own <strong className="text-zinc-800">recommendation island</strong>: its own
             prefetch queue (upcoming titles) and its own saved ratings, so the same film can end up with different stars
             in different channels when you&apos;re judging it under different taste lenses. Switching channels saves the old queue and restores the new one.
@@ -50,10 +55,16 @@ export default function HelpPage() {
             just describe what you want — the first few words become the channel name automatically.
           </p>
           <p className="text-sm text-zinc-600 leading-relaxed">
+            The <strong className="text-zinc-800">Streaming</strong> filter restricts a channel to titles available on the services you pick
+            (Netflix, Amazon Prime, Apple TV+, Disney+, HBO Max, Hulu, Paramount+, Peacock). The starter pack includes a ready-made
+            channel for each of the major streamers. Want to browse what&apos;s on your subscriptions? Select the service and let the
+            trailers roll.
+          </p>
+          <p className="text-sm text-zinc-600 leading-relaxed">
             The bundled <strong className="text-zinc-800">Coming Soon</strong> channel is special: instead of the AI, it pulls genuinely new
             and upcoming titles straight from TMDB (coming attractions in theatres and on streaming). Because these aren&apos;t films you&apos;ve
-            seen, it hides star ratings, time-period and actor filters — you just browse trailers. Filter it by genre, language, and format
-            (movies / TV series).
+            seen, it hides star ratings, time-period and actor filters — you just browse trailers. Filter it by genre, language, format
+            (movies / TV series), and streaming service (e.g. only show what&apos;s new on Netflix).
           </p>
         </section>
 
@@ -146,7 +157,7 @@ export default function HelpPage() {
                 href="/prompt"
                 className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm font-medium text-zinc-800 hover:bg-zinc-100 transition-colors"
               >
-                Prompt History
+                App Prompt History
               </Link>
             </li>
             <li>

@@ -12,7 +12,7 @@ const LINKS = [
   { href: "/watchlist", label: "Watchlist" },
   { href: "/settings", label: "Settings" },
   { href: "/help", label: "Help" },
-  { href: "/debug", label: "Debug" },
+  { href: "/debug", label: "Prompt" },
 ];
 
 /** Player home and full-screen graph use the dark chrome; utility pages use light chrome. */
