@@ -16,6 +16,18 @@ const TV_GENRE_NAME_TO_ID: Record<string, number> = {
   War: 10768, Western: 37,
 };
 
+// TMDB watch-provider IDs (US region). Used with /discover `with_watch_providers`.
+const STREAMING_PROVIDER_IDS: Record<string, number> = {
+  "Netflix": 8,
+  "Amazon Prime": 9,
+  "Apple TV+": 350,
+  "Disney+": 337,
+  "HBO Max": 1899,
+  "Hulu": 15,
+  "Paramount+": 531,
+  "Peacock": 386,
+};
+
 const LANGUAGE_TO_CODE: Record<string, string> = {
   English: "en", French: "fr", Italian: "it", Spanish: "es", German: "de",
   Japanese: "ja", Korean: "ko", Mandarin: "zh", Cantonese: "zh", Hindi: "hi",
@@ -117,24 +129,40 @@ async function fetchTvCredits(apiKey: string, tmdbId: number): Promise<{ directo
   }
 }
 
+/** Date window for the streaming-filtered discover queries: recently released through ~4 weeks out. */
+function recentReleaseWindow(): { gte: string; lte: string } {
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const fourWeeksOut = new Date();
+  fourWeeksOut.setDate(fourWeeksOut.getDate() + 28);
+  return { gte: sixMonthsAgo.toISOString().slice(0, 10), lte: fourWeeksOut.toISOString().slice(0, 10) };
+}
+
 async function fetchItems(
   apiKey: string,
   kind: "movie" | "tv",
   page: number,
+  watchProviders: string,
 ): Promise<{ items: TmdbItem[]; totalPages: number }> {
   // For TV use /discover/tv with a date window so we get genuinely new series,
   // not long-running shows that happen to have an episode airing this week.
+  // When a streaming filter is active, use /discover (which supports watch providers)
+  // for movies too, over a recent-release window — upcoming theatrical films aren't
+  // on a service yet, so the curated /movie/upcoming list wouldn't match.
+  const providerParams = watchProviders
+    ? `&with_watch_providers=${watchProviders}&watch_region=US`
+    : "";
   let endpoint: string;
   if (kind === "movie") {
-    endpoint = `${TMDB_BASE}/movie/upcoming?api_key=${apiKey}&language=en-US&page=${page}`;
+    if (watchProviders) {
+      const { gte, lte } = recentReleaseWindow();
+      endpoint = `${TMDB_BASE}/discover/movie?api_key=${apiKey}&language=en-US&page=${page}&sort_by=primary_release_date.desc&primary_release_date.gte=${gte}&primary_release_date.lte=${lte}${providerParams}`;
+    } else {
+      endpoint = `${TMDB_BASE}/movie/upcoming?api_key=${apiKey}&language=en-US&page=${page}`;
+    }
   } else {
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const fourWeeksOut = new Date();
-    fourWeeksOut.setDate(fourWeeksOut.getDate() + 28);
-    const gte = sixMonthsAgo.toISOString().slice(0, 10);
-    const lte = fourWeeksOut.toISOString().slice(0, 10);
-    endpoint = `${TMDB_BASE}/discover/tv?api_key=${apiKey}&language=en-US&page=${page}&sort_by=first_air_date.desc&first_air_date.gte=${gte}&first_air_date.lte=${lte}`;
+    const { gte, lte } = recentReleaseWindow();
+    endpoint = `${TMDB_BASE}/discover/tv?api_key=${apiKey}&language=en-US&page=${page}&sort_by=first_air_date.desc&first_air_date.gte=${gte}&first_air_date.lte=${lte}${providerParams}`;
   }
 
   const res = await fetch(endpoint);
@@ -185,6 +213,7 @@ export async function POST(req: NextRequest) {
     genres?: string[];
     language?: string;
     mediums?: string[];
+    streaming?: string[];
     skipped?: string[];
   };
 
@@ -192,6 +221,12 @@ export async function POST(req: NextRequest) {
   const mediums = body.mediums ?? [];
   const wantMovies = mediums.length === 0 || mediums.includes("movie");
   const wantTv = mediums.length === 0 || mediums.includes("tv");
+
+  // Pipe-joined TMDB provider IDs = "available on any of these" for /discover.
+  const watchProviders = (body.streaming ?? [])
+    .map((s) => STREAMING_PROVIDER_IDS[s])
+    .filter((id): id is number => id !== undefined)
+    .join("|");
 
   const filterMovieGenreIds = (body.genres ?? [])
     .map((g) => GENRE_NAME_TO_ID[g])
@@ -202,12 +237,11 @@ export async function POST(req: NextRequest) {
   const langNames = (body.language ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const filterLangCodes = new Set(langNames.map((n) => LANGUAGE_TO_CODE[n]).filter((c): c is string => !!c));
   const skippedKeys = new Set((body.skipped ?? []).map(normTitle));
-  const today = new Date().toISOString().slice(0, 10);
 
   // Fetch from TMDB in parallel
   const [movieResult, tvResult] = await Promise.all([
-    wantMovies ? fetchItems(apiKey, "movie", page) : Promise.resolve({ items: [], totalPages: 1 }),
-    wantTv ? fetchItems(apiKey, "tv", page) : Promise.resolve({ items: [], totalPages: 1 }),
+    wantMovies ? fetchItems(apiKey, "movie", page, watchProviders) : Promise.resolve({ items: [], totalPages: 1 }),
+    wantTv ? fetchItems(apiKey, "tv", page, watchProviders) : Promise.resolve({ items: [], totalPages: 1 }),
   ]);
 
   const totalPages = Math.max(movieResult.totalPages, tvResult.totalPages);
@@ -218,7 +252,9 @@ export async function POST(req: NextRequest) {
   twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
   const twoWeeksAgoStr = twoWeeksAgo.toISOString().slice(0, 10);
   let movies = movieResult.items as TmdbMovieItem[];
-  movies = movies.filter((m) => !m.release_date || m.release_date >= twoWeeksAgoStr);
+  // The streaming path already constrains dates via the discover window; the 2-week
+  // floor only applies to the curated /movie/upcoming list.
+  if (!watchProviders) movies = movies.filter((m) => !m.release_date || m.release_date >= twoWeeksAgoStr);
   if (filterMovieGenreIds.length > 0) movies = movies.filter((m) => m.genre_ids.some((g) => filterMovieGenreIds.includes(g)));
   if (filterLangCodes.size > 0) movies = movies.filter((m) => filterLangCodes.has(m.original_language));
   movies = movies.filter((m) => !skippedKeys.has(normTitle(m.title)));

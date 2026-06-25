@@ -82,7 +82,6 @@ export const TRAILER_CHANNEL_EDITOR_CONFIG: ChannelEditorConfig = {
 export const COMING_SOON_CHANNEL_EDITOR_CONFIG: ChannelEditorConfig = {
   ...TRAILER_CHANNEL_EDITOR_CONFIG,
   showTimePeriods: false,
-  showStreaming: false,
   showArtists: false,
 };
 

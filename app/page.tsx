@@ -2673,6 +2673,7 @@ export default function Home() {
             genres: channel?.genres ?? [],
             language: channel?.language ?? "",
             mediums: channel?.mediums ?? [],
+            streaming: channel?.streaming ?? [],
             skipped: opts.skipped,
           }),
         });

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": "2026-06-18T20:35:15.337Z",
+  "exportedAt": "2026-06-25T00:40:51.910Z",
   "options": {
     "channels": true,
     "queue": true,
@@ -17,6 +17,35 @@
         "language": "",
         "artists": "",
         "freeText": "",
+        "popularity": 50,
+        "streaming": []
+      },
+      {
+        "id": "c005dbcb-4b23-43d0-8f8b-3c7de02bea9f",
+        "name": "Amazon Prime",
+        "mediums": [],
+        "genres": [],
+        "timePeriods": [],
+        "streaming": [
+          "Amazon Prime"
+        ],
+        "language": "",
+        "artists": "",
+        "freeText": "",
+        "popularity": 50
+      },
+      {
+        "id": "936bd213-5845-4db7-9b91-c96d858ab61d",
+        "name": "Apple TV",
+        "mediums": [],
+        "genres": [],
+        "timePeriods": [],
+        "streaming": [
+          "Apple TV+"
+        ],
+        "language": "",
+        "artists": "",
+        "freeText": "Apple TV",
         "popularity": 50
       },
       {
@@ -25,9 +54,38 @@
         "mediums": [],
         "genres": [],
         "timePeriods": [],
+        "streaming": [],
+        "language": "French, English",
+        "artists": "Coming Soon",
+        "freeText": "trailers for shows that have not yet been released\n\nshows that will be released this year or next;  Nothing from last year or before.\n\nMake sure that every item here actually has a real trailer!",
+        "popularity": 50
+      },
+      {
+        "id": "08ae6b2a-c6f4-46bd-b292-d4ee046bbfff",
+        "name": "Disney+",
+        "mediums": [],
+        "genres": [],
+        "timePeriods": [],
+        "streaming": [
+          "Disney+"
+        ],
         "language": "",
         "artists": "",
-        "freeText": "upcoming movies and TV shows — order by release date, soonest first.\n\nOnly titles releasing in 2026 or later. Nothing already released as of today.\n\nEvery item must have a real, publicly available trailer on YouTube.",
+        "freeText": "",
+        "popularity": 50
+      },
+      {
+        "id": "94121476-7967-4ec8-8555-d414a8a2bf72",
+        "name": "Euphoria",
+        "mediums": [
+          "tv"
+        ],
+        "genres": [],
+        "timePeriods": [],
+        "streaming": [],
+        "language": "",
+        "artists": "Sam Levinson, Zendaya, Hunter Schafer, Jacob Elordi, Sydney Sweeney",
+        "freeText": "Channel inspired by: \"Euphoria\" (TV series, 2019).\nFind similar movies and shows.\n\nA raw, stylized look at the lives of high school students grappling with addiction, love, and identity in a modern, hyper-connected world.",
         "popularity": 50
       },
       {
@@ -51,7 +109,22 @@
         "artists": "Marlon Brando, Stanley Kubrick, Otto Preminger, William Wyler, James Dean, Robert Mitchum",
         "freeText": "",
         "popularity": 29,
-        "id": "32183611-7b02-4701-b0e4-77dc20e7b84c"
+        "id": "32183611-7b02-4701-b0e4-77dc20e7b84c",
+        "streaming": []
+      },
+      {
+        "id": "6e809445-f792-4d2e-bf26-a5c33a2a127a",
+        "name": "HBO",
+        "mediums": [],
+        "genres": [],
+        "timePeriods": [],
+        "streaming": [
+          "HBO Max"
+        ],
+        "language": "",
+        "artists": "",
+        "freeText": "",
+        "popularity": 50
       },
       {
         "name": "Kaiju/Tokusatsu",
@@ -64,7 +137,8 @@
         "freeText": "godzilla, mothra, etc",
         "popularity": 0,
         "id": "78d64353-337e-46fc-b602-b3abdad9f716",
-        "mediums": []
+        "mediums": [],
+        "streaming": []
       },
       {
         "name": "Korean Horror",
@@ -77,7 +151,22 @@
         "freeText": "",
         "popularity": 50,
         "id": "690d995f-f6b7-4dfa-85ab-4b1650991ce0",
-        "mediums": []
+        "mediums": [],
+        "streaming": []
+      },
+      {
+        "id": "fac14c9f-6a29-4e58-9905-bd78ae8903be",
+        "name": "Netflix",
+        "mediums": [],
+        "genres": [],
+        "timePeriods": [],
+        "streaming": [
+          "Netflix"
+        ],
+        "language": "",
+        "artists": "",
+        "freeText": "",
+        "popularity": 50
       },
       {
         "name": "Nouvelle Vague",
@@ -94,7 +183,8 @@
         "freeText": "",
         "popularity": 50,
         "id": "1b90b4b2-25c9-43c1-9f2e-bba10e4a480b",
-        "mediums": []
+        "mediums": [],
+        "streaming": []
       },
       {
         "name": "Spaghetti Westerns",
@@ -112,10 +202,229 @@
         "freeText": "",
         "popularity": 50,
         "id": "92419e89-efd6-450b-8385-f042171621bd",
-        "mediums": []
+        "mediums": [],
+        "streaming": []
       }
     ],
-    "movie-recs-active-channel": "92419e89-efd6-450b-8385-f042171621bd",
+    "movie-recs-active-channel": "5f28f8fa-c939-474e-8432-0865f9957705",
+    "movie-recs-prefetch-queue:08ae6b2a-c6f4-46bd-b292-d4ee046bbfff": [
+      {
+        "title": "Soul",
+        "type": "movie",
+        "year": 2020,
+        "director": "Pete Docter",
+        "predictedRating": 3,
+        "actors": [
+          "Jamie Foxx",
+          "Tina Fey",
+          "Graham Norton"
+        ],
+        "plot": "A middle-school music teacher on the verge of his big break is transported to a fantastical realm where he explores what truly makes life meaningful.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/6jmppcaubzLF8wkXM36ganVISCo.jpg",
+        "trailerKey": "Gs--6c7Hn_A",
+        "rtScore": "95%",
+        "reason": "You love emotionally resonant animated stories that blend humor with profound themes, much like the depth you find in 'Soul'.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "animation",
+          "comedy",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Book of Boba Fett",
+        "type": "tv",
+        "year": 2021,
+        "director": "Robert Rodriguez",
+        "predictedRating": 3,
+        "actors": [
+          "Temuera Morrison",
+          "Ming-Na Wen",
+          "Matt Berry"
+        ],
+        "plot": "Boba Fett and Fennec Shand attempt to establish themselves as the new crime lords of Tatooine's underworld.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/gNbdjDi1HamTCrfvM9JeA94bNi2.jpg",
+        "trailerKey": "rOJ1cw6mohw",
+        "rtScore": "53%",
+        "reason": "You enjoy Star Wars lore expansions and morally complex anti-heroes, and this series dives deep into Boba Fett's redemption arc.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "sci-fi",
+          "action",
+          "crime"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Encanto",
+        "type": "movie",
+        "year": 2021,
+        "director": "Jared Bush",
+        "predictedRating": 3,
+        "actors": [
+          "Stephanie Beatriz",
+          "John Leguizamo",
+          "Diane Guerrero"
+        ],
+        "plot": "In a magical Colombian family, Mirabel discovers that her lack of a gift may be the key to saving her family's enchanted home.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/4j0PNHkMr5ax3IA8tjtxcmPU3QT.jpg",
+        "trailerKey": "CaimKeDcudo",
+        "rtScore": "91%",
+        "reason": "You are drawn to vibrant, culturally rich family dramas with catchy music and themes of self-discovery.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "animation",
+          "musical",
+          "fantasy"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Andor",
+        "type": "tv",
+        "year": 2022,
+        "director": "Tony Gilroy",
+        "predictedRating": 3,
+        "actors": [
+          "Diego Luna",
+          "Genevieve O'Reilly",
+          "Adria Arjona"
+        ],
+        "plot": "Five years before the original trilogy, spy Cassian Andor embarks on a dangerous mission that ignites the rebellion against the Empire.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/khZqmwHQicTYoS7Flreb9EddFZC.jpg",
+        "trailerKey": "duN-KQgOjYs",
+        "rtScore": "87%",
+        "reason": "You enjoy gritty, political sci-fi espionage with strong character development, and 'Andor' offers a grounded, adult take on the Star Wars universe.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "sci-fi",
+          "thriller",
+          "war"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Star Wars: Episode IV - A New Hope",
+        "type": "movie",
+        "year": 1977,
+        "director": "George Lucas",
+        "predictedRating": 3,
+        "actors": [
+          "Mark Hamill",
+          "Harrison Ford",
+          "Carrie Fisher",
+          "Alec Guinness"
+        ],
+        "plot": "A young farm boy joins a rebellion against an evil empire, learning the ways of the Force from a wise Jedi master.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/6FfCtAuVAW8XJjZ7eWeLibRLWTw.jpg",
+        "trailerKey": "i-vsILeJ8_8",
+        "rtScore": "93%",
+        "reason": "You enjoy epic space adventures and classic hero's journeys, and this is the definitive Disney+ flagship title.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "sci-fi",
+          "adventure",
+          "action",
+          "epic"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "WandaVision",
+        "type": "tv",
+        "year": 2021,
+        "director": "Matt Shakman",
+        "predictedRating": 3,
+        "actors": [
+          "Elizabeth Olsen",
+          "Paul Bettany",
+          "Kathryn Hahn",
+          "Teyonah Parris"
+        ],
+        "plot": "Wanda Maximoff and Vision live a suburban sitcom life, but reality begins to unravel as memories resurface.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/frobUz2X5Pc8OiVZU8Oo5K3NKMM.jpg",
+        "trailerKey": "UBhlqe2OTt4",
+        "rtScore": "91%",
+        "reason": "You enjoy inventive storytelling that blends classic TV nostalgia with superhero drama, a unique Disney+ series.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "sci-fi",
+          "drama",
+          "fantasy",
+          "superhero"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Little Mermaid",
+        "type": "movie",
+        "year": 1989,
+        "director": "Ron Clements, John Musker",
+        "predictedRating": 3,
+        "actors": [
+          "Jodi Benson",
+          "Samuel E. Wright",
+          "Pat Carroll",
+          "Christopher Daniel Barnes"
+        ],
+        "plot": "A mermaid princess makes a deal with a sea witch to become human and pursue the prince she loves.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/plcZXvI310FkbwIptvd6rqk63LP.jpg",
+        "trailerKey": "ZGZX5-PAwR8",
+        "rtScore": "92%",
+        "reason": "You adore timeless Disney animated classics with unforgettable music and underwater fantasy adventure.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "animation",
+          "musical",
+          "fantasy",
+          "romance"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Avengers",
+        "type": "movie",
+        "year": 2012,
+        "director": "Joss Whedon",
+        "predictedRating": 3,
+        "actors": [
+          "Robert Downey Jr.",
+          "Chris Evans",
+          "Scarlett Johansson",
+          "Mark Ruffalo"
+        ],
+        "plot": "Earth's mightiest heroes must come together to stop Loki and his alien army from enslaving humanity.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/RYMX2wcKCBAr24UyPD7xwmjaTn.jpg",
+        "trailerKey": "hIR8Ar-Z4hw",
+        "rtScore": "91%",
+        "reason": "You love superhero team-ups and blockbuster action, and this is the defining Avengers film on Disney+.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "superhero",
+          "action",
+          "adventure",
+          "sci-fi"
+        ],
+        "categoryPaths": []
+      }
+    ],
     "movie-recs-prefetch-queue:1b90b4b2-25c9-43c1-9f2e-bba10e4a480b": [
       {
         "title": "Les Parapluies de Cherbourg",
@@ -442,156 +751,160 @@
     ],
     "movie-recs-prefetch-queue:5f28f8fa-c939-474e-8432-0865f9957705": [
       {
-        "title": "The Beast in Me",
+        "title": "Pompeii: Out of Time with Tom Hiddleston",
         "type": "tv",
         "year": 2026,
-        "director": "Gabe Rotter",
-        "predictedRating": 3,
+        "director": "Tom Barbor-Might",
         "actors": [
-          "Rachel Weisz",
-          "Jared Harris",
-          "Mia Maestro",
-          "Paul Sparks"
+          "Tom Hiddleston",
+          "Lubna Azabal",
+          "Barry Aird",
+          "Frankie Treadaway",
+          "Buket Komur"
         ],
-        "plot": "A widow reeling from her husband's murder begins writing a book about a notorious killer, only to find herself drawn into a dark obsession that blurs the line between hunter and hunted.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/jxf7JCfIMvGONWTNUIJ068sFixK.jpg",
-        "trailerKey": "8iNHGKcP0cM",
+        "plot": "A historical exploration about the eruption of Vesuvius in 79 A.D. and the preserved Roman city it left behind.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/p0gMi8uj1sZfvda7KpUZJFWzbPe.jpg",
+        "trailerKey": "7k52aJRs3gA",
         "rtScore": null,
-        "reason": "You rated The Legend of Ochi 3/5 for its grounded, suspenseful tone—this psychological thriller offers a similar slow-burn tension with a human-centered mystery.",
-        "streaming": [
-          "Netflix"
-        ],
-        "categories": [
-          "psychological thriller",
-          "mystery",
-          "drama"
-        ],
-        "categoryPaths": []
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
       },
       {
-        "title": "The Running Man",
-        "type": "movie",
-        "year": 2027,
-        "director": "Edgar Wright",
-        "predictedRating": 3,
+        "title": "Treasure & Dirt",
+        "type": "tv",
+        "year": 2026,
+        "director": "Matt Cameron",
         "actors": [
-          "Glen Powell",
-          "Josh Brolin",
-          "Katrina Law"
+          "Michael Dorman",
+          "Liv Hewson"
         ],
-        "plot": "Edgar Wright's reimagining of Stephen King's dystopian thriller follows a desperate contestant forced to survive a deadly game show in a near-future surveillance state.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/dKL78O9zxczVgjtNcQ9UkbYLzqX.jpg",
-        "trailerKey": "_iHJHYjq7XI",
+        "plot": "A beheaded miner in an opal town leads detectives Ivan Lucic and Nell Buchanan into a tangled web of secrets, greed, and buried sins in the desert.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/odJwpp3wNGIVXrFR62r3OMl3QsA.jpg",
+        "trailerKey": "hU_jsnFsFnc",
         "rtScore": null,
-        "reason": "You're still exploring genres, and Wright's kinetic, character-driven style could offer the grounded stakes and tension that cold blockbusters like 'First Steps' lack.",
-        "streaming": [],
-        "categories": [
-          "thriller",
-          "sci-fi",
-          "action",
-          "dystopian"
-        ],
-        "categoryPaths": []
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
       },
       {
-        "title": "Project Hail Mary",
+        "title": "Enola Holmes 3",
         "type": "movie",
         "year": 2026,
-        "director": "Phil Lord, Christopher Miller",
-        "predictedRating": 3,
+        "director": "Philip Barantini",
         "actors": [
-          "Ryan Gosling",
-          "Sandra Hüller",
-          "Millie Bobby Brown"
+          "Millie Bobby Brown",
+          "Louis Partridge",
+          "Himesh Patel",
+          "Sharon Duncan-Brewster",
+          "Henry Cavill"
         ],
-        "plot": "An amnesiac astronaut wakes up alone on a spaceship, tasked with saving Earth from an extinction-level threat, relying on wit and an unlikely alien ally.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/yihdXomYb5kTeSivtFndMy5iDmf.jpg",
-        "trailerKey": "NKYea63tQmI",
+        "plot": "Adventure follows detective Enola Holmes to Malta, where her plans to tie the knot unravel when Sherlock's disappearance plunges her into a perilous case.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/7kRYHH9H9PjBFwz1FprbHB2AAjI.jpg",
+        "trailerKey": "n_pEJjq-9xQ",
         "rtScore": null,
-        "reason": "You rated The Odyssey 3/5 for its adventurous spirit—this delivers a grounded, character-driven sci-fi survival story with emotional stakes.",
-        "streaming": [
-          "Amazon Prime Video"
-        ],
-        "categories": [
-          "sci-fi",
-          "adventure",
-          "drama"
-        ],
-        "categoryPaths": []
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
       },
       {
-        "title": "The Actor",
+        "title": "Jackass: Best and Last",
         "type": "movie",
         "year": 2026,
-        "director": "Duke Johnson",
-        "predictedRating": 3,
+        "director": "Jeff Tremaine",
         "actors": [
-          "André Holland",
-          "Gemma Chan",
-          "Tracy Letts"
+          "Johnny Knoxville",
+          "Steve-O",
+          "Chris Pontius",
+          "Jason 'Wee Man' Acuña",
+          "Dave England"
         ],
-        "plot": "A struggling actor in 1950s New York stumbles into a noir mystery where reality and performance blur irreparably.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/4v7y7Kzel089gHfE0ChI9RpKck0.jpg",
-        "trailerKey": "Pus9h-qx0CM",
+        "plot": "The fifth and final installment to Jackass franchise where the crew go on one last insane crusade.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/tfgccePxnswMqhmtxafliLlcCVR.jpg",
+        "trailerKey": "sNwzFhGwA94",
         "rtScore": null,
-        "reason": "Your search for emotionally grounded fantasy finds resonance here—this psychological thriller uses genre tropes to explore identity and memory.",
-        "streaming": [
-          "Neon"
-        ],
-        "categories": [
-          "thriller",
-          "drama",
-          "mystery"
-        ],
-        "categoryPaths": []
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
       },
       {
-        "title": "The Beast",
-        "type": "movie",
+        "title": "Ride or Die",
+        "type": "tv",
         "year": 2026,
-        "director": "Bertrand Bonello",
-        "predictedRating": 3,
+        "director": "Tessa Coates",
         "actors": [
-          "Léa Seydoux",
-          "George MacKay",
-          "Guslagie Malanda"
+          "Hannah Waddingham",
+          "Octavia Spencer",
+          "Bill Nighy",
+          "Ed Skrein"
         ],
-        "plot": "A woman navigates multiple timelines and identities, confronting a mysterious digital entity that threatens her sense of self in a hauntingly atmospheric sci-fi thriller.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/96Jb7yjDkzluBqQZ21j54CJdYeM.jpg",
-        "trailerKey": "cxjTAeaCWQc",
+        "plot": "Best friends, Judith and Debbie, know everything about each other … well, almost everything. Judith has been living a double life that Debbie knows nothing about: she is a highly trained assassin. When a hit goes horribly wrong, Judith and Debbie must go on the run together and work to repair their broken friendship—all while being targeted by a mysterious enemy who wants them dead. And only together, can they solve this layered mystery.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/uWqEnvpwa2U28QheMdUdEcr4U0M.jpg",
+        "trailerKey": "QFGAxkTRAG8",
         "rtScore": null,
-        "reason": "You rated atmospheric, character-driven films like The Electric State warmly, and this moody, existential sci-fi avoids flashy spectacle for a grounded emotional core.",
-        "streaming": [],
-        "categories": [
-          "sci-fi",
-          "drama",
-          "psychological"
-        ],
-        "categoryPaths": []
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
       },
       {
-        "title": "The Bride!",
+        "title": "In the Hand of Dante",
         "type": "movie",
         "year": 2026,
-        "director": "Maggie Gyllenhaal",
-        "predictedRating": 3,
+        "director": "Julian Schnabel",
         "actors": [
-          "Christian Bale",
-          "Jesse Buckley",
-          "Penélope Cruz"
+          "Oscar Isaac",
+          "Gal Gadot",
+          "Gerard Butler",
+          "John Malkovich",
+          "Louis Cancelmi"
         ],
-        "plot": "A reimagining of the Bride of Frankenstein story, set in 1930s Chicago, where a young woman discovers her mysterious origins and confronts a dark underworld.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/lV8YHwGkYZsm6EfIqnhaSz2avKt.jpg",
-        "trailerKey": "-oLJmEFK14k",
+        "plot": "A Vatican priest discovers Dante's original Divine Comedy manuscript. When asked to authenticate it, writer Nick Tosches steals it, while a parallel story follows Dante's quest to create his masterpiece.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/nPPIufTBnzEg0d7NoR5RLL1oPra.jpg",
+        "trailerKey": "cXA3Zgsky18",
         "rtScore": null,
-        "reason": "The hybrid of gothic myth and gritty realism mirrors your taste for grounded fantasy, a step away from the animated spectacle you scored low.",
-        "streaming": [],
-        "categories": [
-          "fantasy",
-          "horror",
-          "drama"
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
+      },
+      {
+        "title": "Lucky Strike",
+        "type": "movie",
+        "year": 2026,
+        "director": "Rod Lurie",
+        "actors": [
+          "Scott Eastwood",
+          "Colin Hanks",
+          "Aunjanue Ellis-Taylor",
+          "Taylor John Smith",
+          "Lorne MacFadyen"
         ],
-        "categoryPaths": []
+        "plot": "A wounded American soldier fights to survive behind enemy lines during WWII's Battle of the Bulge against the Germans, relying on his instinct, spy craft and a hand-radio to evade capture and find his way back to his unit.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/kzRAd7mj39ZY3FGNrDdZjqx56tn.jpg",
+        "trailerKey": "vtEnjikCXyA",
+        "rtScore": null,
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
+      },
+      {
+        "title": "Lucky",
+        "type": "tv",
+        "year": 2026,
+        "director": "Jonathan Tropper",
+        "actors": [
+          "Anya Taylor-Joy",
+          "Annette Bening",
+          "Timothy Olyphant",
+          "Aunjanue Ellis-Taylor",
+          "Clifton Collins Jr."
+        ],
+        "plot": "When a multi-million-dollar heist goes sideways, con artist Lucky is forced to go on the run. Pursued by both the FBI and a ruthless crime boss, Lucky must fight for her life—and a way out.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/xsrkiXg8EuNNtbPtbmvCxg95gK7.jpg",
+        "trailerKey": "GAbT5qCTXR8",
+        "rtScore": null,
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
       }
     ],
     "movie-recs-prefetch-queue:690d995f-f6b7-4dfa-85ab-4b1650991ce0": [
@@ -720,6 +1033,227 @@
         "streaming": [
           "Amazon Prime Video"
         ]
+      }
+    ],
+    "movie-recs-prefetch-queue:6e809445-f792-4d2e-bf26-a5c33a2a127a": [
+      {
+        "title": "The Wire",
+        "type": "tv",
+        "year": 2002,
+        "director": "David Simon",
+        "predictedRating": 3,
+        "actors": [
+          "Dominic West",
+          "Idris Elba",
+          "Lance Reddick",
+          "Michael K. Williams"
+        ],
+        "plot": "A nuanced exploration of Baltimore's drug trade, law enforcement, and systemic failures through the eyes of cops, dealers, and politicians.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/4lbclFySvugI51fwsyxBTOm4DqK.jpg",
+        "trailerKey": "uDcQbk78CSw",
+        "rtScore": "94%",
+        "reason": "As an HBO masterpiece, this series offers the layered social commentary and raw realism that defines the channel's signature style.",
+        "streaming": [
+          "Max"
+        ],
+        "categories": [
+          "crime drama",
+          "police procedural",
+          "social commentary",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Chernobyl",
+        "type": "tv",
+        "year": 2019,
+        "director": "Johan Renck",
+        "predictedRating": 3,
+        "actors": [
+          "Jared Harris",
+          "Stellan Skarsgård",
+          "Emily Watson",
+          "Paul Ritter"
+        ],
+        "plot": "A gripping miniseries chronicling the 1986 nuclear disaster and the subsequent cover-up that cost countless lives.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/hlLXt2tOPT6RRnjiUmoxyG1LTFi.jpg",
+        "trailerKey": "s9APLXM9Ei8",
+        "rtScore": "95%",
+        "reason": "This HBO miniseries delivers the intense, historically grounded drama you crave, with impeccable production values and moral urgency.",
+        "streaming": [
+          "Max"
+        ],
+        "categories": [
+          "historical drama",
+          "disaster",
+          "thriller",
+          "miniseries"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Leftovers",
+        "type": "tv",
+        "year": 2014,
+        "director": "Damon Lindelof",
+        "predictedRating": 3,
+        "actors": [
+          "Justin Theroux",
+          "Carrie Coon",
+          "Amy Brenneman",
+          "Christopher Eccleston"
+        ],
+        "plot": "In the aftermath of a mysterious global event where 2% of the population vanishes, those left behind grapple with grief, faith, and existential dread.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/NKJdryIFHr245Umq6gXsf7oULW.jpg",
+        "trailerKey": "rKtgMEKMoiU",
+        "rtScore": "91%",
+        "reason": "This HBO series offers the psychological depth and philosophical inquiry that define your channel's most ambitious storytelling.",
+        "streaming": [
+          "Max"
+        ],
+        "categories": [
+          "drama",
+          "mystery",
+          "supernatural",
+          "psychological"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Band of Brothers",
+        "type": "tv",
+        "year": 2001,
+        "director": "Tom Hanks",
+        "predictedRating": 3,
+        "actors": [
+          "Damian Lewis",
+          "Ron Livingston",
+          "Donnie Wahlberg",
+          "Scott Grimes"
+        ],
+        "plot": "A miniseries following Easy Company, a U.S. Army unit, from their training in Georgia through the end of World War II in Europe.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/pGzV187ogXzgJrvPRy2YPi29ofH.jpg",
+        "trailerKey": "KKRBAFlN5ww",
+        "rtScore": "94%",
+        "reason": "This HBO miniseries exemplifies the channel's commitment to epic, character-driven historical narratives with unflinching realism.",
+        "streaming": [
+          "Max"
+        ],
+        "categories": [
+          "war",
+          "historical drama",
+          "miniseries",
+          "action"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Succession",
+        "type": "tv",
+        "year": 2018,
+        "director": "Jesse Armstrong",
+        "predictedRating": 3,
+        "actors": [
+          "Brian Cox",
+          "Jeremy Strong",
+          "Sarah Snook",
+          "Kieran Culkin"
+        ],
+        "plot": "The Roy family fights for control of their global media empire, blending sharp satire with family drama and power struggles.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/z0XiwdrCQ9yVIr4O0pxzaAYRxdW.jpg",
+        "trailerKey": "ZO-XX1UpsqY",
+        "rtScore": "94%",
+        "reason": "You enjoy intricate character studies of power and ambition, and Succession is a modern HBO masterpiece of that genre.",
+        "streaming": [
+          "Max"
+        ],
+        "categories": [
+          "drama",
+          "satire",
+          "family"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Euphoria",
+        "type": "tv",
+        "year": 2019,
+        "director": "Sam Levinson",
+        "predictedRating": 3,
+        "actors": [
+          "Zendaya",
+          "Hunter Schafer",
+          "Jacob Elordi",
+          "Sydney Sweeney"
+        ],
+        "plot": "A raw, stylized look at the lives of high school students grappling with addiction, love, and identity in a modern, hyper-connected world.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/ypmtwojDd751Peszi62DVLytqqC.jpg",
+        "trailerKey": "UR4Pxgnm-GA",
+        "rtScore": "89%",
+        "reason": "You appreciate bold, visually stunning storytelling that tackles contemporary issues, and Euphoria is a standout HBO series for that.",
+        "streaming": [
+          "Max"
+        ],
+        "categories": [
+          "teen drama",
+          "psychological",
+          "thriller"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Game of Thrones",
+        "type": "tv",
+        "year": 2011,
+        "director": "David Benioff, D.B. Weiss",
+        "predictedRating": 3,
+        "actors": [
+          "Emilia Clarke",
+          "Kit Harington",
+          "Peter Dinklage",
+          "Lena Headey"
+        ],
+        "plot": "In a fantasy world of warring noble houses, epic battles, and dragons, characters vie for the Iron Throne while an ancient supernatural threat looms in the North.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+        "trailerKey": "KPLWWIOCOOQ",
+        "rtScore": "89%",
+        "reason": "This cultural phenomenon delivers the epic scope and moral complexity you'd expect from HBO's fantasy flagship.",
+        "streaming": [
+          "Max"
+        ],
+        "categories": [
+          "fantasy",
+          "epic",
+          "adventure"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Barry",
+        "type": "tv",
+        "year": 2018,
+        "director": "Bill Hader",
+        "predictedRating": 3,
+        "actors": [
+          "Bill Hader",
+          "Stephen Root",
+          "Sarah Goldberg"
+        ],
+        "plot": "A depressed hitman discovers his passion for acting in a Los Angeles class, leading to a darkly funny collision of violence and showbiz.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/j1XpwD11f0BAEI7pX6UdMhUVX2F.jpg",
+        "trailerKey": "BKaL8jiAGuI",
+        "rtScore": "99%",
+        "reason": "You'll love this HBO dark comedy's blend of tension and humor, perfect for channel fans.",
+        "streaming": [
+          "Max"
+        ],
+        "categories": [
+          "comedy",
+          "crime",
+          "drama"
+        ],
+        "categoryPaths": []
       }
     ],
     "movie-recs-prefetch-queue:78d64353-337e-46fc-b602-b3abdad9f716": [
@@ -1027,6 +1561,531 @@
         ]
       }
     ],
+    "movie-recs-prefetch-queue:936bd213-5845-4db7-9b91-c96d858ab61d": [
+      {
+        "title": "Severance",
+        "type": "tv",
+        "year": 2022,
+        "director": "Dan Erickson",
+        "predictedRating": 3,
+        "actors": [
+          "Adam Scott",
+          "Patricia Arquette",
+          "John Turturro",
+          "Britt Lower"
+        ],
+        "plot": "Employees at a mysterious company undergo a procedure that surgically separates their work memories from their personal lives, leading to disturbing consequences.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg",
+        "trailerKey": "xEQP4VVuyrY",
+        "rtScore": "97%",
+        "reason": "This mind-bending sci-fi thriller showcases Apple TV+'s commitment to premium, thought-provoking genre TV that you'll find gripping and original.",
+        "streaming": [
+          "Apple TV+"
+        ],
+        "categories": [
+          "sci-fi",
+          "thriller",
+          "mystery"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Morning Show",
+        "type": "tv",
+        "year": 2019,
+        "director": "Mimi Leder, David Frankel, Lynn Shelton, Tucker Gates",
+        "predictedRating": 3,
+        "actors": [
+          "Jennifer Aniston",
+          "Reese Witherspoon",
+          "Steve Carell",
+          "Billy Crudup"
+        ],
+        "plot": "Behind the scenes of a popular morning news show, a scandal erupts after a co-anchor is fired for sexual misconduct, revealing power dynamics and personal conflicts.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/y9x2R87yt2U616736NJrP0d56dt.jpg",
+        "trailerKey": "iJjp5p51Cow",
+        "rtScore": "67%",
+        "reason": "This star-driven drama with sharp social commentary represents Apple TV+'s trademark blend of prestige talent and topical storytelling you'll enjoy.",
+        "streaming": [
+          "Apple TV+"
+        ],
+        "categories": [
+          "drama",
+          "workplace",
+          "social commentary"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Pachinko",
+        "type": "tv",
+        "year": 2022,
+        "director": "Kogonada, Justin Chon",
+        "predictedRating": 3,
+        "actors": [
+          "Youn Yuh-jung",
+          "Lee Min-ho",
+          "Jin Ha",
+          "Jeong In-ji"
+        ],
+        "plot": "Told across generations, a Korean family's epic journey begins with a woman's forbidden love and continues through the hardships of immigration and identity in Japan.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/wUTXdmL6oNjhiStGveOaPeuFOYQ.jpg",
+        "trailerKey": "O1r5XXJOYNA",
+        "rtScore": "97%",
+        "reason": "This sweeping, emotionally rich historical saga exemplifies Apple TV+'s investment in diverse, visually stunning narratives that resonate deeply with you.",
+        "streaming": [
+          "Apple TV+"
+        ],
+        "categories": [
+          "drama",
+          "historical",
+          "family saga"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "For All Mankind",
+        "type": "tv",
+        "year": 2019,
+        "director": "Ronald D. Moore",
+        "predictedRating": 3,
+        "actors": [
+          "Joel Kinnaman",
+          "Michael Dorman",
+          "Sarah Jones",
+          "Shantel VanSanten"
+        ],
+        "plot": "In an alternate history where the Soviet Union beats the U.S. to the moon, the space race continues, exploring the personal and political stakes of a prolonged NASA program.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/JP3DItWMbrrLiKR5AYUfpsNf2b.jpg",
+        "trailerKey": "HZS9M52Bd_w",
+        "rtScore": "90%",
+        "reason": "This ambitious alternate-history sci-fi series showcases Apple TV+'s talent for smart, epic world-building that you'll find gripping.",
+        "streaming": [
+          "Apple TV+"
+        ],
+        "categories": [
+          "sci-fi",
+          "alternate history",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Mythic Quest",
+        "type": "tv",
+        "year": 2020,
+        "director": "Megan Ganz",
+        "predictedRating": 3,
+        "actors": [
+          "Rob McElhenney",
+          "Charlotte Nicdao",
+          "David Hornsby",
+          "Danny Pudi"
+        ],
+        "plot": "The eccentric team behind a popular video game navigates creative clashes, office politics, and personal drama in this workplace comedy.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/7QxQlpqEjx3vRpEtuh6Y0R6eY9O.jpg",
+        "trailerKey": "50Yz1apB7iw",
+        "rtScore": "93%",
+        "reason": "This sharp and quirky comedy matches the smart, character-focused tone that made you enjoy other Apple TV+ originals.",
+        "streaming": [
+          "Apple TV+"
+        ],
+        "categories": [
+          "comedy",
+          "workplace",
+          "gaming",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Foundation",
+        "type": "tv",
+        "year": 2021,
+        "director": "David S. Goyer",
+        "predictedRating": 3,
+        "actors": [
+          "Jared Harris",
+          "Lee Pace",
+          "Lou Llobell"
+        ],
+        "plot": "Based on Isaac Asimov's novels, a mathematician predicts the fall of a galactic empire and sets out to preserve knowledge across centuries.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/tg9I5pOY4M9CKj8U0cxVBTsm5eh.jpg",
+        "trailerKey": "X4QYV5GTz7c",
+        "rtScore": "74%",
+        "reason": "You'll get swept away by this epic sci-fi saga, a flagship Apple TV+ production with stunning visuals and complex world-building.",
+        "streaming": [
+          "Apple TV+"
+        ],
+        "categories": [
+          "sci-fi",
+          "drama",
+          "adventure"
+        ],
+        "categoryPaths": []
+      }
+    ],
+    "movie-recs-prefetch-queue:94121476-7967-4ec8-8555-d414a8a2bf72": [
+      {
+        "title": "Euphoria",
+        "type": "movie",
+        "year": 2026,
+        "director": "Gunasekhar",
+        "actors": [
+          "Sara Arjun",
+          "Gautham Vasudev Menon",
+          "Naveena Reddy",
+          "Ravi Prakash",
+          "Rajsekhar Aningi"
+        ],
+        "plot": "A young woman and her family seek justice after she is raped by a group of young men who come from powerful and influential backgrounds.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/8URM569W1ETAeGd33CPkrc6KF1O.jpg",
+        "trailerKey": null,
+        "rtScore": null,
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
+      },
+      {
+        "title": "Euphoria",
+        "type": "movie",
+        "year": 2018,
+        "director": "Lisa Langseth",
+        "actors": [
+          "Alicia Vikander",
+          "Eva Green",
+          "Charlotte Rampling",
+          "Charles Dance",
+          "Adrian Lester"
+        ],
+        "plot": "The story of two sisters on a journey, where they try to get close to each other and approach the tough questions in life. Euphoria is a contemporary drama about responsibility and reconciliation, in a world where these concepts are gradually being lost.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/Anw3eLdNVRXafpYktwRzAGd6sPW.jpg",
+        "trailerKey": "zlZHvEBfEYk",
+        "rtScore": null,
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
+      },
+      {
+        "title": "Euphoria",
+        "type": "tv",
+        "year": 2012,
+        "director": "Daphna Levin",
+        "actors": [
+          "Roni Daloomi",
+          "Uriel Geta",
+          "Roy Nik",
+          "Kosta Kaplan",
+          "Dekel Adin"
+        ],
+        "plot": "A sexy, troubling, and bold profile of the teens of the nineties, within a raging drama going on behind teenagers’ closed doors.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/gGondS40q7M6RjhHZQM9mK2NDps.jpg",
+        "trailerKey": "hE_kOtZeI00",
+        "rtScore": null,
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
+      },
+      {
+        "title": "Euphoria",
+        "type": "movie",
+        "year": 2022,
+        "director": "Julian Rosefeldt",
+        "actors": [
+          "Giancarlo Esposito",
+          "Virginia Newcomb",
+          "Ayesha Jordan",
+          "Kate Strong",
+          "Jeff Wood"
+        ],
+        "plot": "Artist and filmmaker Julian Rosefeldt creates elaborately staged films that investigate the power of language and the conventions of cinema as an allegory for societal and individual behaviors. With the multi-channel film installation Euphoria he continues this examination by exploring capitalism, colonialism, and the influential effects of unlimited economic growth in society.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/xvIZd7D8QBBirIfTv3fwh2DyRht.jpg",
+        "trailerKey": "K2Gz3uBy3wQ",
+        "rtScore": null,
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
+      },
+      {
+        "title": "Schiller - Euphoria",
+        "type": "movie",
+        "year": 2026,
+        "director": null,
+        "actors": [],
+        "plot": "",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/hRBNbqe7TPsqw7hQCQ1DY96BeHH.jpg",
+        "trailerKey": null,
+        "rtScore": null,
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
+      },
+      {
+        "title": "Euphoria",
+        "type": "movie",
+        "year": 2018,
+        "director": "Valeria Golino",
+        "actors": [
+          "Riccardo Scamarcio",
+          "Valerio Mastandrea",
+          "Isabella Ferrari",
+          "Valentina Cervi",
+          "Jasmine Trinca"
+        ],
+        "plot": "Matteo is a young successful businessman, audacious, charming and energetic. Ettore instead, is a calm, righteous, second grade teacher always living in the shadows, still in the small town from where both come from. They’re brothers but with two very different personalities. A dramatic event will force them to live together in Rome for a few months, bringing up the opportunity to face their differences with sympathy and tenderness, in a climax of fear and euphoria.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/mRKr08cLd43CnwHCAuFKCq7XtDu.jpg",
+        "trailerKey": "QKTkIPP5vmI",
+        "rtScore": null,
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
+      },
+      {
+        "title": "Euphoria",
+        "type": "movie",
+        "year": 2006,
+        "director": "Ivan Vyrypaev",
+        "actors": [
+          "Polina Agureeva",
+          "Maksim Ushakov",
+          "Mikhail Okunev",
+          "Yaroslavna Serova",
+          "Vitali Romanyuk"
+        ],
+        "plot": "They saw each other only once. At a wedding with lots of alcohol. Their eyes met and that was it. They didn't understand rationally what happened to them but they felt that they cannot keep living and breathing without each other. Cosmic magnetism with irresistible intensity pulled them together. They no longer belonged to themselves, their families and friends and that's how a tragedy evolves.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/bZVSkGNqd4oz3rhqbhIeIpvAEKy.jpg",
+        "trailerKey": null,
+        "rtScore": null,
+        "reason": null,
+        "predictedRating": 3,
+        "streaming": []
+      },
+      {
+        "title": "We Are Who We Are",
+        "type": "tv",
+        "year": 2020,
+        "director": "Luca Guadagnino",
+        "predictedRating": 3,
+        "actors": [
+          "Jack Dylan Grazer",
+          "Jordan Kristine Seamón",
+          "Chloë Sevigny",
+          "Kid Cudi"
+        ],
+        "plot": "Two American teenagers living on a military base in Italy explore their fluid identities, sexuality, and burgeoning friendships in a sun-drenched, emotionally charged coming-of-age tale.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/33btSKKmjmc24hK9Vj1sRWQGfyh.jpg",
+        "trailerKey": "0OsxIi1U8U0",
+        "rtScore": "89%",
+        "reason": "Like Euphoria, this series is a lush, introspective dive into teenage identity and desire, with a hypnotic visual style and a focus on authentic, messy emotions.",
+        "streaming": [
+          "Max"
+        ],
+        "categories": [
+          "coming-of-age",
+          "lgbtq+",
+          "drama",
+          "slice of life"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "My Mad Fat Diary",
+        "type": "tv",
+        "year": 2013,
+        "director": "Various",
+        "predictedRating": 3,
+        "actors": [
+          "Sharon Rooney",
+          "Claire Rushbrook",
+          "Jodie Comer",
+          "Nico Mirallegro"
+        ],
+        "plot": "In 1990s Lincolnshire, a troubled teen girl returns home after a psychiatric hospital stay, hiding her past from her new friends while grappling with body image, romance, and mental health.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/nxAaKVzxnGeXSrMjHMtzo523DaC.jpg",
+        "trailerKey": "3tmqLvgUd-s",
+        "rtScore": "93%",
+        "reason": "You'll connect with its raw, darkly humorous exploration of trauma and self-acceptance, echoing Euphoria's brutal honesty about mental illness and teenage survival.",
+        "streaming": [
+          "Amazon Prime Video",
+          "Hulu"
+        ],
+        "categories": [
+          "teen drama",
+          "mental health",
+          "period piece",
+          "british"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The End of the F***ing World",
+        "type": "tv",
+        "year": 2017,
+        "director": "Various",
+        "predictedRating": 3,
+        "actors": [
+          "Alex Lawther",
+          "Jessica Barden",
+          "Gemma Whelan",
+          "Wunmi Mosaku"
+        ],
+        "plot": "A self-proclaimed psychopath and a rebellious teen go on a road trip that turns violent and darkly romantic, as they flee their troubled pasts and discover unexpected connection.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/f1OV9xEJCZVYcYSDRr5xOD8NJw3.jpg",
+        "trailerKey": "SqILm2JuHx4",
+        "rtScore": "92%",
+        "reason": "Its deadpan, stylized storytelling and focus on alienated, broken teenagers on the fringes of society will feel instantly familiar after Euphoria's electric nihilism.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "dark comedy",
+          "crime",
+          "coming-of-age",
+          "british"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Insecure",
+        "type": "tv",
+        "year": 2016,
+        "director": "Melina Matsoukas, Issa Rae",
+        "predictedRating": 3,
+        "actors": [
+          "Issa Rae",
+          "Yvonne Orji",
+          "Jay Ellis",
+          "Natasha Rothwell"
+        ],
+        "plot": "A modern comedy-drama about the personal and professional lives of two black female friends in Los Angeles, exploring identity, race, and messy relationships with honest humor.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/sGMwPIE6m9QI3LzCRXnZG8opZtB.jpg",
+        "trailerKey": "YdKqUMZi5-I",
+        "rtScore": "99%",
+        "reason": "You crave Euphoria's unflinching, stylish character work; Insecure blends witty dialogue with raw vulnerability in a similarly nuanced look at modern life.",
+        "streaming": [
+          "Max",
+          "Hulu",
+          "Netflix"
+        ],
+        "categories": [
+          "comedy-drama",
+          "friendship",
+          "identity",
+          "contemporary"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Underground Railroad",
+        "type": "tv",
+        "year": 2021,
+        "director": "Barry Jenkins",
+        "predictedRating": 3,
+        "actors": [
+          "Thuso Mbedu",
+          "Joel Edgerton",
+          "Chase W. Dillon",
+          "Aaron Pierre"
+        ],
+        "plot": "A young enslaved woman's harrowing journey through a fantastical underground network of trains and tunnels, confronting systemic brutality and seeking freedom.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/CrrTqw7LHafnbdH9UcK60aOZSm.jpg",
+        "trailerKey": "_Pq5Usc_JDA",
+        "rtScore": "94%",
+        "reason": "You admire Euphoria's visceral, cinematic storytelling; this series uses poetic imagery and brutal realism to explore trauma and resilience with equal gravity.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "historical drama",
+          "psychological thriller",
+          "survival",
+          "fantasy"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "13 Reasons Why",
+        "type": "tv",
+        "year": 2017,
+        "director": "Tom McCarthy, Kyle Patrick Alvarez",
+        "predictedRating": 3,
+        "actors": [
+          "Dylan Minnette",
+          "Katherine Langford",
+          "Christian Navarro",
+          "Alisha Boe"
+        ],
+        "plot": "After a high school student dies by suicide, her friend discovers a box of cassette tapes detailing the 13 reasons why she ended her life, unraveling a web of bullying, trauma, and secrets.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/nel144y4dIOdFFid6twN5mAX9Yd.jpg",
+        "trailerKey": "QkT-HIMSrRk",
+        "rtScore": "30%",
+        "reason": "You crave Euphoria's intense, controversial look at teen mental health and suicide; this series dives into similar raw territory.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "teen drama",
+          "mystery",
+          "mental health"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Genera+ion",
+        "type": "tv",
+        "year": 2021,
+        "director": "Zelda Barnz, Daniel Barnz",
+        "predictedRating": 3,
+        "actors": [
+          "Justice Smith",
+          "Chloe East",
+          "Nathanya Alexander",
+          "Uly Schlesinger"
+        ],
+        "plot": "A provocative, multigenerational look at a group of modern high school students exploring sexuality, identity, and rebellion against their conservative Orange County backdrop.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/k2T6PmKcTIZRvNAP5LV81MekoPf.jpg",
+        "trailerKey": "iyMnejHiQ08",
+        "rtScore": "63%",
+        "reason": "You like Euphoria's provocative, hyper-aware teen world; Genera+ion tackles similar themes of identity and queer exploration with a fresh, Gen Z voice.",
+        "streaming": [
+          "HBO Max"
+        ],
+        "categories": [
+          "teen drama",
+          "lgbtq+",
+          "coming-of-age"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Grand Army",
+        "type": "tv",
+        "year": 2020,
+        "director": "Katie Cappiello",
+        "predictedRating": 3,
+        "actors": [
+          "Odessa A'zion",
+          "Amir Bageria",
+          "Maliq Johnson",
+          "Alison Mosshart"
+        ],
+        "plot": "Five students at a Brooklyn high school grapple with systemic racism, sexual assault, and personal struggles in a diverse, pressure-cooker environment.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/muCLCLA9RiYsVhk7pjzcbShsUYq.jpg",
+        "trailerKey": "vJJCjB8hd_0",
+        "rtScore": "80%",
+        "reason": "You liked Euphoria's unflinching look at modern teen issues; this series tackles similar topics like activism, trauma, and identity with a raw, ensemble-driven approach.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "teen drama",
+          "social issues",
+          "gritty",
+          "lgbtq+"
+        ],
+        "categoryPaths": []
+      }
+    ],
     "movie-recs-prefetch-queue:all": [
       {
         "title": "Rosemary's Baby",
@@ -1169,6 +2228,429 @@
         "streaming": [
           "Netflix"
         ]
+      }
+    ],
+    "movie-recs-prefetch-queue:c005dbcb-4b23-43d0-8f8b-3c7de02bea9f": [
+      {
+        "title": "The Vast of Night",
+        "type": "movie",
+        "year": 2019,
+        "director": "Andrew Patterson",
+        "predictedRating": 3,
+        "actors": [
+          "Sierra McCormick",
+          "Jake Horowitz",
+          "Gail Cronauer"
+        ],
+        "plot": "In 1950s New Mexico, a switchboard operator and a radio DJ discover a strange audio frequency that suggests extraterrestrial presence.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/q2P9lYkctl5Ory71HEBMaFxbVlD.jpg",
+        "trailerKey": "ZEiwpCJqMM0",
+        "rtScore": "91%",
+        "reason": "You enjoy atmospheric, low-budget sci-fi that prioritizes tension and clever storytelling over spectacle.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "sci-fi",
+          "mystery",
+          "thriller"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "One Child Nation",
+        "type": "movie",
+        "year": 2019,
+        "director": "Nanfu Wang, Jialing Zhang",
+        "predictedRating": 3,
+        "actors": [
+          "Nanfu Wang"
+        ],
+        "plot": "A documentary examining the human cost of China's one-child policy through personal stories and archival footage.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/bV0aqhB7fsw5mWJROBnFro1Qhwn.jpg",
+        "trailerKey": "gMcJVoLwyD0",
+        "rtScore": "98%",
+        "reason": "You value compelling documentaries that offer deep, critical insight into social and political systems.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "documentary",
+          "history",
+          "politics"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Big Sick",
+        "type": "movie",
+        "year": 2017,
+        "director": "Michael Showalter",
+        "predictedRating": 3,
+        "actors": [
+          "Kumail Nanjiani",
+          "Zoe Kazan",
+          "Holly Hunter",
+          "Ray Romano"
+        ],
+        "plot": "A Pakistani-American comedian and his girlfriend navigate cultural clashes and a medical crisis when she falls into a coma.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/9fJTT8pBxxQsFILJHTtHhdYFr77.jpg",
+        "trailerKey": "cLM5DdUhkoM",
+        "rtScore": "98%",
+        "reason": "You like heartfelt, witty romantic comedies grounded in real-life experiences and sharp writing.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "rom-com",
+          "drama",
+          "comedy"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Sound of Metal",
+        "type": "movie",
+        "year": 2020,
+        "director": "Darius Marder",
+        "predictedRating": 3,
+        "actors": [
+          "Riz Ahmed",
+          "Olivia Cooke",
+          "Paul Raci"
+        ],
+        "plot": "A heavy-metal drummer loses his hearing and must adapt to a silent world while grappling with addiction and identity.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/3178oOJKKPDeQ2legWQvMPpllv.jpg",
+        "trailerKey": "VFOrGkAvjAE",
+        "rtScore": "97%",
+        "reason": "You're drawn to immersive, character-driven dramas that explore sensory and emotional transformation.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "drama",
+          "music",
+          "indie"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Godfather",
+        "type": "movie",
+        "year": 1972,
+        "director": "Francis Ford Coppola",
+        "predictedRating": 3,
+        "actors": [
+          "Marlon Brando",
+          "Al Pacino",
+          "James Caan",
+          "Robert Duvall"
+        ],
+        "plot": "The aging patriarch of an organized crime dynasty transfers control to his reluctant youngest son, sparking a violent power struggle.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg",
+        "trailerKey": "Ew9ngL1GZvs",
+        "rtScore": "97%",
+        "reason": "You appreciate masterful storytelling and character-driven epics, and this classic crime saga is a cornerstone of cinema available on Amazon Prime.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "crime",
+          "drama",
+          "classic"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Parasite",
+        "type": "movie",
+        "year": 2019,
+        "director": "Bong Joon-ho",
+        "predictedRating": 3,
+        "actors": [
+          "Kang-ho Song",
+          "Sun-kyun Lee",
+          "Yeo-jeong Jo",
+          "Woo-sik Choi"
+        ],
+        "plot": "A poor family schemes to become employed by a wealthy family, leading to increasingly dark and chaotic consequences.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg",
+        "trailerKey": "bM9QabAojCg",
+        "rtScore": "98%",
+        "reason": "You enjoy sharp social commentary blended with dark humor and tension, and this Oscar-winning international hit is a perfect match on Amazon Prime.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "thriller",
+          "drama",
+          "dark comedy"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Fleabag",
+        "type": "tv",
+        "year": 2016,
+        "director": "Harry Bradbeer",
+        "predictedRating": 3,
+        "actors": [
+          "Phoebe Waller-Bridge",
+          "Sian Clifford",
+          "Olivia Colman",
+          "Brett Gelman"
+        ],
+        "plot": "A dry-witted young woman navigates life, love, and grief in London, breaking the fourth wall to share her unfiltered thoughts.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/27vEYsRKa3eAniwmoccOoluEXQ1.jpg",
+        "trailerKey": "aX2ViKQFL_k",
+        "rtScore": "100%",
+        "reason": "You love sharp, intimate character studies, and this critically adored comedy-drama delivers emotional depth and irreverent humor on Amazon Prime.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "comedy",
+          "drama",
+          "indie"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Manchester by the Sea",
+        "type": "movie",
+        "year": 2016,
+        "director": "Kenneth Lonergan",
+        "predictedRating": 3,
+        "actors": [
+          "Casey Affleck",
+          "Michelle Williams",
+          "Kyle Chandler",
+          "Lucas Hedges"
+        ],
+        "plot": "A solitary Boston janitor returns to his Massachusetts hometown to care for his teenage nephew after his older brother's death, forcing him to confront a past tragedy.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/o9VXYOuaJxCEKOxbA86xqtwmqYn.jpg",
+        "trailerKey": "NxQmuJnrjxg",
+        "rtScore": "96%",
+        "reason": "You appreciate deeply moving character studies with strong performances, and this Oscar-winning drama is a standout on Amazon Prime.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "drama",
+          "family",
+          "indie"
+        ],
+        "categoryPaths": []
+      }
+    ],
+    "movie-recs-prefetch-queue:fac14c9f-6a29-4e58-9905-bd78ae8903be": [
+      {
+        "title": "Roma",
+        "type": "movie",
+        "year": 2018,
+        "director": "Alfonso Cuarón",
+        "predictedRating": 3,
+        "actors": [
+          "Yalitza Aparicio",
+          "Marina de Tavira",
+          "Fernando Grediaga"
+        ],
+        "plot": "A year in the life of a live-in maid in 1970s Mexico City, capturing both personal and political turmoil.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/dtIIyQyALk57ko5bjac7hi01YQ.jpg",
+        "trailerKey": "6BS27ngZtxg",
+        "rtScore": "96%",
+        "reason": "You value intimate, visually stunning dramas, and this Oscar-winning Netflix film offers a deeply emotional and cinematic experience.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "drama",
+          "art house",
+          "period"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Crown",
+        "type": "tv",
+        "year": 2016,
+        "director": "Peter Morgan",
+        "predictedRating": 3,
+        "actors": [
+          "Claire Foy",
+          "Matt Smith",
+          "Olivia Colman"
+        ],
+        "plot": "A biographical drama chronicling the reign of Queen Elizabeth II from her early days to modern times.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/1M876KPjulVwppEpldhdc8V4o68.jpg",
+        "trailerKey": "JWtnJjn6ng0",
+        "rtScore": "90%",
+        "reason": "You enjoy well-crafted historical narratives and character studies, and this Netflix series sets the gold standard for royal drama.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "historical",
+          "biopic",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Bird Box",
+        "type": "movie",
+        "year": 2018,
+        "director": "Susanne Bier",
+        "predictedRating": 3,
+        "actors": [
+          "Sandra Bullock",
+          "Trevante Rhodes",
+          "John Malkovich"
+        ],
+        "plot": "A woman and her two children must navigate a post-apocalyptic world blindfolded to avoid entities that drive people to suicide.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/rGfGfgL2pEPCfhIvqHXieXFn7gp.jpg",
+        "trailerKey": "INJ2bPFy108",
+        "rtScore": "64%",
+        "reason": "You're drawn to high-concept thrillers with survival stakes, and this Netflix hit became a cultural phenomenon for its tense, unique premise.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "horror",
+          "thriller",
+          "survival"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Witcher",
+        "type": "tv",
+        "year": 2019,
+        "director": "Lauren Schmidt Hissrich",
+        "predictedRating": 3,
+        "actors": [
+          "Henry Cavill",
+          "Anya Chalotra",
+          "Freya Allan"
+        ],
+        "plot": "A monster hunter for hire struggles to find his place in a dark, chaotic world filled with magic, political corruption, and destiny.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/AoGsDM02UVt0npBA8OvpDcZbaMi.jpg",
+        "trailerKey": "eb90gqGYP9c",
+        "rtScore": "81%",
+        "reason": "You gravitate toward epic fantasy with morally complex heroes, and this dark series adapts a beloved book franchise with stunning visuals and action.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "fantasy",
+          "action",
+          "adventure"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Marriage Story",
+        "type": "movie",
+        "year": 2019,
+        "director": "Noah Baumbach",
+        "predictedRating": 3,
+        "actors": [
+          "Adam Driver",
+          "Scarlett Johansson",
+          "Laura Dern"
+        ],
+        "plot": "A stage director and his actress wife navigate a painful divorce while trying to maintain their family bonds.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/2JRyCKaRKyJAVpsIHeLvPw5nHmw.jpg",
+        "trailerKey": "BHi-a1n8t7M",
+        "rtScore": "95%",
+        "reason": "You value intimate, emotionally raw dramas with powerhouse performances, and this film offers a piercing look at love and loss.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "drama",
+          "romance"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Arcane",
+        "type": "tv",
+        "year": 2021,
+        "director": "Pascal Charrue, Arnaud Delord",
+        "predictedRating": 3,
+        "actors": [
+          "Hailee Steinfeld",
+          "Ella Purnell",
+          "Kevin Alejandro"
+        ],
+        "plot": "In a city divided between privilege and poverty, two sisters become entangled in a conflict between magic and technology.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/abf8tHznhSvl9BAElD2cQeRr7do.jpg",
+        "trailerKey": "W4gLFBNGgiY",
+        "rtScore": "100%",
+        "reason": "You appreciate visually groundbreaking animation with deep world-building and emotional stakes, and this series redefines the video game adaptation.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "animation",
+          "action",
+          "fantasy",
+          "science fiction"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Mitchells vs. the Machines",
+        "type": "movie",
+        "year": 2021,
+        "director": "Mike Rianda",
+        "predictedRating": 3,
+        "actors": [
+          "Abbi Jacobson",
+          "Danny McBride",
+          "Maya Rudolph"
+        ],
+        "plot": "A quirky family embarks on a chaotic road trip when a tech uprising threatens humanity, forcing them to unite to save the world.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/mI2Di7HmskQQ34kz0iau6J1vr70.jpg",
+        "trailerKey": "_ak5dFt8Ar0",
+        "rtScore": "97%",
+        "reason": "You love inventive animated comedies with heart, and this Netflix hit is a hilarious crowd-pleaser.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "animation",
+          "comedy",
+          "adventure"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Dark",
+        "type": "tv",
+        "year": 2017,
+        "director": "Baran bo Odar",
+        "predictedRating": 3,
+        "actors": [
+          "Louis Hofmann",
+          "Karoline Eichhorn",
+          "Lisa Vicari"
+        ],
+        "plot": "In a small German town, the disappearance of children uncovers a time-travel conspiracy spanning four generations.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/1DLjjvSWMYo17B7wuz6YikB96hH.jpg",
+        "trailerKey": "ESEUoa-mz2c",
+        "rtScore": "95%",
+        "reason": "You're drawn to mind-bending sci-fi mysteries, and this critically acclaimed Netflix series is a must-watch.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "sci-fi",
+          "mystery",
+          "thriller"
+        ],
+        "categoryPaths": []
       }
     ]
   }
