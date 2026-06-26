@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": "2026-06-25T00:40:51.910Z",
+  "exportedAt": "2026-06-26T05:46:03.240Z",
   "options": {
     "channels": true,
     "queue": true,
@@ -51,14 +51,16 @@
       {
         "id": "5f28f8fa-c939-474e-8432-0865f9957705",
         "name": "Coming Soon",
-        "mediums": [],
+        "mediums": [
+          "tv"
+        ],
         "genres": [],
         "timePeriods": [],
-        "streaming": [],
         "language": "French, English",
         "artists": "Coming Soon",
-        "freeText": "trailers for shows that have not yet been released\n\nshows that will be released this year or next;  Nothing from last year or before.\n\nMake sure that every item here actually has a real trailer!",
-        "popularity": 50
+        "freeText": "trailers for shows that have not yet been released\n\nshows that will be released in 2026 or 2027;  Nothing from 2025 or before.\n\nMake sure that every item here actually has a real trailer!",
+        "popularity": 50,
+        "streaming": []
       },
       {
         "id": "08ae6b2a-c6f4-46bd-b292-d4ee046bbfff",
@@ -127,6 +129,20 @@
         "popularity": 50
       },
       {
+        "id": "f1514135-3e6f-4dde-a262-58065b1713a9",
+        "name": "Hulu",
+        "mediums": [],
+        "genres": [],
+        "timePeriods": [],
+        "streaming": [
+          "Hulu"
+        ],
+        "language": "",
+        "artists": "",
+        "freeText": "",
+        "popularity": 50
+      },
+      {
         "name": "Kaiju/Tokusatsu",
         "genres": [
           "Horror"
@@ -187,6 +203,34 @@
         "streaming": []
       },
       {
+        "id": "a97bcfc9-ef1b-4781-8d56-cc13a8655292",
+        "name": "Paramount+",
+        "mediums": [],
+        "genres": [],
+        "timePeriods": [],
+        "streaming": [
+          "Paramount+"
+        ],
+        "language": "",
+        "artists": "",
+        "freeText": "",
+        "popularity": 50
+      },
+      {
+        "id": "d8a8281e-3ffb-4153-a3e8-707f10a69332",
+        "name": "Peacock",
+        "mediums": [],
+        "genres": [],
+        "timePeriods": [],
+        "streaming": [
+          "Peacock"
+        ],
+        "language": "",
+        "artists": "",
+        "freeText": "",
+        "popularity": 50
+      },
+      {
         "name": "Spaghetti Westerns",
         "genres": [
           "Western",
@@ -206,7 +250,338 @@
         "streaming": []
       }
     ],
-    "movie-recs-active-channel": "5f28f8fa-c939-474e-8432-0865f9957705",
+    "movie-recs-active-channel": "1b90b4b2-25c9-43c1-9f2e-bba10e4a480b",
+    "movie-recs-prefetch-queue:03cdd4a4-df42-4306-aceb-6350980e4846": [
+      {
+        "title": "The Wind Rises",
+        "type": "movie",
+        "year": 2013,
+        "director": "Hayao Miyazaki",
+        "predictedRating": 4,
+        "actors": [
+          "Hideaki Anno",
+          "Miori Takimoto",
+          "Mansai Nomura"
+        ],
+        "plot": "A fictionalized biography of Jiro Horikoshi, designer of Japanese WWII fighter planes, exploring his passion for aviation and personal sacrifices.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/jfwSexzlIzaOgxP9A8bTA6t8YYb.jpg",
+        "trailerKey": "q3kdZpeVbLM",
+        "rtScore": "89%",
+        "reason": "You ignored high-RT nominees like Lady Bird, but this visually meditative and emotionally complex anime may resonate with your preference for subtle humanism over critical acclaim.",
+        "streaming": [
+          "Netflix",
+          "Max"
+        ]
+      },
+      {
+        "title": "The Big Lebowski",
+        "type": "movie",
+        "year": 1998,
+        "director": "Joel Coen",
+        "predictedRating": 3.5,
+        "actors": [
+          "Jeff Bridges",
+          "John Goodman",
+          "Julianne Moore",
+          "Steve Buscemi"
+        ],
+        "plot": "A laid-back slacker is mistaken for a millionaire and gets entangled in a kidnapping plot involving a rug that really ties the room together.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/3bv6WAp6BSxxYvB5ozKFUYuRA8C.jpg",
+        "trailerKey": "GiwMMziJdqg",
+        "rtScore": "80%",
+        "reason": "You dismissed Midsommar's cultish weirdness, but this cult classic's offbeat humor and memorable characters might match your taste for idiosyncratic storytelling.",
+        "streaming": [
+          "Amazon Prime Video",
+          "Peacock",
+          "Pluto TV"
+        ]
+      },
+      {
+        "title": "First Reformed",
+        "type": "movie",
+        "year": 2017,
+        "director": "Paul Schrader",
+        "predictedRating": 4,
+        "actors": [
+          "Ethan Hawke",
+          "Amanda Seyfried",
+          "Cedric the Entertainer"
+        ],
+        "plot": "A former military chaplain wrestles with despair and faith while running a small church, leading to a radical act.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/8HKA3Hwf8jQWy8TCYWr7C8Wft23.jpg",
+        "trailerKey": "81-yub7Om6E",
+        "rtScore": "93%",
+        "reason": "You gave Fortitude 3.5 and Stroszek 3, suggesting you value bleak, contemplative character studies — this matches that inner conflict.",
+        "streaming": [
+          "Amazon Prime Video",
+          "Peacock",
+          "Tubi"
+        ]
+      },
+      {
+        "title": "The Endless",
+        "type": "movie",
+        "year": 2017,
+        "director": "Justin Benson",
+        "predictedRating": 3,
+        "actors": [
+          "Aaron Moorhead",
+          "Justin Benson",
+          "Callie Hernandez"
+        ],
+        "plot": "Two brothers return to the UFO death cult they escaped as kids and discover the eerie phenomena may be real.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/uVHPBTLb6Sj1Eso9HzyBAOMRheM.jpg",
+        "trailerKey": "_DTbx7c7ez8",
+        "rtScore": "91%",
+        "reason": "You didn't like Midsommar (RT 83%), so testing a cult-themed slow-burn horror might clarify your tolerance for atmospheric dread.",
+        "streaming": [
+          "Netflix",
+          "Tubi",
+          "Pluto TV"
+        ]
+      },
+      {
+        "title": "The Seventh Seal",
+        "type": "movie",
+        "year": 1957,
+        "director": "Ingmar Bergman",
+        "predictedRating": 4.5,
+        "actors": [
+          "Max von Sydow",
+          "Gunnar Björnstrand",
+          "Bengt Ekerot"
+        ],
+        "plot": "A medieval knight plays chess with Death as the Black Death ravages Europe, questioning God's silence.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/wcZ21zrOsy0b52AfAF50XpTiv75.jpg",
+        "trailerKey": "vZucwtdSvJ8",
+        "rtScore": "93%",
+        "reason": "You rated Stroszek 3 and Fortitude 3.5, leaning into existential European cinema — this is a foundational, darker masterpiece you'd likely appreciate more than mainstream critics.",
+        "streaming": [
+          "Max",
+          "Amazon Prime Video",
+          "Criterion Channel"
+        ]
+      },
+      {
+        "title": "The Thin Red Line",
+        "type": "movie",
+        "year": 1998,
+        "director": "Terrence Malick",
+        "predictedRating": 3,
+        "actors": [
+          "Sean Penn",
+          "Adrien Brody",
+          "Jim Caviezel",
+          "Ben Chaplin"
+        ],
+        "plot": "A poetic and philosophical look at the battle of Guadalcanal, focusing on the inner lives of soldiers.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/seMydAaoxQP6F0xbE1jOcTmn5Jr.jpg",
+        "trailerKey": "ejm0XvT3rB8",
+        "rtScore": "79%",
+        "reason": "You dismissed several high-RT dramas, but Malick's meditative style and the film's red sun-drenched visuals may win you over with its contemplative, atmospheric tone.",
+        "streaming": [
+          "Disney+",
+          "Amazon Prime Video"
+        ]
+      },
+      {
+        "title": "The Wailing",
+        "type": "movie",
+        "year": 2016,
+        "director": "Na Hong-jin",
+        "predictedRating": 4,
+        "actors": [
+          "Kwak Do-won",
+          "Hwang Jung-min",
+          "Chun Woo-hee"
+        ],
+        "plot": "A mysterious stranger arrives in a small Korean village and triggers a series of violent events; a police officer must investigate the supernatural occurrences to save his family.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/RbymxgEM5SpDfO2Io2JMFG10Vi.jpg",
+        "trailerKey": "VUWAgbXSJ4Y",
+        "rtScore": "99%",
+        "reason": "You liked the cold, unsettling tone of 'Fortitude' and the offbeat European feel of 'Stroszek', and this Korean horror-mystery delivers that same slow-burn dread with a red sun aesthetic.",
+        "streaming": [
+          "Netflix"
+        ]
+      },
+      {
+        "title": "The Act of Killing",
+        "type": "movie",
+        "year": 2012,
+        "director": "Joshua Oppenheimer",
+        "predictedRating": 3.5,
+        "actors": [
+          "Anwar Congo",
+          "Herman Koto",
+          "Syamsul Arifin"
+        ],
+        "plot": "Indonesian death squad leaders reenact their mass killings in the style of their favorite movie genres, blurring reality and performance in a chilling documentary.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/sp5B7Tz5ttsgOLnIlCP5uEhtesI.jpg",
+        "trailerKey": "cTozJLf-Px0",
+        "rtScore": "96%",
+        "reason": "You rated Stroszek 3/5, suggesting you engage with harsh realism and dark humor, and this documentary's surreal horror aligns with that taste.",
+        "streaming": [
+          "Amazon Prime Video",
+          "Tubi",
+          "Pluto TV"
+        ]
+      }
+    ],
+    "movie-recs-prefetch-queue:07bc4d94-1731-40f7-afc2-4c3c39948ae2": [
+      {
+        "title": "The Souvenir",
+        "type": "movie",
+        "year": 2019,
+        "director": "Joanna Hogg",
+        "predictedRating": 3.5,
+        "actors": [
+          "Honor Swinton Byrne",
+          "Tom Burke"
+        ],
+        "plot": "A young film student becomes romantically involved with a complicated and untrustworthy man.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/2Nj04HsZ0lNkv07JnfBZ0bAIECn.jpg",
+        "trailerKey": "t9Al2nC0vzY",
+        "rtScore": "90%",
+        "reason": "The introspective and artfully crafted narrative of 'The Souvenir' could resonate with your interest in films that blend personal storytelling with a cinematic artistry.",
+        "streaming": [
+          "Netflix"
+        ]
+      },
+      {
+        "title": "Portrait of a Lady on Fire",
+        "type": "movie",
+        "year": 2019,
+        "director": "Céline Sciamma",
+        "predictedRating": 4.5,
+        "actors": [
+          "Noémie Merlant",
+          "Adèle Haenel"
+        ],
+        "plot": "On an isolated island in Brittany at the end of the eighteenth century, a female painter is obliged to paint a wedding portrait of a young woman.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/2LquGwEhbg3soxSCs9VNyh5VJd9.jpg",
+        "trailerKey": "R-fQPTwma9o",
+        "rtScore": "98%",
+        "reason": "With its beautiful cinematography and emotional depth, this film aligns well with your taste for internationally acclaimed festival films.",
+        "streaming": [
+          "Hulu"
+        ]
+      },
+      {
+        "title": "The Hand of God",
+        "type": "movie",
+        "year": 2021,
+        "director": "Paolo Sorrentino",
+        "predictedRating": 3.5,
+        "actors": [
+          "Filippo Scotti",
+          "Toni Servillo"
+        ],
+        "plot": "In 1980s Naples, a young man whose passion for football saves him after a family tragedy reflects on his life.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/kreVxr5moB7K52IGGV1BGAn6nq1.jpg",
+        "trailerKey": "i_1VW_0i6vo",
+        "rtScore": "83%",
+        "reason": "The blend of personal narrative and a strong sense of place may appeal to you if you are drawn to character-driven stories showcased in festival circuits.",
+        "streaming": [
+          "Netflix"
+        ]
+      },
+      {
+        "title": "The Lighthouse",
+        "type": "movie",
+        "year": 2019,
+        "director": "Robert Eggers",
+        "predictedRating": 4,
+        "actors": [
+          "Robert Pattinson",
+          "Willem Dafoe"
+        ],
+        "plot": "Two lighthouse keepers try to maintain their sanity while living on a remote and mysterious New England island in the 1890s.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/f1tIYarTbkBdIT1aW0gzelDwknv.jpg",
+        "trailerKey": "42_UHhpq530",
+        "rtScore": "90%",
+        "reason": "You might appreciate the film’s atmospheric tension and unique storytelling, reminiscent of Fjord's style.",
+        "streaming": [
+          "Hulu"
+        ]
+      },
+      {
+        "title": "Roma",
+        "type": "movie",
+        "year": 2018,
+        "director": "Alfonso Cuarón",
+        "predictedRating": 4.5,
+        "actors": [
+          "Yalitza Aparicio",
+          "Marina de Tavira"
+        ],
+        "plot": "A year in the life of a middle-class family's maid in Mexico City in the early 1970s.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/dtIIyQyALk57ko5bjac7hi01YQ.jpg",
+        "trailerKey": "6BS27ngZtxg",
+        "rtScore": "96%",
+        "reason": "You might connect with the film’s introspective narrative and its intimate portrayal of personal and political change.",
+        "streaming": [
+          "Netflix"
+        ]
+      },
+      {
+        "title": "The Lobster",
+        "type": "movie",
+        "year": 2015,
+        "director": "Yorgos Lanthimos",
+        "predictedRating": 3.5,
+        "actors": [
+          "Colin Farrell",
+          "Rachel Weisz"
+        ],
+        "plot": "In a dystopian society, single people are given 45 days to find a romantic partner or else they are turned into animals.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/7Y9ILV1unpW9mLpGcqyGQU72LUy.jpg",
+        "trailerKey": "LTNZmOJxuAc",
+        "rtScore": "87%",
+        "reason": "You might enjoy its unique take on modern relationships and surreal humor, which mirrors Fjord's narrative style.",
+        "streaming": [
+          "Max"
+        ]
+      },
+      {
+        "title": "Burning",
+        "type": "movie",
+        "year": 2018,
+        "director": "Lee Chang-dong",
+        "predictedRating": 4.5,
+        "actors": [
+          "Yoo Ah-in",
+          "Steven Yeun"
+        ],
+        "plot": "A young deliveryman becomes involved with a woman from his past and her wealthy, enigmatic boyfriend.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/kXiF80o74fE9gf3Utf9moAI7ar0.jpg",
+        "trailerKey": "irBLY-Ev9vo",
+        "rtScore": "94%",
+        "reason": "You might appreciate the film’s slow-burn mystery and exploration of human emotions, akin to themes in Fjord movies.",
+        "streaming": [
+          "Apple TV+"
+        ]
+      },
+      {
+        "title": "The Worst Person in the World",
+        "type": "movie",
+        "year": 2021,
+        "director": "Joachim Trier",
+        "predictedRating": 3,
+        "actors": [
+          "Renate Reinsve",
+          "Anders Danielsen Lie",
+          "Herbert Nordrum"
+        ],
+        "plot": "A young woman navigates love, career, and identity in modern Oslo, drifting through relationships and existential uncertainty.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/1NxGNQchGBTHXJ6RShLY1IlZqWn.jpg",
+        "trailerKey": "gpkQgk1Fi1Q",
+        "rtScore": "96%",
+        "reason": "You gave Fortitude a middling score despite high RT, suggesting you resist critical consensus, so this acclaimed but polarizing character study may land similarly.",
+        "streaming": [
+          "Hulu"
+        ]
+      }
+    ],
     "movie-recs-prefetch-queue:08ae6b2a-c6f4-46bd-b292-d4ee046bbfff": [
       {
         "title": "Soul",
@@ -427,49 +802,6 @@
     ],
     "movie-recs-prefetch-queue:1b90b4b2-25c9-43c1-9f2e-bba10e4a480b": [
       {
-        "title": "Les Parapluies de Cherbourg",
-        "type": "movie",
-        "year": 1964,
-        "director": "Jacques Demy",
-        "predictedRating": 3.5,
-        "actors": [
-          "Catherine Deneuve",
-          "Nino Castelnuovo",
-          "Anne Vernon",
-          "Marc Michel"
-        ],
-        "plot": "A young umbrella-shop girl and her mechanic lover are separated when he is drafted to Algeria, their romance unfolding in sung-through color.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/tAgTf64XKK5ir7w5C7dnB53jWWG.jpg",
-        "trailerKey": "7H-fl3njp5s",
-        "rtScore": "97%",
-        "reason": "Its sung-through romantic drama is a bold tonal shift that tests your tolerance for stylized emotion within the channel.",
-        "streaming": [
-          "Amazon Prime Video"
-        ]
-      },
-      {
-        "title": "Bande à part",
-        "type": "movie",
-        "year": 1964,
-        "director": "Jean-Luc Godard",
-        "predictedRating": 3,
-        "actors": [
-          "Anna Karina",
-          "Sami Frey",
-          "Claude Brasseur",
-          "Louisa Colpeyn"
-        ],
-        "plot": "Two young men and a woman plot a clumsy robbery of her aunt's villa in a playful, rebellious caper.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/9oqyj79xmcypxLajJdefOtrYx64.jpg",
-        "trailerKey": "TM0lC2QCiSU",
-        "rtScore": "94%",
-        "reason": "Its mix of romance, thriller, and Nouvelle Vague irreverence is mainstream yet risky — perfect to gauge your response to Godard's style.",
-        "streaming": [
-          "Amazon Prime Video",
-          "Criterion Channel"
-        ]
-      },
-      {
         "title": "Un homme et une femme",
         "type": "movie",
         "year": 1966,
@@ -576,84 +908,61 @@
         ]
       },
       {
-        "title": "Breathless",
+        "title": "Cléo from 5 to 7",
         "type": "movie",
-        "year": 1960,
-        "director": "Jean-Luc Godard",
+        "year": 1962,
+        "director": "Agnès Varda",
         "predictedRating": 3,
         "actors": [
-          "Jean-Paul Belmondo",
-          "Jean Seberg"
+          "Corinne Marchand",
+          "Antoine Bourseiller",
+          "Dominique Davray"
         ],
-        "plot": "A young car thief on the run with an American girlfriend in Paris embodies the restless energy and existential cool of the French New Wave.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/9Wx0Wdn2EOqeCZU4SP6tlS3LOml.jpg",
-        "trailerKey": "UoICuMPOWrk",
-        "rtScore": "93%",
-        "reason": "You'll connect with Breathless as a defining Nouvelle Vague masterpiece, blending thrill and romance in its rebellious, jump-cut style.",
+        "plot": "A young singer anxiously awaits the results of a medical test, wandering through Paris in real time and encountering strangers who shift her perspective on life.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/oelBStY4xpguaplRv15P3Za7Xsr.jpg",
+        "trailerKey": "sRR0_VJFqwg",
+        "rtScore": "94%",
+        "reason": "You gravitate toward character-driven stories with psychological depth, as seen in your interest in 'Memento' and 'Tokyo Godfathers', and Varda's intimate portrait of existential dread will resonate.",
         "streaming": [
           "Max",
           "Amazon Prime Video"
         ],
         "categories": [
+          "french new wave",
+          "drama",
+          "psychological"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Le Samouraï",
+        "type": "movie",
+        "year": 1967,
+        "director": "Jean-Pierre Melville",
+        "predictedRating": 3,
+        "actors": [
+          "Alain Delon",
+          "François Périer",
+          "Nathalie Delon"
+        ],
+        "plot": "A sleek, solitary hitman lives by a stoic code until a botched job and a witness force him into a deadly game of cat and mouse with the police and his employers.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/5Fa6o5nfUPEatQ9b3OwEvdEdR7T.jpg",
+        "trailerKey": "PTFV07ah4fY",
+        "rtScore": "97%",
+        "reason": "Your fascination with stylish thrillers and puzzle-like narratives, evident in your rating of 'Memento', fits Melville's minimalist noir, where mood and precision trump dialogue.",
+        "streaming": [
+          "Max",
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "french new wave",
           "thriller",
-          "romance",
-          "drama"
+          "crime"
         ],
         "categoryPaths": []
       }
     ],
     "movie-recs-prefetch-queue:32183611-7b02-4701-b0e4-77dc20e7b84c": [
-      {
-        "title": "The Young Savages",
-        "type": "movie",
-        "year": 1961,
-        "director": "John Frankenheimer",
-        "predictedRating": 3.5,
-        "actors": [
-          "Burt Lancaster",
-          "Dina Merrill",
-          "Shelley Winters"
-        ],
-        "plot": "A prosecutor investigates gang murders and finds hidden truths about his own community.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/wwuzTM314iVSqodZxBtYHvUFeBM.jpg",
-        "trailerKey": "2x8q0EHcSW4",
-        "rtScore": null,
-        "reason": "You have a tendency to rate social issue dramas highly, especially those with a legal twist and strong narratives."
-      },
-      {
-        "title": "Baby Doll",
-        "type": "movie",
-        "year": 1956,
-        "director": "Elia Kazan",
-        "predictedRating": 4,
-        "actors": [
-          "Karl Malden",
-          "Carroll Baker",
-          "Eli Wallach"
-        ],
-        "plot": "In the deep South, tensions rise in a love triangle involving a naive girl, her older husband, and a vengeful rival.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/1Wj0H6HA7xCy8kWYWOTytqwOqWk.jpg",
-        "trailerKey": "KiU9EuGSjgY",
-        "rtScore": "87%",
-        "reason": "You value films with intense personal and emotional conflicts, particularly within rural settings and against societal norms."
-      },
-      {
-        "title": "Murder My Sweet",
-        "type": "movie",
-        "year": 1944,
-        "director": "Edward Dmytryk",
-        "predictedRating": 4,
-        "actors": [
-          "Dick Powell",
-          "Claire Trevor",
-          "Anne Shirley"
-        ],
-        "plot": "A private detective takes on a case that leads him into a web of deception and murder.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/tbyzfN1AUKTvzh058L9ZcOpS9Vn.jpg",
-        "trailerKey": "PHRDGxSL2o4",
-        "rtScore": "86%",
-        "reason": "You consistently rate classic noir films like 'Kiss Me Deadly' highly, and this film is a staple of the genre."
-      },
       {
         "title": "Angel Face",
         "type": "movie",
@@ -747,166 +1056,92 @@
         "streaming": [
           "Amazon Prime Video"
         ]
+      },
+      {
+        "title": "The Killing",
+        "type": "movie",
+        "year": 1956,
+        "director": "Stanley Kubrick",
+        "predictedRating": 3,
+        "actors": [
+          "Sterling Hayden",
+          "Coleen Gray",
+          "Vince Edwards",
+          "Jay C. Flippen"
+        ],
+        "plot": "A career criminal meticulously plans a race-track heist, but his carefully orchestrated scheme unravels due to greed and betrayal among his crew.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/A6VzUPcADZGYdGHlVdWvpMNDF5d.jpg",
+        "trailerKey": "c0Odg-GY40w",
+        "rtScore": "96%",
+        "reason": "Stanley Kubrick's non-linear heist film mirrors the narrative structure you enjoyed in Memento, blending tense action with a fatalistic noir sensibility.",
+        "streaming": [
+          "Amazon Prime Video",
+          "Tubi"
+        ],
+        "categories": [
+          "crime",
+          "thriller",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Touch of Evil",
+        "type": "movie",
+        "year": 1958,
+        "director": "Orson Welles",
+        "predictedRating": 3,
+        "actors": [
+          "Orson Welles",
+          "Charlton Heston",
+          "Janet Leigh",
+          "Marlene Dietrich"
+        ],
+        "plot": "A corrupt border-town police detective frames a Mexican official's wife for murder, leading to a tense battle of wits and moral decay.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/1pvRgmfBaoMczIJBOi9gCOZ4FMC.jpg",
+        "trailerKey": "wuSCUVqaDZw",
+        "rtScore": "96%",
+        "reason": "Your appreciation for Casablanca's noirish romance aligns with this film's shadowy atmosphere and morally complex characters.",
+        "streaming": [
+          "Amazon Prime Video",
+          "Tubi"
+        ],
+        "categories": [
+          "crime",
+          "drama",
+          "thriller"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Sweet Smell of Success",
+        "type": "movie",
+        "year": 1957,
+        "director": "Alexander Mackendrick",
+        "predictedRating": 3,
+        "actors": [
+          "Burt Lancaster",
+          "Tony Curtis",
+          "Susan Harrison",
+          "Marty Milner"
+        ],
+        "plot": "A powerful but unscrupulous newspaper columnist manipulates a press agent to destroy his sister's romance, exploring ambition and corruption.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/akzvV8JasNrgEl5iAP9K6zPHGJe.jpg",
+        "trailerKey": "gBbPlyHxj8c",
+        "rtScore": "97%",
+        "reason": "You've embraced films with psychological complexity and moral ambiguity; this sharp, cynical noir drama delves into human darkness with a style you'll find compelling.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "drama",
+          "film noir",
+          "thriller"
+        ],
+        "categoryPaths": []
       }
     ],
-    "movie-recs-prefetch-queue:5f28f8fa-c939-474e-8432-0865f9957705": [
-      {
-        "title": "Pompeii: Out of Time with Tom Hiddleston",
-        "type": "tv",
-        "year": 2026,
-        "director": "Tom Barbor-Might",
-        "actors": [
-          "Tom Hiddleston",
-          "Lubna Azabal",
-          "Barry Aird",
-          "Frankie Treadaway",
-          "Buket Komur"
-        ],
-        "plot": "A historical exploration about the eruption of Vesuvius in 79 A.D. and the preserved Roman city it left behind.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/p0gMi8uj1sZfvda7KpUZJFWzbPe.jpg",
-        "trailerKey": "7k52aJRs3gA",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Treasure & Dirt",
-        "type": "tv",
-        "year": 2026,
-        "director": "Matt Cameron",
-        "actors": [
-          "Michael Dorman",
-          "Liv Hewson"
-        ],
-        "plot": "A beheaded miner in an opal town leads detectives Ivan Lucic and Nell Buchanan into a tangled web of secrets, greed, and buried sins in the desert.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/odJwpp3wNGIVXrFR62r3OMl3QsA.jpg",
-        "trailerKey": "hU_jsnFsFnc",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Enola Holmes 3",
-        "type": "movie",
-        "year": 2026,
-        "director": "Philip Barantini",
-        "actors": [
-          "Millie Bobby Brown",
-          "Louis Partridge",
-          "Himesh Patel",
-          "Sharon Duncan-Brewster",
-          "Henry Cavill"
-        ],
-        "plot": "Adventure follows detective Enola Holmes to Malta, where her plans to tie the knot unravel when Sherlock's disappearance plunges her into a perilous case.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/7kRYHH9H9PjBFwz1FprbHB2AAjI.jpg",
-        "trailerKey": "n_pEJjq-9xQ",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Jackass: Best and Last",
-        "type": "movie",
-        "year": 2026,
-        "director": "Jeff Tremaine",
-        "actors": [
-          "Johnny Knoxville",
-          "Steve-O",
-          "Chris Pontius",
-          "Jason 'Wee Man' Acuña",
-          "Dave England"
-        ],
-        "plot": "The fifth and final installment to Jackass franchise where the crew go on one last insane crusade.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/tfgccePxnswMqhmtxafliLlcCVR.jpg",
-        "trailerKey": "sNwzFhGwA94",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Ride or Die",
-        "type": "tv",
-        "year": 2026,
-        "director": "Tessa Coates",
-        "actors": [
-          "Hannah Waddingham",
-          "Octavia Spencer",
-          "Bill Nighy",
-          "Ed Skrein"
-        ],
-        "plot": "Best friends, Judith and Debbie, know everything about each other … well, almost everything. Judith has been living a double life that Debbie knows nothing about: she is a highly trained assassin. When a hit goes horribly wrong, Judith and Debbie must go on the run together and work to repair their broken friendship—all while being targeted by a mysterious enemy who wants them dead. And only together, can they solve this layered mystery.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/uWqEnvpwa2U28QheMdUdEcr4U0M.jpg",
-        "trailerKey": "QFGAxkTRAG8",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "In the Hand of Dante",
-        "type": "movie",
-        "year": 2026,
-        "director": "Julian Schnabel",
-        "actors": [
-          "Oscar Isaac",
-          "Gal Gadot",
-          "Gerard Butler",
-          "John Malkovich",
-          "Louis Cancelmi"
-        ],
-        "plot": "A Vatican priest discovers Dante's original Divine Comedy manuscript. When asked to authenticate it, writer Nick Tosches steals it, while a parallel story follows Dante's quest to create his masterpiece.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/nPPIufTBnzEg0d7NoR5RLL1oPra.jpg",
-        "trailerKey": "cXA3Zgsky18",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Lucky Strike",
-        "type": "movie",
-        "year": 2026,
-        "director": "Rod Lurie",
-        "actors": [
-          "Scott Eastwood",
-          "Colin Hanks",
-          "Aunjanue Ellis-Taylor",
-          "Taylor John Smith",
-          "Lorne MacFadyen"
-        ],
-        "plot": "A wounded American soldier fights to survive behind enemy lines during WWII's Battle of the Bulge against the Germans, relying on his instinct, spy craft and a hand-radio to evade capture and find his way back to his unit.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/kzRAd7mj39ZY3FGNrDdZjqx56tn.jpg",
-        "trailerKey": "vtEnjikCXyA",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Lucky",
-        "type": "tv",
-        "year": 2026,
-        "director": "Jonathan Tropper",
-        "actors": [
-          "Anya Taylor-Joy",
-          "Annette Bening",
-          "Timothy Olyphant",
-          "Aunjanue Ellis-Taylor",
-          "Clifton Collins Jr."
-        ],
-        "plot": "When a multi-million-dollar heist goes sideways, con artist Lucky is forced to go on the run. Pursued by both the FBI and a ruthless crime boss, Lucky must fight for her life—and a way out.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/xsrkiXg8EuNNtbPtbmvCxg95gK7.jpg",
-        "trailerKey": "GAbT5qCTXR8",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      }
-    ],
+    "movie-recs-prefetch-queue:5f28f8fa-c939-474e-8432-0865f9957705": [],
     "movie-recs-prefetch-queue:690d995f-f6b7-4dfa-85ab-4b1650991ce0": [
       {
         "title": "The Guest",
@@ -1398,27 +1633,6 @@
     ],
     "movie-recs-prefetch-queue:92419e89-efd6-450b-8385-f042171621bd": [
       {
-        "title": "A Fistful of Dollars",
-        "type": "movie",
-        "year": 1964,
-        "director": "Sergio Leone",
-        "predictedRating": 4.5,
-        "actors": [
-          "Clint Eastwood",
-          "Marianne Koch",
-          "Gian Maria Volonté"
-        ],
-        "plot": "A wandering gunfighter plays two rival families against each other in a town torn apart by greed, pride and revenge.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/lBwOEpwVeUAmrmglcstnaGcJq3Y.jpg",
-        "trailerKey": "f_oZUWAdEe8",
-        "rtScore": "98%",
-        "reason": "You seem to appreciate classic Spaghetti Westerns, and Sergio Leone's impactful style could be highly appealing to you.",
-        "streaming": [
-          "Netflix",
-          "Tubi"
-        ]
-      },
-      {
         "title": "The Good, the Bad and the Ugly",
         "type": "movie",
         "year": 1966,
@@ -1459,24 +1673,6 @@
           "Amazon Prime Video",
           "Paramount+"
         ]
-      },
-      {
-        "title": "Pastures of the Blue Crane",
-        "type": "tv",
-        "year": 1969,
-        "director": "Tom Jeffrey",
-        "predictedRating": 3.5,
-        "actors": [
-          "Judy Morris",
-          "Christopher Pate",
-          "Betty Lucas"
-        ],
-        "plot": "A young girl inherits land and faces hostile locals and family secrets in a drama set in the countryside.",
-        "posterUrl": null,
-        "trailerKey": null,
-        "rtScore": null,
-        "reason": "The thematic depth and drama of this show might suit your interest in historical narratives despite not being a classic Western.",
-        "streaming": []
       },
       {
         "title": "Death Rides a Horse",
@@ -1559,6 +1755,54 @@
         "streaming": [
           "Pluto TV"
         ]
+      },
+      {
+        "title": "My Name is Nobody",
+        "type": "movie",
+        "year": 1973,
+        "director": "Tonino Valerii",
+        "predictedRating": 3,
+        "actors": [
+          "Terence Hill",
+          "Henry Fonda",
+          "Jean Martin"
+        ],
+        "plot": "A young, ambitious gunslinger befriends an aging gunfighter, intent on preserving his legendary status.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/tJQEVI1p00Jh9TUgNEI623iu7ST.jpg",
+        "trailerKey": "TMUX8y8bXWE",
+        "rtScore": "100%",
+        "reason": "You may enjoy this film for its blend of typical western elements with comedic tones, offering a fresh take on the genre.",
+        "streaming": [
+          "Peacock"
+        ]
+      },
+      {
+        "title": "Django",
+        "type": "movie",
+        "year": 1966,
+        "director": "Sergio Corbucci",
+        "predictedRating": 3,
+        "actors": [
+          "Franco Nero",
+          "Loredana Nusciak",
+          "José Bódalo"
+        ],
+        "plot": "A coffin-dragging gunslinger named Django arrives in a lawless town torn between Mexican bandits and a racist vigilante group, seeking a stolen fortune and personal revenge.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/vs4vieNstSEfbgLFEelXXOPvr6h.jpg",
+        "trailerKey": "jLPFh4ObsJU",
+        "rtScore": "92%",
+        "reason": "Given your appreciation for the intense, character-driven mood of 'Parasite' and 'Monkey Man', this gritty, violent spaghetti western delivers a similarly raw emotional punch with a memorable antihero.",
+        "streaming": [
+          "Amazon Prime Video",
+          "Tubi",
+          "Pluto TV"
+        ],
+        "categories": [
+          "spaghetti western",
+          "action",
+          "drama"
+        ],
+        "categoryPaths": []
       }
     ],
     "movie-recs-prefetch-queue:936bd213-5845-4db7-9b91-c96d858ab61d": [
@@ -2086,6 +2330,194 @@
         "categoryPaths": []
       }
     ],
+    "movie-recs-prefetch-queue:a97bcfc9-ef1b-4781-8d56-cc13a8655292": [
+      {
+        "title": "Interstellar",
+        "type": "movie",
+        "year": 2014,
+        "director": "Christopher Nolan",
+        "predictedRating": 3,
+        "actors": [
+          "Matthew McConaughey",
+          "Anne Hathaway",
+          "Jessica Chastain"
+        ],
+        "plot": "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg",
+        "trailerKey": "LY19rHKAaAg",
+        "rtScore": "87%",
+        "reason": "You rated Memento and Parasite highly, so Nolan's mind-bending sci-fi epic should appeal to your love for intelligent, emotional storytelling.",
+        "streaming": [
+          "Paramount+"
+        ],
+        "categories": [
+          "sci-fi",
+          "adventure",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "A Quiet Place",
+        "type": "movie",
+        "year": 2018,
+        "director": "John Krasinski",
+        "predictedRating": 3,
+        "actors": [
+          "Emily Blunt",
+          "John Krasinski",
+          "Millicent Simmonds"
+        ],
+        "plot": "A family must live in silence to avoid monsters with ultra-sensitive hearing.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/nAU74GmpUk7t5iklEp3bufwDq4n.jpg",
+        "trailerKey": "rqEnM25BsNQ",
+        "rtScore": "96%",
+        "reason": "You responded well to tension in Memento and Monkey Man, and this horror-thriller uses suspense masterfully.",
+        "streaming": [
+          "Paramount+"
+        ],
+        "categories": [
+          "horror",
+          "thriller"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Truman Show",
+        "type": "movie",
+        "year": 1998,
+        "director": "Peter Weir",
+        "predictedRating": 3,
+        "actors": [
+          "Jim Carrey",
+          "Laura Linney",
+          "Ed Harris"
+        ],
+        "plot": "An insurance salesman discovers his entire life is a reality TV show.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/vuza0WqY239yBXOadKlGwJsZJFE.jpg",
+        "trailerKey": "N1VlDVRiFrk",
+        "rtScore": "95%",
+        "reason": "You enjoyed the surreal and satirical elements of Spirited Away and Parasite, and this film blends humor with thought-provoking themes.",
+        "streaming": [
+          "Paramount+"
+        ],
+        "categories": [
+          "comedy",
+          "drama",
+          "sci-fi"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Eternal Sunshine of the Spotless Mind",
+        "type": "movie",
+        "year": 2004,
+        "director": "Michel Gondry",
+        "predictedRating": 3,
+        "actors": [
+          "Jim Carrey",
+          "Kate Winslet",
+          "Kirsten Dunst",
+          "Tom Wilkinson"
+        ],
+        "plot": "A couple undergoes a procedure to erase each other from their memories after a painful breakup, but the process reveals the beauty of their relationship.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/5MwkWH9tYHv3mV9OdYTMR5qreIz.jpg",
+        "trailerKey": "c2e-bj6qy8Y",
+        "rtScore": "92%",
+        "reason": "You rated *Spirited Away* and *Casablanca* highly, both emotionally charged and visually inventive stories about love and memory; this film merges those strengths with a surreal, heartfelt narrative.",
+        "streaming": [
+          "Paramount+"
+        ],
+        "categories": [
+          "romance",
+          "drama",
+          "sci-fi",
+          "fantasy"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Fargo",
+        "type": "movie",
+        "year": 1996,
+        "director": "Joel Coen",
+        "predictedRating": 3,
+        "actors": [
+          "Frances McDormand",
+          "William H. Macy",
+          "Steve Buscemi",
+          "Peter Stormare"
+        ],
+        "plot": "A desperate car salesman hires two criminals to kidnap his wife for ransom, but the plan spirals into a darkly comedic crime spree in snowy Minnesota.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/rt7cpEr1uP6RTZykBFhBTcRaKvG.jpg",
+        "trailerKey": "aoOZDiswNaw",
+        "rtScore": "94%",
+        "reason": "You rated *Parasite* and *City of God* moderately, both films balancing crime with social commentary; this one delivers a similarly offbeat, character-rich blend of humor and tension.",
+        "streaming": [
+          "Paramount+"
+        ],
+        "categories": [
+          "crime",
+          "comedy",
+          "thriller"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Roman Holiday",
+        "type": "movie",
+        "year": 1953,
+        "director": "William Wyler",
+        "predictedRating": 3,
+        "actors": [
+          "Audrey Hepburn",
+          "Gregory Peck",
+          "Eddie Albert",
+          "Hartley Power"
+        ],
+        "plot": "A bored European princess escapes her royal duties for a day in Rome, falling for an American journalist who initially plans to exploit her story.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/8lI9dmz1RH20FAqltkGelY1v4BE.jpg",
+        "trailerKey": "2vm2FdHg7Io",
+        "rtScore": "96%",
+        "reason": "You loved *Casablanca* for its timeless romance and elegant pacing; this film offers a similar classic, bittersweet love story with charming performances and visual grace.",
+        "streaming": [
+          "Paramount+"
+        ],
+        "categories": [
+          "romance",
+          "comedy",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Dark Knight",
+        "type": "movie",
+        "year": 2008,
+        "director": "Christopher Nolan",
+        "predictedRating": 3,
+        "actors": [
+          "Christian Bale",
+          "Heath Ledger",
+          "Aaron Eckhart",
+          "Gary Oldman"
+        ],
+        "plot": "When the menace known as the Joker wreaks havoc on Gotham, Batman must accept one of the greatest tests of his character.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg",
+        "trailerKey": "_PZpmTj1Q8Q",
+        "rtScore": "94%",
+        "reason": "You rated the complex narratives of Memento and Parasite highly; The Dark Knight delivers a morally layered superhero saga with gripping tension and director Christopher Nolan's acclaimed style.",
+        "streaming": [
+          "Paramount+"
+        ],
+        "categories": [
+          "action",
+          "crime",
+          "drama"
+        ],
+        "categoryPaths": []
+      }
+    ],
     "movie-recs-prefetch-queue:all": [
       {
         "title": "Rosemary's Baby",
@@ -2230,110 +2662,168 @@
         ]
       }
     ],
-    "movie-recs-prefetch-queue:c005dbcb-4b23-43d0-8f8b-3c7de02bea9f": [
+    "movie-recs-prefetch-queue:bd97b94a-0240-40d8-8ab9-b24e1d373bb9": [
       {
-        "title": "The Vast of Night",
-        "type": "movie",
+        "title": "Frozen Land",
+        "type": "tv",
         "year": 2019,
-        "director": "Andrew Patterson",
+        "director": "David Morton",
         "predictedRating": 3,
         "actors": [
-          "Sierra McCormick",
-          "Jake Horowitz",
-          "Gail Cronauer"
+          "Alexander Skarsgård",
+          "Julia Stiles",
+          "Stellan Skarsgård"
         ],
-        "plot": "In 1950s New Mexico, a switchboard operator and a radio DJ discover a strange audio frequency that suggests extraterrestrial presence.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/q2P9lYkctl5Ory71HEBMaFxbVlD.jpg",
-        "trailerKey": "ZEiwpCJqMM0",
-        "rtScore": "91%",
-        "reason": "You enjoy atmospheric, low-budget sci-fi that prioritizes tension and clever storytelling over spectacle.",
+        "plot": "An investigative series delving into the mysteries and legends of Nordic regions, with a focus on the dramatic landscapes and cultural stories of Norway.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/xwHwqzm3YBoSUJ9jhUABP7mSvl1.jpg",
+        "trailerKey": "X0fJ2Q3B46Y",
+        "rtScore": null,
+        "reason": "You have a curiosity for the Norwegian landscape, making this series a potential interest.",
         "streaming": [
-          "Amazon Prime Video"
-        ],
-        "categories": [
-          "sci-fi",
-          "mystery",
-          "thriller"
-        ],
-        "categoryPaths": []
+          "Hulu"
+        ]
       },
       {
-        "title": "One Child Nation",
+        "title": "The Fjord Saga",
         "type": "movie",
-        "year": 2019,
-        "director": "Nanfu Wang, Jialing Zhang",
-        "predictedRating": 3,
+        "year": 2018,
+        "director": "Kristian Johansson",
+        "predictedRating": 4,
         "actors": [
-          "Nanfu Wang"
+          "Alicia Vikander",
+          "Mads Mikkelsen"
         ],
-        "plot": "A documentary examining the human cost of China's one-child policy through personal stories and archival footage.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/bV0aqhB7fsw5mWJROBnFro1Qhwn.jpg",
-        "trailerKey": "gMcJVoLwyD0",
-        "rtScore": "98%",
-        "reason": "You value compelling documentaries that offer deep, critical insight into social and political systems.",
+        "plot": "A dramatic love story set against the backdrop of Norway's scenic fjords, exploring themes of tradition, family, and forbidden love.",
+        "posterUrl": null,
+        "trailerKey": null,
+        "rtScore": "80%",
+        "reason": "Your interest in fjords aligns with the setting of this deeply emotional drama.",
         "streaming": [
           "Amazon Prime Video"
-        ],
-        "categories": [
-          "documentary",
-          "history",
-          "politics"
-        ],
-        "categoryPaths": []
+        ]
       },
       {
-        "title": "The Big Sick",
-        "type": "movie",
-        "year": 2017,
-        "director": "Michael Showalter",
-        "predictedRating": 3,
-        "actors": [
-          "Kumail Nanjiani",
-          "Zoe Kazan",
-          "Holly Hunter",
-          "Ray Romano"
-        ],
-        "plot": "A Pakistani-American comedian and his girlfriend navigate cultural clashes and a medical crisis when she falls into a coma.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/9fJTT8pBxxQsFILJHTtHhdYFr77.jpg",
-        "trailerKey": "cLM5DdUhkoM",
-        "rtScore": "98%",
-        "reason": "You like heartfelt, witty romantic comedies grounded in real-life experiences and sharp writing.",
-        "streaming": [
-          "Amazon Prime Video"
-        ],
-        "categories": [
-          "rom-com",
-          "drama",
-          "comedy"
-        ],
-        "categoryPaths": []
-      },
-      {
-        "title": "Sound of Metal",
-        "type": "movie",
+        "title": "Nordic Wonders",
+        "type": "tv",
         "year": 2020,
-        "director": "Darius Marder",
-        "predictedRating": 3,
+        "director": "Sofia Bergström",
+        "predictedRating": 4,
         "actors": [
-          "Riz Ahmed",
-          "Olivia Cooke",
-          "Paul Raci"
+          "Noomi Rapace",
+          "Gustaf Skarsgård"
         ],
-        "plot": "A heavy-metal drummer loses his hearing and must adapt to a silent world while grappling with addiction and identity.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/3178oOJKKPDeQ2legWQvMPpllv.jpg",
-        "trailerKey": "VFOrGkAvjAE",
-        "rtScore": "97%",
-        "reason": "You're drawn to immersive, character-driven dramas that explore sensory and emotional transformation.",
+        "plot": "A documentary series showcasing the natural wonders and extraordinary wildlife of Northern Europe, including the fjords.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/lWlx2O9N2zQdeOipREB650aNRw9.jpg",
+        "trailerKey": null,
+        "rtScore": "85%",
+        "reason": "Given your focus on fjords, this series will enrich your understanding of Nordic nature.",
+        "streaming": [
+          "Disney+"
+        ]
+      },
+      {
+        "title": "Midnight Sun",
+        "type": "movie",
+        "year": 2016,
+        "director": "Jannicke Systad Jacobsen",
+        "predictedRating": 3.5,
+        "actors": [
+          "Rebecca Ferguson",
+          "Sverrir Gudnason"
+        ],
+        "plot": "A suspenseful thriller set in a small Norwegian village during the endless summer days, unraveling secrets hidden beneath the serene fjords.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/iWOtMXBLJqrA6mOY2TlVKb9wnge.jpg",
+        "trailerKey": "xKu9pLdle9w",
+        "rtScore": "75%",
+        "reason": "Your fascination with Norwegian landscapes might draw you to this suspenseful narrative set amidst the fjords.",
+        "streaming": [
+          "Tubi"
+        ]
+      },
+      {
+        "title": "Northern Exposure",
+        "type": "tv",
+        "year": 1990,
+        "director": "Joshua Brand & John Falsey",
+        "predictedRating": 4,
+        "actors": [
+          "Rob Morrow",
+          "Janine Turner",
+          "Barry Corbin",
+          "John Cullum"
+        ],
+        "plot": "A New York doctor is slowly won over by the quirky characters of the small Alaskan town where he's reluctantly assigned to practice.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/BUSw61C2kNoMuKFQTamIgqMC5.jpg",
+        "trailerKey": "3yipOV5cmrU",
+        "rtScore": "81%",
+        "reason": "You might find this blend of comedy and drama captivating, much like the vast landscapes and small-town dynamics of Fjord settings.",
         "streaming": [
           "Amazon Prime Video"
-        ],
-        "categories": [
-          "drama",
-          "music",
-          "indie"
-        ],
-        "categoryPaths": []
+        ]
       },
+      {
+        "title": "The Secret Life of Walter Mitty",
+        "type": "movie",
+        "year": 2013,
+        "director": "Ben Stiller",
+        "predictedRating": 3.5,
+        "actors": [
+          "Ben Stiller",
+          "Kristen Wiig",
+          "Sean Penn",
+          "Shirley MacLaine"
+        ],
+        "plot": "A daydreaming photo editor embarks on a real-life adventure to find a missing negative for his magazine's final issue.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/iAo1hlzsPV9XpYcLQp6Ud065tGO.jpg",
+        "trailerKey": "Bp_cxxqOaPM",
+        "rtScore": "52%",
+        "reason": "You might enjoy the fantastical elements set against stunning natural backdrops, similar to Fjord-like settings.",
+        "streaming": [
+          "Disney+"
+        ]
+      },
+      {
+        "title": "Nord",
+        "type": "movie",
+        "year": 2009,
+        "director": "Rune Denstad Langlo",
+        "predictedRating": 4,
+        "actors": [
+          "Anders Baasmo Christiansen",
+          "Mads Sjøgård Pettersen",
+          "Kyrre Hellum",
+          "Marte Aunemo"
+        ],
+        "plot": "After a nervous breakdown, a former skiing star embarks on a journey across Norway's snowy landscapes to reconcile with his past.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/rwGHjCALrH2PACg5WQzyItnZDFq.jpg",
+        "trailerKey": null,
+        "rtScore": null,
+        "reason": "You may connect with the introspective journey across visually arresting Fjord landscapes.",
+        "streaming": []
+      },
+      {
+        "title": "Scott Pilgrim vs. the World",
+        "type": "movie",
+        "year": 2010,
+        "director": "Edgar Wright",
+        "predictedRating": 4,
+        "actors": [
+          "Michael Cera",
+          "Mary Elizabeth Winstead",
+          "Kieran Culkin"
+        ],
+        "plot": "A slacker musician must battle his new girlfriend's seven evil exes to win her heart.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/g5IoYeudx9XBEfwNL0fHvSckLBz.jpg",
+        "trailerKey": "j66qP9Larlg",
+        "rtScore": "82%",
+        "reason": "You might enjoy the film's quirky humor and video game-inspired aesthetics unique to the Fjord channel.",
+        "streaming": [
+          "Netflix",
+          "Peacock"
+        ]
+      }
+    ],
+    "movie-recs-prefetch-queue:c005dbcb-4b23-43d0-8f8b-3c7de02bea9f": [
       {
         "title": "The Godfather",
         "type": "movie",
@@ -2439,6 +2929,707 @@
           "drama",
           "family",
           "indie"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Grand Budapest Hotel",
+        "type": "movie",
+        "year": 2014,
+        "director": "Wes Anderson",
+        "predictedRating": 3,
+        "actors": [
+          "Ralph Fiennes",
+          "F. Murray Abraham",
+          "Mathieu Amalric",
+          "Adrien Brody"
+        ],
+        "plot": "A concierge and his protégé become entangled in a family drama over a priceless painting and a grand hotel's legacy.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg",
+        "trailerKey": "G1jG8HUY4zI",
+        "rtScore": "92%",
+        "reason": "You rated Spirited Away highly and enjoyed the visual whimsy, so this film's meticulous artistry and eccentric storytelling should appeal to you.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "comedy",
+          "drama",
+          "adventure"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Princess Mononoke",
+        "type": "movie",
+        "year": 1997,
+        "director": "Hayao Miyazaki",
+        "predictedRating": 3,
+        "actors": [
+          "Yōji Matsuda",
+          "Yuriko Ishida",
+          "Yūko Tanaka",
+          "Billy Crudup"
+        ],
+        "plot": "In the 14th century, a young warrior embarks on a journey to find a cure for a forest curse, becoming entangled in a war between the gods of the forest and humans seeking its resources.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/cMYCDADoLKLbB83g4WnJegaZimC.jpg",
+        "trailerKey": "I1dHzoRl0sQ",
+        "rtScore": "93%",
+        "reason": "You loved the visual richness and emotional depth of Spirited Away, and Princess Mononoke offers a similarly lush, epic Studio Ghibli experience with mature themes.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "anime",
+          "fantasy",
+          "adventure",
+          "epic"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Tale of the Princess Kaguya",
+        "type": "movie",
+        "year": 2013,
+        "director": "Isao Takahata",
+        "predictedRating": 3,
+        "actors": [
+          "Aki Asakura",
+          "Kengo Kora",
+          "Takeo Chii"
+        ],
+        "plot": "A tiny girl found inside a bamboo stalk grows into a stunning young princess whose celestial origins pull her back to the moon, but not before she experiences the joys and sorrows of human life.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/cQidJuA546OSSXKWXoiCeINDxuj.jpg",
+        "trailerKey": "iPm7HfO3mis",
+        "rtScore": "100%",
+        "reason": "You rated Spirited Away highly and are drawn to emotionally rich animation, so this visually breathtaking Studio Ghibli tale of love and loss will resonate deeply with you.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "animation",
+          "drama",
+          "fantasy"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Apartment",
+        "type": "movie",
+        "year": 1960,
+        "director": "Billy Wilder",
+        "predictedRating": 3,
+        "actors": [
+          "Jack Lemmon",
+          "Shirley MacLaine",
+          "Fred MacMurray"
+        ],
+        "plot": "A put-upon insurance clerk lends his apartment to his bosses for extramarital affairs, leading to unexpected complications when the woman he loves becomes involved.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/hhSRt1KKfRT0yEhEtRW3qp31JFU.jpg",
+        "trailerKey": "ekDkUUPSWuY",
+        "rtScore": "93%",
+        "reason": "Your high rating for Casablanca shows you love classic Hollywood romance with wit and depth, and this bittersweet gem delivers that perfectly.",
+        "streaming": [
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "romance",
+          "comedy",
+          "classic",
+          "drama"
+        ],
+        "categoryPaths": []
+      }
+    ],
+    "movie-recs-prefetch-queue:d8a8281e-3ffb-4153-a3e8-707f10a69332": [
+      {
+        "title": "The Devil's Backbone",
+        "type": "movie",
+        "year": 2001,
+        "director": "Guillermo del Toro",
+        "predictedRating": 3,
+        "actors": [
+          "Eduardo Noriega",
+          "Marisa Paredes",
+          "Federico Luppi",
+          "Fernando Tielve"
+        ],
+        "plot": "At a remote Spanish orphanage during the final days of the Spanish Civil War, a young boy discovers a ghost tied to a dark secret haunting the building.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/iP1z1aJzPnkP8FHg77TS7ukqoEZ.jpg",
+        "trailerKey": "RZi4geYuSNE",
+        "rtScore": "91%",
+        "reason": "You liked Spirited Away and Parasite—del Toro’s atmospheric blend of Gothic horror and historical drama offers the same rich, emotional depth plus a eerie, handcrafted world.",
+        "streaming": [
+          "Peacock"
+        ],
+        "categories": [
+          "horror",
+          "drama",
+          "historical",
+          "supernatural"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Run Lola Run",
+        "type": "movie",
+        "year": 1998,
+        "director": "Tom Tykwer",
+        "predictedRating": 3,
+        "actors": [
+          "Franka Potente",
+          "Moritz Bleibtreu",
+          "Herbert Knaup",
+          "Nina Petri"
+        ],
+        "plot": "After a botched drug deal, a young woman has 20 minutes to find 100,000 Deutsche Marks and save her boyfriend, racing through Berlin in a series of time-loop variations.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/v0giIi4bTILVhNhJajet3WWY3FA.jpg",
+        "trailerKey": "ZCYnsUdO6H0",
+        "rtScore": "93%",
+        "reason": "Your high rating for Memento suggests you love narrative puzzles, and this kinetic German thriller is a high-energy, time-bending ride that plays with cause and effect.",
+        "streaming": [
+          "Peacock"
+        ],
+        "categories": [
+          "thriller",
+          "action",
+          "experimental",
+          "foreign"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Belle de Jour",
+        "type": "movie",
+        "year": 1967,
+        "director": "Luis Buñuel",
+        "predictedRating": 3,
+        "actors": [
+          "Catherine Deneuve",
+          "Jean Sorel",
+          "Michel Piccoli",
+          "Geneviève Page"
+        ],
+        "plot": "A wealthy but emotionally detached housewife begins secretly working as a prostitute in a Parisian brothel during the day, blurring fantasy and reality.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/iUAFECovwPA0cVV9bo4uNGLJSGL.jpg",
+        "trailerKey": "gC1lO7lqMuw",
+        "rtScore": "95%",
+        "reason": "You admired the surreal moral complexity of Parasite and the classic elegance of Casablanca; Buñuel's provocative, dreamlike drama combines both in a visually stunning film.",
+        "streaming": [
+          "Peacock"
+        ],
+        "categories": [
+          "drama",
+          "psychological",
+          "surreal",
+          "art house"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Elephant Man",
+        "type": "movie",
+        "year": 1980,
+        "director": "David Lynch",
+        "predictedRating": 3,
+        "actors": [
+          "Anthony Hopkins",
+          "John Hurt",
+          "Anne Bancroft",
+          "John Gielgud"
+        ],
+        "plot": "In Victorian London, a severely deformed man is rescued from a freak show and becomes a symbol of humanity under the care of a compassionate surgeon.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/u0wpPYjuSt8DIe1Y3Vapnh8jcKE.jpg",
+        "trailerKey": "kxb_1457gGs",
+        "rtScore": "91%",
+        "reason": "You connected with the emotional resonance of Spirited Away and the tragic grit of City of God; this film’s profound empathy and Lynch’s unconventional storytelling hit those same notes.",
+        "streaming": [
+          "Peacock"
+        ],
+        "categories": [
+          "drama",
+          "historical",
+          "biopic",
+          "character study"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Silence of the Lambs",
+        "type": "movie",
+        "year": 1991,
+        "director": "Jonathan Demme",
+        "predictedRating": 3,
+        "actors": [
+          "Jodie Foster",
+          "Anthony Hopkins",
+          "Lawrence A. Bonney"
+        ],
+        "plot": "A young FBI cadet must receive the help of an incarcerated and manipulative cannibal killer to catch another serial killer, a madman who skins his victims.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/uS9m8OBk1A8eM9I042bx8XXpqAq.jpg",
+        "trailerKey": "6iB21hsprAQ",
+        "rtScore": "95%",
+        "reason": "You liked the psychological tension and moral complexity of 'Parasite' and 'Memento', and this thriller delivers that in spades with a brilliant, dark narrative.",
+        "streaming": [
+          "Peacock"
+        ],
+        "categories": [
+          "thriller",
+          "crime",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Eternal Sunshine of the Spotless Mind",
+        "type": "movie",
+        "year": 2004,
+        "director": "Michel Gondry",
+        "predictedRating": 3,
+        "actors": [
+          "Jim Carrey",
+          "Kate Winslet",
+          "Tom Wilkinson"
+        ],
+        "plot": "When a couple undergoes a procedure to erase each other from their memories, their love story is told in reverse and through fragmented recollections.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/5MwkWH9tYHv3mV9OdYTMR5qreIz.jpg",
+        "trailerKey": "c2e-bj6qy8Y",
+        "rtScore": "92%",
+        "reason": "Your high rating for 'Spirited Away' shows you appreciate emotionally rich, visually inventive stories, and this film's surreal, heartfelt exploration of memory is a perfect match.",
+        "streaming": [
+          "Peacock"
+        ],
+        "categories": [
+          "romance",
+          "sci-fi",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Prestige",
+        "type": "movie",
+        "year": 2006,
+        "director": "Christopher Nolan",
+        "predictedRating": 3,
+        "actors": [
+          "Christian Bale",
+          "Hugh Jackman",
+          "Scarlett Johansson"
+        ],
+        "plot": "Two rival magicians in Victorian England engage in an escalating battle of tricks and deception, leading to a shocking and tragic conclusion.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/Ag2B2KHKQPukjH7WutmgnnSNurZ.jpg",
+        "trailerKey": "ijXruSzfGEc",
+        "rtScore": "76%",
+        "reason": "Given your enjoyment of 'Memento' and 'Parasite', this twisty, puzzle-box narrative about obsession and revenge will keep you guessing and satisfy your taste for clever plotting.",
+        "streaming": [
+          "Peacock"
+        ],
+        "categories": [
+          "mystery",
+          "thriller",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Usual Suspects",
+        "type": "movie",
+        "year": 1995,
+        "director": "Bryan Singer",
+        "predictedRating": 3,
+        "actors": [
+          "Kevin Spacey",
+          "Gabriel Byrne",
+          "Chazz Palminteri"
+        ],
+        "plot": "A group of criminals, brought together for a police lineup, are drawn into a web of intrigue centered on a mysterious crime lord named Keyser Söze.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/99X2SgyFunJFXGAYnDv3sb9pnUD.jpg",
+        "trailerKey": "jM3jrHGAsIE",
+        "rtScore": "88%",
+        "reason": "Your interest in 'Memento' and 'City of God' shows you enjoy nonlinear, crime-driven narratives with a knockout twist, which this classic neo-noir delivers masterfully.",
+        "streaming": [
+          "Peacock"
+        ],
+        "categories": [
+          "crime",
+          "mystery",
+          "thriller"
+        ],
+        "categoryPaths": []
+      }
+    ],
+    "movie-recs-prefetch-queue:eeaaefc8-8a04-4841-bfd7-d546d6b54ad3": [
+      {
+        "title": "The Northman",
+        "type": "movie",
+        "year": 2022,
+        "director": "Robert Eggers",
+        "predictedRating": 4.5,
+        "actors": [
+          "Alexander Skarsgård",
+          "Nicole Kidman",
+          "Claes Bang"
+        ],
+        "plot": "A young Viking prince embarks on a quest for revenge against the man who murdered his father.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/aSSJMnHknzKjlZ6zybwD7eyJ4Po.jpg",
+        "trailerKey": "6WrpvCmv0hk",
+        "rtScore": "89%",
+        "reason": "With its Viking setting and themes of revenge and harsh landscapes, this aligns well with your interest in fjord movies.",
+        "streaming": [
+          "Amazon Prime Video"
+        ]
+      },
+      {
+        "title": "Rams",
+        "type": "movie",
+        "year": 2015,
+        "director": "Grímur Hákonarson",
+        "predictedRating": 3.5,
+        "actors": [
+          "Sigurður Sigurjónsson",
+          "Theodór Júlíusson"
+        ],
+        "plot": "In a remote Icelandic farming valley, two estranged brothers must come together to save their flock from a lethal substance.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/pk75njhxcxTJAl0FJ1V2ROGIEy1.jpg",
+        "trailerKey": "CNhvKi2fYbk",
+        "rtScore": "95%",
+        "reason": "Set in the Icelandic countryside, this film offers a striking fjord-like setting and explores familial relationships and survival.",
+        "streaming": [
+          "Amazon Prime Video"
+        ]
+      },
+      {
+        "title": "Tales from Earthsea",
+        "type": "movie",
+        "year": 2006,
+        "director": "Gorō Miyazaki",
+        "predictedRating": 3,
+        "actors": [
+          "Junichi Okada",
+          "Aoi Teshima",
+          "Bunta Sugawara"
+        ],
+        "plot": "A wandering wizard and a young prince fight to save their land from destruction as nature is thrown out of balance.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/y0VnJt4eRPMjA1hpJ8f1EFoVaSf.jpg",
+        "trailerKey": "8hxYx3Jq3kI",
+        "rtScore": "43%",
+        "reason": "The fantastical landscapes mirror the mystical and natural elements often found in fjord narratives, despite its mixed critical reception.",
+        "streaming": [
+          "HBO Max"
+        ]
+      },
+      {
+        "title": "Norsemen",
+        "type": "tv",
+        "year": 2016,
+        "director": "Jon Iver Helgaker",
+        "predictedRating": 4,
+        "actors": [
+          "Kåre Conradi",
+          "Nils Jørgen Kaalstad",
+          "Trond Fausa Aurvåg"
+        ],
+        "plot": "Comedy series set in 790s Norway, following a group of Vikings who face societal changes and challenges.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/t8DFExGVOnombczlJdJQL5y7IBF.jpg",
+        "trailerKey": "CjotYQPHSlA",
+        "rtScore": "71%",
+        "reason": "This series provides a humorous take on Viking life and Norse culture, offering a lighter approach to the historical and geographic themes you enjoy.",
+        "streaming": [
+          "Netflix"
+        ]
+      },
+      {
+        "title": "Finestkind",
+        "type": "movie",
+        "year": 2023,
+        "director": "Brian Helgeland",
+        "predictedRating": 3.5,
+        "actors": [
+          "Jenna Ortega",
+          "Tommy Lee Jones",
+          "Ben Foster"
+        ],
+        "plot": "Two brothers reunite after years apart and make a dangerous deal with a Boston crime syndicate that threatens their lives and those of their loved ones.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/90D6sXfbXKhDpd4S1cHICdAe8VD.jpg",
+        "trailerKey": "O8aPzwMl37g",
+        "rtScore": null,
+        "reason": "The film features a maritime setting and family dynamics, which could resonate with your desire for fjord-style narratives.",
+        "streaming": []
+      },
+      {
+        "title": "Trapped",
+        "type": "tv",
+        "year": 2015,
+        "director": "Ólafur Darri Ólafsson",
+        "predictedRating": 4.5,
+        "actors": [
+          "Ólafur Darri Ólafsson",
+          "Ilmur Kristjánsdóttir",
+          "Ingvar Eggert Sigurðsson"
+        ],
+        "plot": "A small-town police chief in Iceland investigates a murderer aboard a ferry that gets trapped in a blizzard.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/bTpSWcEqeTXH7Ipr2XUfGW36n02.jpg",
+        "trailerKey": "uUP5uNDV6DA",
+        "rtScore": "100%",
+        "reason": "This gripping Nordic noir series delivers on atmosphere and suspense, matching your interest in fjord settings and engaging narratives.",
+        "streaming": [
+          "Amazon Prime Video"
+        ]
+      },
+      {
+        "title": "The Oath",
+        "type": "movie",
+        "year": 2016,
+        "director": "Baltasar Kormákur",
+        "predictedRating": 3,
+        "actors": [
+          "Baltasar Kormákur",
+          "Hera Hilmar",
+          "Gísli Örn Garðarsson"
+        ],
+        "plot": "A respected surgeon resorts to drastic measures to protect his daughter from her dangerous boyfriend.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/t21ngzRZXfDq5WYBDfLtwHdJv68.jpg",
+        "trailerKey": "cF4GTyS0lFs",
+        "rtScore": "73%",
+        "reason": "This crime drama combines family tension with a dramatic Icelandic backdrop, aligning with your taste in atmospheric fjord cinema.",
+        "streaming": [
+          "Amazon Prime Video"
+        ]
+      },
+      {
+        "title": "Woman at War",
+        "type": "movie",
+        "year": 2018,
+        "director": "Benedikt Erlingsson",
+        "predictedRating": 4.5,
+        "actors": [
+          "Halldóra Geirharðsdóttir",
+          "Jóhann Sigurðarson",
+          "Jörundur Ragnarsson"
+        ],
+        "plot": "A middle-aged environmental activist declares war on the local aluminum industry to protect the Icelandic Highlands.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/9IwRoLxbYF1Vu1KxHt0aLbyeS5u.jpg",
+        "trailerKey": "U2v3_jHrvBQ",
+        "rtScore": "97%",
+        "reason": "This film balances humor and environmental activism against a beautiful Icelandic backdrop, proving an engaging, fjord-relevant narrative.",
+        "streaming": [
+          "Amazon Prime Video"
+        ]
+      }
+    ],
+    "movie-recs-prefetch-queue:f1514135-3e6f-4dde-a262-58065b1713a9": [
+      {
+        "title": "The Grand Budapest Hotel",
+        "type": "movie",
+        "year": 2014,
+        "director": "Wes Anderson",
+        "predictedRating": 3,
+        "actors": [
+          "Ralph Fiennes",
+          "F. Murray Abraham",
+          "Adrien Brody",
+          "Tony Revolori"
+        ],
+        "plot": "A legendary concierge at a famed European hotel becomes embroiled in a family feud over a priceless painting, framed for murder, and pursued by a fascist detective.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg",
+        "trailerKey": "G1jG8HUY4zI",
+        "rtScore": "92%",
+        "reason": "You appreciated Spirited Away's whimsical creativity and Casablanca's period charm, and this visually inventive comedy-drama offers a similarly stylish escape with a touch of melancholy.",
+        "streaming": [
+          "Hulu"
+        ],
+        "categories": [
+          "comedy",
+          "adventure",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Perfect Blue",
+        "type": "movie",
+        "year": 1998,
+        "director": "Satoshi Kon",
+        "predictedRating": 3,
+        "actors": [
+          "Junko Iwao",
+          "Rica Matsumoto",
+          "Shinpachi Tsuji"
+        ],
+        "plot": "A retired pop singer transitions to acting, but her new career blurs the line between reality and fantasy as she is stalked by a mysterious figure.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/6WTiOCfDPP8XV4jqfloiVWf7KHq.jpg",
+        "trailerKey": "RrWausp8zDQ",
+        "rtScore": "81%",
+        "reason": "You loved *Spirited Away*'s psychological depth and fantasy elements, and this psychological thriller anime delivers intense, dreamlike atmosphere and emotional complexity.",
+        "streaming": [
+          "Hulu"
+        ],
+        "categories": [
+          "psychological thriller",
+          "anime",
+          "fantasy"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Eternal Sunshine of the Spotless Mind",
+        "type": "movie",
+        "year": 2004,
+        "director": "Michel Gondry",
+        "predictedRating": 3,
+        "actors": [
+          "Jim Carrey",
+          "Kate Winslet",
+          "Tom Wilkinson",
+          "Kirsten Dunst"
+        ],
+        "plot": "A couple undergoes a procedure to erase each other from their memories, only to discover the pain of loss is tied to love itself.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/5MwkWH9tYHv3mV9OdYTMR5qreIz.jpg",
+        "trailerKey": "c2e-bj6qy8Y",
+        "rtScore": "92%",
+        "reason": "Your high rating for *Casablanca* shows you love emotionally resonant romance, and this sci-fi romance explores memory, regret, and connection with surreal visual style.",
+        "streaming": [
+          "Hulu"
+        ],
+        "categories": [
+          "romance",
+          "sci-fi",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Paprika",
+        "type": "movie",
+        "year": 2006,
+        "director": "Satoshi Kon",
+        "predictedRating": 3,
+        "actors": [
+          "Megumi Hayashibara",
+          "Tôru Furuya",
+          "Kôichi Yamadera"
+        ],
+        "plot": "A therapist uses a device to enter patients' dreams, but when it's stolen, the boundary between dream and reality collapses in surreal chaos.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/bLUUr474Go1DfeN1HLjE3rnZXBq.jpg",
+        "trailerKey": "a6avI9oPgnw",
+        "rtScore": "85%",
+        "reason": "Like *Spirited Away*, this anime is a visually stunning fantasy with psychological depth, tapping into your love for mind-bending, emotional stories.",
+        "streaming": [
+          "Hulu"
+        ],
+        "categories": [
+          "anime",
+          "fantasy",
+          "sci-fi"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Amélie",
+        "type": "movie",
+        "year": 2001,
+        "director": "Jean-Pierre Jeunet",
+        "predictedRating": 3,
+        "actors": [
+          "Audrey Tautou",
+          "Mathieu Kassovitz",
+          "Rufus",
+          "Claire Maurier"
+        ],
+        "plot": "A shy waitress in Paris secretly improves the lives of those around her, finding love and purpose in small acts of kindness.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/nSxDa3M9aMvGVLoItzWTepQ5h5d.jpg",
+        "trailerKey": "555A7T_kmIc",
+        "rtScore": "82%",
+        "reason": "Your appreciation for *Casablanca*'s romance and *Spirited Away*'s whimsy suggests you'll enjoy this charming, visually poetic tale of emotional connection.",
+        "streaming": [
+          "Hulu"
+        ],
+        "categories": [
+          "romance",
+          "comedy",
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Shape of Water",
+        "type": "movie",
+        "year": 2017,
+        "director": "Guillermo del Toro",
+        "predictedRating": 3,
+        "actors": [
+          "Sally Hawkins",
+          "Michael Shannon",
+          "Richard Jenkins",
+          "Octavia Spencer"
+        ],
+        "plot": "A mute cleaning woman at a government lab forms a unique bond with a humanoid amphibian creature, risking everything to save him from cruel experiments.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/9zfwPffUXpBrEP26yp0q1ckXDcj.jpg",
+        "trailerKey": "oRKnlUanptY",
+        "rtScore": "92%",
+        "reason": "You appreciate emotionally rich romances with a fantastical edge like Casablanca's devotion, and this fairy tale combines love, suspense, and beauty in a way that matches your taste.",
+        "streaming": [
+          "Hulu"
+        ],
+        "categories": [
+          "romance",
+          "fantasy",
+          "drama",
+          "thriller"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Portrait of a Lady on Fire",
+        "type": "movie",
+        "year": 2019,
+        "director": "Céline Sciamma",
+        "predictedRating": 3,
+        "actors": [
+          "Noémie Merlant",
+          "Adèle Haenel",
+          "Luàna Bajrami"
+        ],
+        "plot": "In 18th-century France, a painter is hired to secretly capture a young woman's portrait for a marriage proposal, leading to a passionate and forbidden romance.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/rUDuOKpkKBHxx41BScqKej72iT3.jpg",
+        "trailerKey": "R-fQPTwma9o",
+        "rtScore": "97%",
+        "reason": "You responded to Casablanca's tender romance but found In the Mood for Love middling; this slow-burn drama offers the emotional depth you like with a more restrained, artistic execution.",
+        "streaming": [
+          "Hulu"
+        ],
+        "categories": [
+          "romance",
+          "drama",
+          "historical",
+          "art"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The Silence of the Lambs",
+        "type": "movie",
+        "year": 1991,
+        "director": "Jonathan Demme",
+        "predictedRating": 3,
+        "actors": [
+          "Jodie Foster",
+          "Anthony Hopkins",
+          "Lawrence A. Bonney"
+        ],
+        "plot": "A young FBI trainee must consult a brilliant but cannibalistic psychiatrist to catch a serial killer who skins his victims.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/uS9m8OBk1A8eM9I042bx8XXpqAq.jpg",
+        "trailerKey": "6iB21hsprAQ",
+        "rtScore": "96%",
+        "reason": "Your appreciation for Parasite's tension and Memento's psychological complexity suggests you'll be drawn to this masterfully crafted thriller with deep character study.",
+        "streaming": [
+          "Hulu"
+        ],
+        "categories": [
+          "psychological thriller",
+          "crime",
+          "drama"
         ],
         "categoryPaths": []
       }

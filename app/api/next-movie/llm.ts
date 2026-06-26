@@ -1,3 +1,5 @@
+import { isCustomLlm, decodeCustomLlm } from "../../lib/customModel";
+
 export type CallLLMOptions = {
   maxTokens?: number;
   /** Semi-stable constraints (channel, media type) — second Claude cache breakpoint. */
@@ -50,6 +52,35 @@ export async function callLLM(
 ): Promise<string> {
   const maxTokens = opts?.maxTokens ?? 1024;
   const systemPromptContext = opts?.systemPromptContext;
+
+  // Bring your own model: any OpenAI-compatible /chat/completions endpoint.
+  if (isCustomLlm(llm)) {
+    const cfg = decodeCustomLlm(llm);
+    if (!cfg) {
+      throw new Error("Custom model is not configured — set a base URL and model name in Settings.");
+    }
+    const base = cfg.baseUrl.replace(/\/+$/, "");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (cfg.apiKey) headers.Authorization = `Bearer ${cfg.apiKey}`;
+    const res = await fetch(`${base}/chat/completions`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: cfg.model,
+        max_tokens: maxTokens,
+        messages: [
+          { role: "system", content: fullSystemPrompt(systemPrompt, systemPromptContext) },
+          { role: "user", content: userMessage },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      const e = await res.text().catch(() => "");
+      throw new Error(`Custom model ${res.status}: ${e.slice(0, 500)}`);
+    }
+    const d = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    return d.choices?.[0]?.message?.content?.trim() ?? "";
+  }
 
   if (llm === "deepseek") {
     const deepseekMax = Math.min(maxTokens, 8192);
@@ -132,25 +163,6 @@ export async function callLLM(
     };
     logCacheUsage("gpt-4o", d.usage);
     return d.choices?.[0]?.message?.content?.trim() ?? "";
-  }
-
-  if (llm === "gemini") {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: fullSystemPrompt(systemPrompt, systemPromptContext) }] },
-        contents: [{ role: "user", parts: [{ text: userMessage }] }],
-        generationConfig: { maxOutputTokens: maxTokens },
-      }),
-    });
-    if (!res.ok) {
-      const e = await res.json().catch(() => ({}));
-      throw new Error(`Gemini ${res.status}: ${JSON.stringify(e)}`);
-    }
-    const d = (await res.json()) as { candidates: { content: { parts: { text: string }[] } }[] };
-    return d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
   }
 
   throw new Error(`Unknown LLM: ${llm}`);

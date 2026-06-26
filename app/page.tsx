@@ -25,6 +25,8 @@ import {
   hasNoChannelsPersisted,
   isFactoryStarterPackFullyMerged,
   mergeFactoryChannelsAndQueues,
+  markFactoryChannelsDeleted,
+  clearDeletedFactoryChannels,
 } from "./lib/factoryChannels";
 import { canonicalTitleKey } from "./lib/canonicalTitleKey";
 import { filmWorkSearchTerm } from "./lib/filmWorkSearchTerm";
@@ -3311,6 +3313,7 @@ export default function Home() {
     }
     const id = ch.id;
     clearChannelPersistedData(id);
+    markFactoryChannelsDeleted([id]);
     const next = normalizeChannelList(channels.filter((c) => c.id !== id)).map(normalizeChannel);
     localStorage.setItem(CHANNELS_KEY, JSON.stringify(next));
     setChannels(next);
@@ -3325,6 +3328,7 @@ export default function Home() {
   }, [channelPendingDelete, channels, activeChannelId]);
 
   const loadStarterChannelsFromFactory = useCallback(() => {
+    clearDeletedFactoryChannels();
     mergeFactoryChannelsAndQueues();
     try {
       const raw = localStorage.getItem(CHANNELS_KEY);

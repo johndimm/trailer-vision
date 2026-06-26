@@ -67,6 +67,8 @@ localStorage keys — no accounts, no server database, no ads.
 
 ### Key env vars
 See the full list at the bottom of `/prompt`. Most important: `DEEPSEEK_API_KEY` (default LLM,
-plus optional `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GEMINI_API_KEY`), `TMDB_API_KEY` (posters,
+plus optional `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`), `TMDB_API_KEY` (posters,
 trailers, Coming Soon, Constellations credits), `NEXT_PUBLIC_APP_URL` (same-origin Constellations
-proxy base), and `CONSTELLATIONS_EXTERNAL_URL` (upstream graph backend).
+proxy base), and `CONSTELLATIONS_EXTERNAL_URL` (upstream graph backend). No env var is needed to
+bring your own model — supply a base URL, model name, and key in Settings (any OpenAI-compatible
+endpoint, including a local server).

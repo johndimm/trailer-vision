@@ -3,7 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { applyFactoryBootstrap, hasNoChannelsPersisted } from "../lib/factoryChannels";
+import {
+  applyFactoryBootstrap,
+  hasNoChannelsPersisted,
+  markFactoryChannelsDeleted,
+  clearDeletedFactoryChannels,
+} from "../lib/factoryChannels";
 import { NEW_CHANNEL_PREFILL_KEY } from "../lib/channelFromPrompt";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import ChannelEditorForm from "../components/ChannelEditorForm";
@@ -150,6 +155,7 @@ export default function ChannelsPage() {
     const active = localStorage.getItem(ACTIVE_CHANNEL_KEY);
     if (active === id) localStorage.removeItem(ACTIVE_CHANNEL_KEY);
     clearChannelPersistedData(id);
+    markFactoryChannelsDeleted([id]);
     const next = channels.filter((c) => c.id !== id);
     saveChannels(next);
     setSelectedId(next.length > 0 ? next[0].id : null);
@@ -159,6 +165,7 @@ export default function ChannelsPage() {
   const deleteSelected = () => {
     const ids = [...checkedIds];
     clearChannelsPersistedData(ids);
+    markFactoryChannelsDeleted(ids);
     const active = localStorage.getItem(ACTIVE_CHANNEL_KEY);
     if (active && checkedIds.has(active)) localStorage.removeItem(ACTIVE_CHANNEL_KEY);
     const next = deleteChannelsByIds(channels, ids);
@@ -222,6 +229,7 @@ export default function ChannelsPage() {
   }, []);
 
   const loadStarterChannels = useCallback(() => {
+    clearDeletedFactoryChannels();
     applyFactoryBootstrap();
     setShowNew(false);
     reloadChannelsFromStorage();

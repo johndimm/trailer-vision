@@ -2,6 +2,61 @@ import factoryJson from "../../factory-channels.json";
 import { isPrefetchQueueStorageKey } from "./storageKeys";
 
 const CHANNELS_KEY = "movie-recs-channels";
+/** Ids of bundled channels the user has explicitly deleted, so we never re-add them on load. */
+const DELETED_FACTORY_KEY = "movie-recs-deleted-factory-channels";
+
+/** Ids shipped in the factory starter pack (excluding the All channel). */
+function factoryChannelIds(): Set<string> {
+  const data = factoryJson.data;
+  if (!data || typeof data !== "object") return new Set();
+  const channels = parseChannels((data as Record<string, unknown>)[CHANNELS_KEY]);
+  return new Set(channels.filter((c) => c.id !== "all").map((c) => c.id));
+}
+
+export function isFactoryChannelId(id: string): boolean {
+  return factoryChannelIds().has(id);
+}
+
+function readDeletedFactoryIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_FACTORY_KEY);
+    const list = raw ? (JSON.parse(raw) as unknown) : [];
+    return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/** Forget all recorded deletions (e.g. when the user explicitly reloads the starter pack). */
+export function clearDeletedFactoryChannels(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(DELETED_FACTORY_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Record that the given channel ids were deleted (only factory ids are remembered). */
+export function markFactoryChannelsDeleted(ids: Iterable<string>): void {
+  if (typeof window === "undefined") return;
+  const factory = factoryChannelIds();
+  const deleted = readDeletedFactoryIds();
+  let changed = false;
+  for (const id of ids) {
+    if (factory.has(id) && !deleted.has(id)) {
+      deleted.add(id);
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  try {
+    localStorage.setItem(DELETED_FACTORY_KEY, JSON.stringify([...deleted]));
+  } catch {
+    /* ignore */
+  }
+}
 
 const DEFAULT_ALL = {
   id: "all",
@@ -67,9 +122,15 @@ function computeFactoryMergePlan(): FactoryMergePlan | null {
   const allRow = existing.find((c) => c.id === "all") ?? DEFAULT_ALL;
   const nonAllExisting = existing.filter((c) => c.id !== "all");
   const existingIds = new Set(nonAllExisting.map((c) => c.id));
+  const deletedIds = readDeletedFactoryIds();
 
   const toAdd = factoryChannels.filter(
-    (c) => c.id !== "all" && typeof c.name === "string" && c.name.trim() && !existingIds.has(c.id),
+    (c) =>
+      c.id !== "all" &&
+      typeof c.name === "string" &&
+      c.name.trim() &&
+      !existingIds.has(c.id) &&
+      !deletedIds.has(c.id),
   );
 
   const merged = [allRow, ...nonAllExisting, ...toAdd];

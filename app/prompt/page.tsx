@@ -23,8 +23,9 @@ window over recent decisions, not a lifetime average.
 
 When something lands on my watchlist, look up streaming services (US) when possible.
 
-Pick an LLM (DeepSeek, Claude, GPT-4o, Gemini) if I have keys. Recommendations should be
-based on content similarity as judged by the model, not collaborative filtering.
+Pick an LLM (DeepSeek, Claude, GPT-4o) if I have keys, or bring my own — any OpenAI-compatible
+endpoint (base URL + model + key), including a local model. Recommendations should be based on
+content similarity as judged by the model, not collaborative filtering.
 
 Multiple taste channels with per-channel prefetch queues — same title can have different
 ratings per channel. Each channel sets its own format (movies / TV / both), genres, era,
@@ -72,7 +73,7 @@ Request body:
 - tasteSummary?: string — the running taste profile (used as primary signal context)
 - userRequest?: string — free-text user request appended to system prompt as a hard steer
 - mediaType: "movie" | "tv" | "both"
-- llm: "deepseek" | "claude" | "gpt-4o" | "gemini"
+- llm: "deepseek" | "claude" | "gpt-4o" | "custom:<base64 config>" (bring your own, OpenAI-compatible)
 - count?: number (default 5, max 8)
 
 RatingEntry stores { title, type, userRating, predictedRating, error, rtScore? }.
@@ -306,9 +307,17 @@ user can watch hands-free; pairs well with Fullscreen.
 
 LLM choice and a Global request (free-text steer applied to every recommendation) live on the
 Settings page. The LLM list is populated from GET /api/config which checks which of
-DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY exist in env and returns
+DEEPSEEK_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY exist in env and returns
 { llms: [{ id, label }] }. When the global request value changes, flush the prefetch queue
 (debounced 600ms) so upcoming cards come from a batch that knew about it.
+
+**Bring your own model:** Settings also offers a "Custom" option — base URL, model name, and an
+optional API key for any OpenAI-compatible /chat/completions endpoint (OpenRouter, Together, Groq,
+a local Ollama / LM Studio server…). The config is encoded into the "llm" value itself
+("custom:" + base64 JSON via app/lib/customModel.ts), so it flows through every existing API route
+that already forwards "llm" to callLLM — no route needs a new parameter. The key lives only in the
+browser's settings and is forwarded solely to the user's endpoint. callLLM detects the prefix,
+decodes, and POSTs an OpenAI-style chat completion.
 
 The Global request value is read from a ref (userRequestRef) at fetch time so background
 replenish calls always use the latest text, and is appended to the system prompt as a hard steer.
@@ -346,14 +355,16 @@ Called when a title is saved to the watchlist (blue 4–5★ or bulk add from Ch
 ## Shared LLM caller  app/api/next-movie/llm.ts
 export async function callLLM(llm, systemPrompt, userMessage): Promise<string>
 Handles: deepseek (deepseek-chat), claude (claude-opus-4-6, anthropic-version header),
-gpt-4o (openai), gemini (gemini-2.0-flash, key in query string).
+gpt-4o (openai), and custom:* (bring your own — decodes the config and POSTs to the user's
+OpenAI-compatible {baseUrl}/chat/completions with an optional Bearer key). The custom branch is
+checked first via isCustomLlm(); unknown ids throw.
 
 Split the prompt into a stable systemPrompt (instructions, format rules, media constraint)
 and a per-request userMessage (rating history + excluded titles list). This enables
 Anthropic prompt caching: add header "anthropic-beta: prompt-caching-2024-07-31" and
 wrap the system prompt as { type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }.
-OpenAI automatically caches prompt prefixes ≥1024 tokens. Gemini uses the systemInstruction
-field. DeepSeek uses the standard system/user message array.
+OpenAI automatically caches prompt prefixes ≥1024 tokens. DeepSeek and custom OpenAI-compatible
+endpoints use the standard system/user message array.
 
 ## Coming Soon channel  POST /api/upcoming
 TMDB-backed feed for genuinely new/upcoming titles (no LLM). Request body:
@@ -406,13 +417,14 @@ movie-recs-taste-summary  — string (LLM-generated taste profile, second person
 movie-recs-llm-session-id — UUID for server-side history session
 movie-recs-llm-history-synced — number of ratings confirmed synced to server
 movie-recs-settings       — { llm, displayMode, autoAdvance, userRequest, mediaType(legacy) }
+                            (llm may be a "custom:<base64>" bring-your-own-model config)
 movie-recs-channels       — MovieChannel[]; movie-recs-active-channel — active channel id
 
 ## Required env vars
 DEEPSEEK_API_KEY       — DeepSeek (default LLM)
 ANTHROPIC_API_KEY      — Claude (optional)
 OPENAI_API_KEY         — GPT-4o (optional)
-GEMINI_API_KEY         — Gemini (optional)
+(Bring-your-own-model needs no env var — the user supplies base URL + model + key in Settings.)
 TMDB_API_KEY           — TMDB posters, trailers, Coming Soon feed, Constellations credits (recommended)
 SERPER_API_KEY         — Serper Images fallback for posters (optional)
 NEXT_MOVIE_LOG_LLM_PROMPTS — set to "1" to log full prompts to server console (debug only)

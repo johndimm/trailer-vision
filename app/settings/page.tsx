@@ -11,6 +11,7 @@ import {
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { mergeFactoryChannelsAndQueues } from "../lib/factoryChannels";
 import { normalizeChannelList } from "../lib/channelBulkActions";
+import { isCustomLlm, decodeCustomLlm, encodeCustomLlm } from "../lib/customModel";
 
 export const SETTINGS_KEY = "movie-recs-settings";
 
@@ -38,10 +39,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const LLM_OPTIONS: { value: string; label: string; sub: string }[] = [
-  { value: "anthropic", label: "Claude", sub: "Anthropic" },
-  { value: "openai", label: "GPT-4o", sub: "OpenAI" },
   { value: "deepseek", label: "DeepSeek", sub: "DeepSeek" },
-  { value: "gemini", label: "Gemini", sub: "Google" },
+  { value: "claude", label: "Claude", sub: "Anthropic" },
+  { value: "gpt-4o", label: "GPT-4o", sub: "OpenAI" },
 ];
 
 const DATA_KEYS = [
@@ -104,6 +104,11 @@ export default function SettingsPage() {
   const [importDialog, setImportDialog] = useState<{ count: number; apply: () => void } | null>(null);
   const [confirm, setConfirm] = useState<"remove-all" | "clear-history" | null>(null);
   const [factoryMergeNote, setFactoryMergeNote] = useState<string | null>(null);
+  // Lazily seed the custom-model fields from any previously saved config (safe under the
+  // `mounted` render gate below, which prevents an SSR/client hydration mismatch).
+  const [customBaseUrl, setCustomBaseUrl] = useState(() => decodeCustomLlm(loadSettings().llm)?.baseUrl ?? "");
+  const [customModelName, setCustomModelName] = useState(() => decodeCustomLlm(loadSettings().llm)?.model ?? "");
+  const [customApiKey, setCustomApiKey] = useState(() => decodeCustomLlm(loadSettings().llm)?.apiKey ?? "");
 
   const refreshFromStorage = useCallback(() => {
     setSettings(loadSettings());
@@ -134,6 +139,23 @@ export default function SettingsPage() {
   const patchSettings = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     writeSettings({ [key]: value });
+  };
+
+  const customActive = isCustomLlm(settings.llm);
+
+  // Save the custom endpoint into settings.llm (encoded); selecting "Custom" also routes here.
+  const applyCustom = (baseUrl: string, model: string, apiKey: string) => {
+    patchSettings("llm", encodeCustomLlm({ baseUrl, model, apiKey }));
+  };
+
+  const updateCustomField = (patch: { baseUrl?: string; model?: string; apiKey?: string }) => {
+    const baseUrl = patch.baseUrl ?? customBaseUrl;
+    const model = patch.model ?? customModelName;
+    const apiKey = patch.apiKey ?? customApiKey;
+    if (patch.baseUrl !== undefined) setCustomBaseUrl(patch.baseUrl);
+    if (patch.model !== undefined) setCustomModelName(patch.model);
+    if (patch.apiKey !== undefined) setCustomApiKey(patch.apiKey);
+    if (customActive) applyCustom(baseUrl, model, apiKey);
   };
 
   const runExport = () => {
@@ -216,7 +238,64 @@ export default function SettingsPage() {
                   ) : null}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => applyCustom(customBaseUrl, customModelName, customApiKey)}
+                className={`px-4 py-2 rounded-lg border text-sm transition-colors ${pillClass(customActive)}`}
+              >
+                Custom
+                <span className="ml-1.5 text-xs opacity-60">Bring your own</span>
+              </button>
             </div>
+
+            {customActive && (
+              <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4">
+                <p className="text-xs text-zinc-500">
+                  Any OpenAI-compatible <code className="text-zinc-700">/chat/completions</code> endpoint —
+                  OpenRouter, Together, Groq, Fireworks, or a local Ollama / LM Studio server. Your key
+                  is stored only in this browser and is sent solely with your own requests.
+                </p>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-zinc-600">Base URL</span>
+                  <input
+                    type="text"
+                    value={customBaseUrl}
+                    onChange={(e) => updateCustomField({ baseUrl: e.target.value })}
+                    placeholder="https://openrouter.ai/api/v1"
+                    spellCheck={false}
+                    autoComplete="off"
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-black placeholder-zinc-400 focus:outline-none focus:border-zinc-500"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-zinc-600">Model</span>
+                  <input
+                    type="text"
+                    value={customModelName}
+                    onChange={(e) => updateCustomField({ model: e.target.value })}
+                    placeholder="meta-llama/llama-3.3-70b-instruct"
+                    spellCheck={false}
+                    autoComplete="off"
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-black placeholder-zinc-400 focus:outline-none focus:border-zinc-500"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-zinc-600">API key <span className="opacity-60">(optional for local servers)</span></span>
+                  <input
+                    type="password"
+                    value={customApiKey}
+                    onChange={(e) => updateCustomField({ apiKey: e.target.value })}
+                    placeholder="sk-…"
+                    spellCheck={false}
+                    autoComplete="off"
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-black placeholder-zinc-400 focus:outline-none focus:border-zinc-500"
+                  />
+                </label>
+                {(!customBaseUrl.trim() || !customModelName.trim()) && (
+                  <p className="text-xs text-amber-600">Enter a base URL and model name to use your custom model.</p>
+                )}
+              </div>
+            )}
           </section>
 
           {/* Global instructions */}
