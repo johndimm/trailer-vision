@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": "2026-06-26T05:46:03.240Z",
+  "exportedAt": "2026-06-26T17:06:30.529Z",
   "options": {
     "channels": true,
     "queue": true,
@@ -74,20 +74,6 @@
         "language": "",
         "artists": "",
         "freeText": "",
-        "popularity": 50
-      },
-      {
-        "id": "94121476-7967-4ec8-8555-d414a8a2bf72",
-        "name": "Euphoria",
-        "mediums": [
-          "tv"
-        ],
-        "genres": [],
-        "timePeriods": [],
-        "streaming": [],
-        "language": "",
-        "artists": "Sam Levinson, Zendaya, Hunter Schafer, Jacob Elordi, Sydney Sweeney",
-        "freeText": "Channel inspired by: \"Euphoria\" (TV series, 2019).\nFind similar movies and shows.\n\nA raw, stylized look at the lives of high school students grappling with addiction, love, and identity in a modern, hyper-connected world.",
         "popularity": 50
       },
       {
@@ -171,6 +157,18 @@
         "streaming": []
       },
       {
+        "id": "34b59d12-434b-4fe6-891c-694fbbfa305d",
+        "name": "Marvel",
+        "mediums": [],
+        "genres": [],
+        "timePeriods": [],
+        "streaming": [],
+        "language": "",
+        "artists": "",
+        "freeText": "Movies from Marvel Studios",
+        "popularity": 50
+      },
+      {
         "id": "fac14c9f-6a29-4e58-9905-bd78ae8903be",
         "name": "Netflix",
         "mediums": [],
@@ -250,7 +248,7 @@
         "streaming": []
       }
     ],
-    "movie-recs-active-channel": "1b90b4b2-25c9-43c1-9f2e-bba10e4a480b",
+    "movie-recs-active-channel": "32183611-7b02-4701-b0e4-77dc20e7b84c",
     "movie-recs-prefetch-queue:03cdd4a4-df42-4306-aceb-6350980e4846": [
       {
         "title": "The Wind Rises",
@@ -802,48 +800,6 @@
     ],
     "movie-recs-prefetch-queue:1b90b4b2-25c9-43c1-9f2e-bba10e4a480b": [
       {
-        "title": "Un homme et une femme",
-        "type": "movie",
-        "year": 1966,
-        "director": "Claude Lelouch",
-        "predictedRating": 4,
-        "actors": [
-          "Anouk Aimée",
-          "Jean-Louis Trintignant",
-          "Pierre Barouh",
-          "Valérie Lagrange"
-        ],
-        "plot": "A widow and widower meet at their children's boarding school and slowly fall in love, haunted by their pasts.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/boDZQiubhyhksN8fcgM4sXZ2btW.jpg",
-        "trailerKey": "_F7guhRPmOQ",
-        "rtScore": "84%",
-        "reason": "This tender, popular romance is a mainstream counterpoint to avant-garde picks, probing your range within the channel.",
-        "streaming": [
-          "Amazon Prime Video"
-        ]
-      },
-      {
-        "title": "Pierrot le Fou",
-        "type": "movie",
-        "year": 1965,
-        "director": "Jean-Luc Godard",
-        "predictedRating": 3.5,
-        "actors": [
-          "Jean-Paul Belmondo",
-          "Anna Karina",
-          "Graziella Galvani"
-        ],
-        "plot": "A bored man escapes his bourgeois life with a femme fatale, embarking on a violent and surreal road trip across France, blending pop culture and philosophy.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/i124H6iQB4CawrgFW9aZaZs7OBO.jpg",
-        "trailerKey": "TVvhJrrgfs0",
-        "rtScore": "83%",
-        "reason": "A wild, genre-bending thriller that might challenge your taste with its chaotic narrative and bold visuals.",
-        "streaming": [
-          "Max",
-          "Criterion Channel"
-        ]
-      },
-      {
         "title": "Belle de Jour",
         "type": "movie",
         "year": 1967,
@@ -960,26 +916,88 @@
           "crime"
         ],
         "categoryPaths": []
+      },
+      {
+        "title": "Breathless",
+        "type": "movie",
+        "year": 1960,
+        "director": "Jean-Luc Godard",
+        "predictedRating": 3,
+        "actors": [
+          "Jean-Paul Belmondo",
+          "Jean Seberg",
+          "Daniel Boulanger"
+        ],
+        "plot": "A young car thief and his American girlfriend go on the run after he kills a police officer, blending crime and romance with jump cuts and existential cool.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/9Wx0Wdn2EOqeCZU4SP6tlS3LOml.jpg",
+        "trailerKey": "UoICuMPOWrk",
+        "rtScore": "93%",
+        "reason": "You love Nouvelle Vague thrillers, and Godard's anarchic debut is a must-see cornerstone of the movement.",
+        "streaming": [
+          "Max",
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "thriller",
+          "drama",
+          "romance"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "The 400 Blows",
+        "type": "movie",
+        "year": 1959,
+        "director": "François Truffaut",
+        "predictedRating": 3,
+        "actors": [
+          "Jean-Pierre Léaud",
+          "Claire Maurier",
+          "Albert Rémy"
+        ],
+        "plot": "A misunderstood Parisian boy finds solace in cinema and petty mischief, leading to a poignant escape from a stifling home life.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/12PuU23kkDLvTd0nb8hMlE3oShB.jpg",
+        "trailerKey": "ICGZfU-9Yl0",
+        "rtScore": "97%",
+        "reason": "You connect with Truffaut's tender, autobiographical coming-of-age story that launched Nouvelle Vague.",
+        "streaming": [
+          "Max",
+          "Amazon Prime Video"
+        ],
+        "categories": [
+          "drama"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Jules et Jim",
+        "type": "movie",
+        "year": 2008,
+        "director": "François Truffaut",
+        "predictedRating": 3,
+        "actors": [
+          "Jeanne Moreau",
+          "Oskar Werner",
+          "Henri Serre"
+        ],
+        "plot": "A love triangle between two men and a free-spirited woman over several decades, exploring passion, loyalty, and the fluidity of relationships.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/vktpnyXkZorhzCSFgOQszj62iva.jpg",
+        "trailerKey": "X9OzdWczCfQ",
+        "rtScore": "90%",
+        "reason": "As a quintessential New Wave romance-drama featuring Jeanne Moreau's iconic performance, it captures the stylistic and emotional audacity you admire in 1960s French cinema.",
+        "streaming": [
+          "Amazon Prime Video",
+          "Tubi"
+        ],
+        "categories": [
+          "drama",
+          "romance",
+          "period piece"
+        ],
+        "categoryPaths": []
       }
     ],
     "movie-recs-prefetch-queue:32183611-7b02-4701-b0e4-77dc20e7b84c": [
-      {
-        "title": "Angel Face",
-        "type": "movie",
-        "year": 1953,
-        "director": "Otto Preminger",
-        "predictedRating": 3.5,
-        "actors": [
-          "Robert Mitchum",
-          "Jean Simmons",
-          "Mona Freeman"
-        ],
-        "plot": "A wealthy woman's daughter becomes the prime suspect in a murder plot when her romantic involvement with a chauffeur leads to a deadly outcome.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/c4wrCYEgEtLXxoyEZf4pBl6XD4V.jpg",
-        "trailerKey": "da4jHmpKFU0",
-        "rtScore": "89%",
-        "reason": "You value movies directed by Preminger, and Mitchum's inclusion aligns with your interest in actors from this period."
-      },
       {
         "title": "The Harder They Fall",
         "type": "movie",
@@ -1137,6 +1155,259 @@
           "drama",
           "film noir",
           "thriller"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Night of the Hunter",
+        "type": "movie",
+        "year": 1955,
+        "director": "Charles Laughton",
+        "predictedRating": 3,
+        "actors": [
+          "Robert Mitchum",
+          "Shelley Winters",
+          "Lillian Gish",
+          "James Gleason"
+        ],
+        "plot": "A sinister preacher pursues two children who know the hiding place of a stolen fortune, blending expressionist visuals with stark tension.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/rBka0nFWiHxabHRLr0KfIA8Yiaq.jpg",
+        "trailerKey": "GAxs6tChiKo",
+        "rtScore": "93%",
+        "reason": "You’re drawn to Robert Mitchum’s chilling performance, a key actor in your preferences, and this film’s offbeat noir style.",
+        "streaming": [
+          "Amazon Prime Video",
+          "Tubi",
+          "Pluto TV"
+        ],
+        "categories": [
+          "thriller",
+          "drama",
+          "film noir"
+        ],
+        "categoryPaths": []
+      }
+    ],
+    "movie-recs-prefetch-queue:34b59d12-434b-4fe6-891c-694fbbfa305d": [
+      {
+        "title": "Spider-Man: Homecoming",
+        "type": "movie",
+        "year": 2017,
+        "director": "Jon Watts",
+        "predictedRating": 3,
+        "actors": [
+          "Tom Holland",
+          "Michael Keaton",
+          "Zendaya",
+          "Robert Downey Jr."
+        ],
+        "plot": "A young Peter Parker balances high school life with his duties as Spider-Man, facing the Vulture.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/c24sv2weTHPsmDa7jEMN0m2P3RT.jpg",
+        "trailerKey": "xEvV3OsE2WM",
+        "rtScore": "92%",
+        "reason": "This fresh take on Spider-Man brings youthful energy and heartfelt stakes, exactly what Marvel fans crave.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "superhero",
+          "action",
+          "coming-of-age",
+          "comedy"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Guardians of the Galaxy",
+        "type": "movie",
+        "year": 2014,
+        "director": "James Gunn",
+        "predictedRating": 3,
+        "actors": [
+          "Chris Pratt",
+          "Zoe Saldana",
+          "Dave Bautista",
+          "Bradley Cooper"
+        ],
+        "plot": "A ragtag group of intergalactic misfits must unite to stop a fanatical villain from destroying the galaxy.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/r7vmZjiyZw9rpJMQJdXpjgiCOk9.jpg",
+        "trailerKey": "3CqymRQ1uUU",
+        "rtScore": "92%",
+        "reason": "Its offbeat humor and killer soundtrack make it a beloved Marvel hit that redefines cosmic adventure.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "superhero",
+          "sci-fi",
+          "comedy",
+          "adventure"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Doctor Strange",
+        "type": "movie",
+        "year": 2016,
+        "director": "Scott Derrickson",
+        "predictedRating": 3,
+        "actors": [
+          "Benedict Cumberbatch",
+          "Chiwetel Ejiofor",
+          "Tilda Swinton",
+          "Rachel McAdams"
+        ],
+        "plot": "After a horrific accident, a brilliant neurosurgeon discovers the mystical arts and battles a dark sorcerer.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/xf8PbyQcR5ucXErmZNzdKR0s8ya.jpg",
+        "trailerKey": "HSzx-zryEgM",
+        "rtScore": "89%",
+        "reason": "Trippy visuals and mind-bending magic elevate this origin story, a perfect pick for Marvel enthusiasts.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "superhero",
+          "fantasy",
+          "action",
+          "sci-fi"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Spider-Man: Into the Spider-Verse",
+        "type": "movie",
+        "year": 2018,
+        "director": "Peter Ramsey, Bob Persichetti, Rodney Rothman",
+        "predictedRating": 3,
+        "actors": [
+          "Shameik Moore",
+          "Jake Johnson",
+          "Hailee Steinfeld",
+          "Mahershala Ali"
+        ],
+        "plot": "Teenager Miles Morales becomes the Spider-Man of his universe and must team with other Spider-People from across the multiverse to save all realities.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/iiZZdoQBEYBv6id8su7ImL0oCbD.jpg",
+        "trailerKey": "tg52up16eq0",
+        "rtScore": "97%",
+        "reason": "This visually groundbreaking animated film from Marvel (Sony/Marvel partnership) is a fan-favorite with a unique style and heartfelt story you'll appreciate as a Marvel enthusiast.",
+        "streaming": [
+          "Netflix"
+        ],
+        "categories": [
+          "animation",
+          "action",
+          "adventure",
+          "comedy"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Captain America: The Winter Soldier",
+        "type": "movie",
+        "year": 2014,
+        "director": null,
+        "predictedRating": 3,
+        "actors": [
+          "Chris Evans",
+          "Scarlett Johansson",
+          "Sebastian Stan",
+          "Anthony Mackie"
+        ],
+        "plot": "Steve Rogers, now working for S.H.I.E.L.D., uncovers a deep conspiracy within the agency and faces the mysterious Winter Soldier, a deadly assassin from his past.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/tVFRpFw3xTedgPGqxW0AOI8Qhh0.jpg",
+        "trailerKey": "7SlILk2WMTI",
+        "rtScore": "90%",
+        "reason": "This Marvel Studios political thriller is widely praised for its taut story and character development, a must-see that matches your preference for the best of the MCU.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "action",
+          "thriller",
+          "sci-fi"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Shang-Chi and the Legend of the Ten Rings",
+        "type": "movie",
+        "year": 2021,
+        "director": "Destin Daniel Cretton",
+        "predictedRating": 3,
+        "actors": [
+          "Simu Liu",
+          "Awkwafina",
+          "Tony Leung",
+          "Meng'er Zhang"
+        ],
+        "plot": "Martial arts master Shang-Chi must confront his past when he is drawn into the web of the mysterious Ten Rings organization.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/9f2Q0U3IOsLgrI2HkvldwSABZy5.jpg",
+        "trailerKey": "8YjFbMbfXaQ",
+        "rtScore": "91%",
+        "reason": "This Marvel Studios entry delivers stunning martial arts choreography and a deeply personal story, perfectly matching the channel's demand for diverse, action-packed superhero fare.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "marvel",
+          "superhero",
+          "action",
+          "martial arts"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Iron Man",
+        "type": "movie",
+        "year": 2008,
+        "director": "Jon Favreau",
+        "predictedRating": 3,
+        "actors": [
+          "Robert Downey Jr.",
+          "Gwyneth Paltrow",
+          "Jeff Bridges",
+          "Terrence Howard"
+        ],
+        "plot": "A billionaire industrialist and genius inventor is kidnapped and forced to build a devastating weapon, instead building a high-tech suit of armor and using it to fight evil.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/78lPtwv72eTNqFW9COBYI0dWDJa.jpg",
+        "trailerKey": "8ugaeA-nMTc",
+        "rtScore": "94%",
+        "reason": "You respond to the origin story that launched the Marvel Cinematic Universe, blending wit, character development, and blockbuster action.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "superhero",
+          "action",
+          "sci-fi"
+        ],
+        "categoryPaths": []
+      },
+      {
+        "title": "Black Panther",
+        "type": "movie",
+        "year": 2018,
+        "director": "Ryan Coogler",
+        "predictedRating": 3,
+        "actors": [
+          "Chadwick Boseman",
+          "Michael B. Jordan",
+          "Lupita Nyong'o",
+          "Danai Gurira"
+        ],
+        "plot": "T'Challa returns to the hidden African nation of Wakanda to take his rightful place as king, but a powerful old enemy threatens his reign and the world.",
+        "posterUrl": "https://image.tmdb.org/t/p/w500/uxzzxijgPIY7slzFvMotPv8wjKA.jpg",
+        "trailerKey": "xjDjIWPwcPU",
+        "rtScore": "96%",
+        "reason": "This Marvel Studios masterpiece sets itself apart with deep cultural resonance and a compelling villain, exactly the kind of standout film you'd appreciate.",
+        "streaming": [
+          "Disney+"
+        ],
+        "categories": [
+          "superhero",
+          "action",
+          "drama",
+          "afrofuturism"
         ],
         "categoryPaths": []
       }
@@ -1965,367 +2236,6 @@
           "sci-fi",
           "drama",
           "adventure"
-        ],
-        "categoryPaths": []
-      }
-    ],
-    "movie-recs-prefetch-queue:94121476-7967-4ec8-8555-d414a8a2bf72": [
-      {
-        "title": "Euphoria",
-        "type": "movie",
-        "year": 2026,
-        "director": "Gunasekhar",
-        "actors": [
-          "Sara Arjun",
-          "Gautham Vasudev Menon",
-          "Naveena Reddy",
-          "Ravi Prakash",
-          "Rajsekhar Aningi"
-        ],
-        "plot": "A young woman and her family seek justice after she is raped by a group of young men who come from powerful and influential backgrounds.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/8URM569W1ETAeGd33CPkrc6KF1O.jpg",
-        "trailerKey": null,
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Euphoria",
-        "type": "movie",
-        "year": 2018,
-        "director": "Lisa Langseth",
-        "actors": [
-          "Alicia Vikander",
-          "Eva Green",
-          "Charlotte Rampling",
-          "Charles Dance",
-          "Adrian Lester"
-        ],
-        "plot": "The story of two sisters on a journey, where they try to get close to each other and approach the tough questions in life. Euphoria is a contemporary drama about responsibility and reconciliation, in a world where these concepts are gradually being lost.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/Anw3eLdNVRXafpYktwRzAGd6sPW.jpg",
-        "trailerKey": "zlZHvEBfEYk",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Euphoria",
-        "type": "tv",
-        "year": 2012,
-        "director": "Daphna Levin",
-        "actors": [
-          "Roni Daloomi",
-          "Uriel Geta",
-          "Roy Nik",
-          "Kosta Kaplan",
-          "Dekel Adin"
-        ],
-        "plot": "A sexy, troubling, and bold profile of the teens of the nineties, within a raging drama going on behind teenagers’ closed doors.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/gGondS40q7M6RjhHZQM9mK2NDps.jpg",
-        "trailerKey": "hE_kOtZeI00",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Euphoria",
-        "type": "movie",
-        "year": 2022,
-        "director": "Julian Rosefeldt",
-        "actors": [
-          "Giancarlo Esposito",
-          "Virginia Newcomb",
-          "Ayesha Jordan",
-          "Kate Strong",
-          "Jeff Wood"
-        ],
-        "plot": "Artist and filmmaker Julian Rosefeldt creates elaborately staged films that investigate the power of language and the conventions of cinema as an allegory for societal and individual behaviors. With the multi-channel film installation Euphoria he continues this examination by exploring capitalism, colonialism, and the influential effects of unlimited economic growth in society.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/xvIZd7D8QBBirIfTv3fwh2DyRht.jpg",
-        "trailerKey": "K2Gz3uBy3wQ",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Schiller - Euphoria",
-        "type": "movie",
-        "year": 2026,
-        "director": null,
-        "actors": [],
-        "plot": "",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/hRBNbqe7TPsqw7hQCQ1DY96BeHH.jpg",
-        "trailerKey": null,
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Euphoria",
-        "type": "movie",
-        "year": 2018,
-        "director": "Valeria Golino",
-        "actors": [
-          "Riccardo Scamarcio",
-          "Valerio Mastandrea",
-          "Isabella Ferrari",
-          "Valentina Cervi",
-          "Jasmine Trinca"
-        ],
-        "plot": "Matteo is a young successful businessman, audacious, charming and energetic. Ettore instead, is a calm, righteous, second grade teacher always living in the shadows, still in the small town from where both come from. They’re brothers but with two very different personalities. A dramatic event will force them to live together in Rome for a few months, bringing up the opportunity to face their differences with sympathy and tenderness, in a climax of fear and euphoria.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/mRKr08cLd43CnwHCAuFKCq7XtDu.jpg",
-        "trailerKey": "QKTkIPP5vmI",
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "Euphoria",
-        "type": "movie",
-        "year": 2006,
-        "director": "Ivan Vyrypaev",
-        "actors": [
-          "Polina Agureeva",
-          "Maksim Ushakov",
-          "Mikhail Okunev",
-          "Yaroslavna Serova",
-          "Vitali Romanyuk"
-        ],
-        "plot": "They saw each other only once. At a wedding with lots of alcohol. Their eyes met and that was it. They didn't understand rationally what happened to them but they felt that they cannot keep living and breathing without each other. Cosmic magnetism with irresistible intensity pulled them together. They no longer belonged to themselves, their families and friends and that's how a tragedy evolves.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/bZVSkGNqd4oz3rhqbhIeIpvAEKy.jpg",
-        "trailerKey": null,
-        "rtScore": null,
-        "reason": null,
-        "predictedRating": 3,
-        "streaming": []
-      },
-      {
-        "title": "We Are Who We Are",
-        "type": "tv",
-        "year": 2020,
-        "director": "Luca Guadagnino",
-        "predictedRating": 3,
-        "actors": [
-          "Jack Dylan Grazer",
-          "Jordan Kristine Seamón",
-          "Chloë Sevigny",
-          "Kid Cudi"
-        ],
-        "plot": "Two American teenagers living on a military base in Italy explore their fluid identities, sexuality, and burgeoning friendships in a sun-drenched, emotionally charged coming-of-age tale.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/33btSKKmjmc24hK9Vj1sRWQGfyh.jpg",
-        "trailerKey": "0OsxIi1U8U0",
-        "rtScore": "89%",
-        "reason": "Like Euphoria, this series is a lush, introspective dive into teenage identity and desire, with a hypnotic visual style and a focus on authentic, messy emotions.",
-        "streaming": [
-          "Max"
-        ],
-        "categories": [
-          "coming-of-age",
-          "lgbtq+",
-          "drama",
-          "slice of life"
-        ],
-        "categoryPaths": []
-      },
-      {
-        "title": "My Mad Fat Diary",
-        "type": "tv",
-        "year": 2013,
-        "director": "Various",
-        "predictedRating": 3,
-        "actors": [
-          "Sharon Rooney",
-          "Claire Rushbrook",
-          "Jodie Comer",
-          "Nico Mirallegro"
-        ],
-        "plot": "In 1990s Lincolnshire, a troubled teen girl returns home after a psychiatric hospital stay, hiding her past from her new friends while grappling with body image, romance, and mental health.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/nxAaKVzxnGeXSrMjHMtzo523DaC.jpg",
-        "trailerKey": "3tmqLvgUd-s",
-        "rtScore": "93%",
-        "reason": "You'll connect with its raw, darkly humorous exploration of trauma and self-acceptance, echoing Euphoria's brutal honesty about mental illness and teenage survival.",
-        "streaming": [
-          "Amazon Prime Video",
-          "Hulu"
-        ],
-        "categories": [
-          "teen drama",
-          "mental health",
-          "period piece",
-          "british"
-        ],
-        "categoryPaths": []
-      },
-      {
-        "title": "The End of the F***ing World",
-        "type": "tv",
-        "year": 2017,
-        "director": "Various",
-        "predictedRating": 3,
-        "actors": [
-          "Alex Lawther",
-          "Jessica Barden",
-          "Gemma Whelan",
-          "Wunmi Mosaku"
-        ],
-        "plot": "A self-proclaimed psychopath and a rebellious teen go on a road trip that turns violent and darkly romantic, as they flee their troubled pasts and discover unexpected connection.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/f1OV9xEJCZVYcYSDRr5xOD8NJw3.jpg",
-        "trailerKey": "SqILm2JuHx4",
-        "rtScore": "92%",
-        "reason": "Its deadpan, stylized storytelling and focus on alienated, broken teenagers on the fringes of society will feel instantly familiar after Euphoria's electric nihilism.",
-        "streaming": [
-          "Netflix"
-        ],
-        "categories": [
-          "dark comedy",
-          "crime",
-          "coming-of-age",
-          "british"
-        ],
-        "categoryPaths": []
-      },
-      {
-        "title": "Insecure",
-        "type": "tv",
-        "year": 2016,
-        "director": "Melina Matsoukas, Issa Rae",
-        "predictedRating": 3,
-        "actors": [
-          "Issa Rae",
-          "Yvonne Orji",
-          "Jay Ellis",
-          "Natasha Rothwell"
-        ],
-        "plot": "A modern comedy-drama about the personal and professional lives of two black female friends in Los Angeles, exploring identity, race, and messy relationships with honest humor.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/sGMwPIE6m9QI3LzCRXnZG8opZtB.jpg",
-        "trailerKey": "YdKqUMZi5-I",
-        "rtScore": "99%",
-        "reason": "You crave Euphoria's unflinching, stylish character work; Insecure blends witty dialogue with raw vulnerability in a similarly nuanced look at modern life.",
-        "streaming": [
-          "Max",
-          "Hulu",
-          "Netflix"
-        ],
-        "categories": [
-          "comedy-drama",
-          "friendship",
-          "identity",
-          "contemporary"
-        ],
-        "categoryPaths": []
-      },
-      {
-        "title": "The Underground Railroad",
-        "type": "tv",
-        "year": 2021,
-        "director": "Barry Jenkins",
-        "predictedRating": 3,
-        "actors": [
-          "Thuso Mbedu",
-          "Joel Edgerton",
-          "Chase W. Dillon",
-          "Aaron Pierre"
-        ],
-        "plot": "A young enslaved woman's harrowing journey through a fantastical underground network of trains and tunnels, confronting systemic brutality and seeking freedom.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/CrrTqw7LHafnbdH9UcK60aOZSm.jpg",
-        "trailerKey": "_Pq5Usc_JDA",
-        "rtScore": "94%",
-        "reason": "You admire Euphoria's visceral, cinematic storytelling; this series uses poetic imagery and brutal realism to explore trauma and resilience with equal gravity.",
-        "streaming": [
-          "Amazon Prime Video"
-        ],
-        "categories": [
-          "historical drama",
-          "psychological thriller",
-          "survival",
-          "fantasy"
-        ],
-        "categoryPaths": []
-      },
-      {
-        "title": "13 Reasons Why",
-        "type": "tv",
-        "year": 2017,
-        "director": "Tom McCarthy, Kyle Patrick Alvarez",
-        "predictedRating": 3,
-        "actors": [
-          "Dylan Minnette",
-          "Katherine Langford",
-          "Christian Navarro",
-          "Alisha Boe"
-        ],
-        "plot": "After a high school student dies by suicide, her friend discovers a box of cassette tapes detailing the 13 reasons why she ended her life, unraveling a web of bullying, trauma, and secrets.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/nel144y4dIOdFFid6twN5mAX9Yd.jpg",
-        "trailerKey": "QkT-HIMSrRk",
-        "rtScore": "30%",
-        "reason": "You crave Euphoria's intense, controversial look at teen mental health and suicide; this series dives into similar raw territory.",
-        "streaming": [
-          "Netflix"
-        ],
-        "categories": [
-          "teen drama",
-          "mystery",
-          "mental health"
-        ],
-        "categoryPaths": []
-      },
-      {
-        "title": "Genera+ion",
-        "type": "tv",
-        "year": 2021,
-        "director": "Zelda Barnz, Daniel Barnz",
-        "predictedRating": 3,
-        "actors": [
-          "Justice Smith",
-          "Chloe East",
-          "Nathanya Alexander",
-          "Uly Schlesinger"
-        ],
-        "plot": "A provocative, multigenerational look at a group of modern high school students exploring sexuality, identity, and rebellion against their conservative Orange County backdrop.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/k2T6PmKcTIZRvNAP5LV81MekoPf.jpg",
-        "trailerKey": "iyMnejHiQ08",
-        "rtScore": "63%",
-        "reason": "You like Euphoria's provocative, hyper-aware teen world; Genera+ion tackles similar themes of identity and queer exploration with a fresh, Gen Z voice.",
-        "streaming": [
-          "HBO Max"
-        ],
-        "categories": [
-          "teen drama",
-          "lgbtq+",
-          "coming-of-age"
-        ],
-        "categoryPaths": []
-      },
-      {
-        "title": "Grand Army",
-        "type": "tv",
-        "year": 2020,
-        "director": "Katie Cappiello",
-        "predictedRating": 3,
-        "actors": [
-          "Odessa A'zion",
-          "Amir Bageria",
-          "Maliq Johnson",
-          "Alison Mosshart"
-        ],
-        "plot": "Five students at a Brooklyn high school grapple with systemic racism, sexual assault, and personal struggles in a diverse, pressure-cooker environment.",
-        "posterUrl": "https://image.tmdb.org/t/p/w500/muCLCLA9RiYsVhk7pjzcbShsUYq.jpg",
-        "trailerKey": "vJJCjB8hd_0",
-        "rtScore": "80%",
-        "reason": "You liked Euphoria's unflinching look at modern teen issues; this series tackles similar topics like activism, trauma, and identity with a raw, ensemble-driven approach.",
-        "streaming": [
-          "Netflix"
-        ],
-        "categories": [
-          "teen drama",
-          "social issues",
-          "gritty",
-          "lgbtq+"
         ],
         "categoryPaths": []
       }

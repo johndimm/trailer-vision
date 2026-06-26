@@ -2,15 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ALL_CHANNEL, ACTIVE_CHANNEL_KEY, CHANNELS_KEY } from "../channels/page";
+import { ACTIVE_CHANNEL_KEY, CHANNELS_KEY } from "../channels/page";
 import {
-  clearAllPrefetchQueueKeys,
   isPrefetchQueueStorageKey,
   listPrefetchQueueStorageKeys,
 } from "../lib/storageKeys";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { mergeFactoryChannelsAndQueues } from "../lib/factoryChannels";
-import { normalizeChannelList } from "../lib/channelBulkActions";
+import { applyFactoryBootstrap, mergeFactoryChannelsAndQueues } from "../lib/factoryChannels";
 import { isCustomLlm, decodeCustomLlm, encodeCustomLlm } from "../lib/customModel";
 
 export const SETTINGS_KEY = "movie-recs-settings";
@@ -102,7 +100,7 @@ export default function SettingsPage() {
   const [exportHistory, setExportHistory] = useState(true);
   const [importNotice, setImportNotice] = useState<string | null>(null);
   const [importDialog, setImportDialog] = useState<{ count: number; apply: () => void } | null>(null);
-  const [confirm, setConfirm] = useState<"remove-all" | "clear-history" | null>(null);
+  const [confirm, setConfirm] = useState<"reset" | null>(null);
   const [factoryMergeNote, setFactoryMergeNote] = useState<string | null>(null);
   // Lazily seed the custom-model fields from any previously saved config (safe under the
   // `mounted` render gate below, which prevents an SSR/client hydration mismatch).
@@ -192,18 +190,23 @@ export default function SettingsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const handleClearHistory = () => {
-    DATA_KEYS.forEach((k) => localStorage.removeItem(k));
-    clearAllPrefetchQueueKeys();
-    setConfirm(null);
-    router.push("/");
-  };
-
-  const handleRemoveAll = () => {
-    DATA_KEYS.forEach((k) => localStorage.removeItem(k));
-    clearAllPrefetchQueueKeys();
-    localStorage.setItem(CHANNELS_KEY, JSON.stringify(normalizeChannelList([ALL_CHANNEL])));
-    localStorage.setItem(ACTIVE_CHANNEL_KEY, "all");
+  const handleResetEverything = () => {
+    // Wipe every app key (local + session) so the next load is a genuine first run, then
+    // reapply the bundled starter pack exactly as a brand-new visitor sees it. Removing the
+    // settings key returns the app to its default settings (DeepSeek, trailers, no global request).
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("movie-recs")) localStorage.removeItem(k);
+      }
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const k = sessionStorage.key(i);
+        if (k && k.startsWith("movie-recs")) sessionStorage.removeItem(k);
+      }
+    } catch {
+      /* ignore */
+    }
+    applyFactoryBootstrap();
     setConfirm(null);
     router.push("/");
   };
@@ -422,43 +425,24 @@ export default function SettingsPage() {
 
           <hr className="border-zinc-200" />
 
-          {/* Clear history */}
+          {/* Reset everything */}
           <section className="flex flex-col gap-2">
             <div>
-              <h2 className="text-sm font-semibold">Clear history &amp; taste profile</h2>
+              <h2 className="text-sm font-semibold">Reset to a fresh start</h2>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Clears all ratings, watchlist, skipped titles, and the AI taste profile. Channels are kept.
+                <strong className="text-zinc-600 font-medium">Erases everything</strong> in this
+                browser &mdash; all channels, ratings, watchlist, taste profile, queues, and settings
+                &mdash; and reloads the app exactly as a brand-new visitor sees it, with the bundled
+                starter channels and default settings restored.
               </p>
             </div>
             <div>
               <button
                 type="button"
-                onClick={() => setConfirm("clear-history")}
+                onClick={() => setConfirm("reset")}
                 className="px-4 py-2 rounded-lg border border-red-200 text-red-600 text-sm hover:bg-red-50 transition-colors"
               >
-                Clear history &amp; taste profile
-              </button>
-            </div>
-          </section>
-
-          {/* Remove all channels */}
-          <section className="flex flex-col gap-2">
-            <div>
-              <h2 className="text-sm font-semibold">Remove all channels</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                <strong className="text-zinc-600 font-medium">Deletes</strong> every custom channel,
-                all ratings, watchlist, and taste history. You are left with only the{" "}
-                <strong className="text-zinc-600 font-medium">All</strong> channel. Nothing else is
-                recreated until you add channels.
-              </p>
-            </div>
-            <div>
-              <button
-                type="button"
-                onClick={() => setConfirm("remove-all")}
-                className="px-4 py-2 rounded-lg border border-red-200 text-red-600 text-sm hover:bg-red-50 transition-colors"
-              >
-                Remove all channels
+                Reset to a fresh start
               </button>
             </div>
           </section>
@@ -529,28 +513,17 @@ export default function SettingsPage() {
       </ConfirmDialog>
 
       <ConfirmDialog
-        open={confirm === "clear-history"}
-        title="Clear history & taste profile?"
+        open={confirm === "reset"}
+        title="Reset to a fresh start?"
         tone="danger"
-        confirmLabel="Clear"
+        confirmLabel="Erase & reset"
         cancelLabel="Cancel"
         onCancel={() => setConfirm(null)}
-        onConfirm={handleClearHistory}
+        onConfirm={handleResetEverything}
       >
-        This clears all ratings, watchlist, skipped titles, and the AI taste profile. Your channels are kept. You cannot undo this.
-      </ConfirmDialog>
-
-      <ConfirmDialog
-        open={confirm === "remove-all"}
-        title="Remove all channels?"
-        tone="danger"
-        confirmLabel="Delete all"
-        cancelLabel="Cancel"
-        onCancel={() => setConfirm(null)}
-        onConfirm={handleRemoveAll}
-      >
-        This deletes all custom channels, ratings, watchlist, and taste history. You will keep only
-        the <strong className="text-zinc-700">All</strong> channel. You cannot undo this.
+        This erases everything in this browser &mdash; all channels, ratings, watchlist, taste
+        profile, queues, and settings &mdash; and reloads the app as a brand-new visitor would see
+        it. You cannot undo this.
       </ConfirmDialog>
     </>
   );
