@@ -38,8 +38,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 const LLM_OPTIONS: { value: string; label: string; sub: string }[] = [
   { value: "deepseek", label: "DeepSeek", sub: "DeepSeek" },
-  { value: "claude", label: "Claude", sub: "Anthropic" },
-  { value: "gpt-4o", label: "GPT-4o", sub: "OpenAI" },
 ];
 
 const DATA_KEYS = [
@@ -67,7 +65,13 @@ export function loadSettings(): AppSettings {
   if (typeof window === "undefined") return DEFAULT_SETTINGS;
   try {
     const s = localStorage.getItem(SETTINGS_KEY);
-    return s ? { ...DEFAULT_SETTINGS, ...JSON.parse(s) } : DEFAULT_SETTINGS;
+    const merged = s ? { ...DEFAULT_SETTINGS, ...JSON.parse(s) } : DEFAULT_SETTINGS;
+    // Only DeepSeek and Bring-Your-Own-Model remain; coerce any retired hosted
+    // selection (Claude, GPT-4o, Gemini) back to DeepSeek.
+    if (merged.llm !== "deepseek" && !isCustomLlm(merged.llm)) {
+      return { ...merged, llm: "deepseek" };
+    }
+    return merged;
   } catch {
     return DEFAULT_SETTINGS;
   }

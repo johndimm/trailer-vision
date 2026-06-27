@@ -2551,7 +2551,10 @@ export default function Home() {
     try {
       setDisplayMode(loadSetting("displayMode", "trailers" as const));
       setAutoAdvance(loadSetting("autoAdvance", false));
-      setLlm(loadSetting("llm", "deepseek"));
+      // Only DeepSeek and Bring-Your-Own-Model are offered now; coerce any retired
+      // hosted selection (Claude, GPT-4o, Gemini) back to DeepSeek.
+      const storedLlm = loadSetting<string>("llm", "deepseek");
+      setLlm(storedLlm === "deepseek" || storedLlm.startsWith("custom:") ? storedLlm : "deepseek");
       setUserRequest(loadSetting("userRequest", ""));
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {

@@ -1,9 +1,9 @@
 export async function GET() {
   const llms: { id: string; label: string }[] = [];
 
+  // Only DeepSeek is offered as a hosted model; users who want Claude, GPT-4o, or
+  // anything else can Bring Your Own Model (any OpenAI-compatible endpoint) in Settings.
   if (process.env.DEEPSEEK_API_KEY)   llms.push({ id: "deepseek",   label: "DeepSeek" });
-  if (process.env.ANTHROPIC_API_KEY)  llms.push({ id: "claude",     label: "Claude (Anthropic)" });
-  if (process.env.OPENAI_API_KEY)     llms.push({ id: "gpt-4o",     label: "GPT-4o (OpenAI)" });
 
   return Response.json({ llms });
 }
