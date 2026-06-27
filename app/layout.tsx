@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import NavBar from "./components/NavBar";
 
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <NavBar hubUrl={process.env.VITE_HUB_URL || "http://127.0.0.1:8000"} />
         {children}
+        <Analytics />
       </body>
     </html>
   );
