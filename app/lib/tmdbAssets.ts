@@ -453,6 +453,53 @@ export async function resolveMovieFromTmdbByTitle(
   }
 }
 
+/** TMDB watch-provider id for Amazon Video (rent/buy); 9 is the separate Prime subscription. */
+const AMAZON_VIDEO_PROVIDER_ID = 10;
+
+export type WatchOptions = { amazon: boolean };
+
+/**
+ * Resolve a title to its TMDB id and report whether it's available to rent or buy on
+ * Amazon Video in the US. Used to gate the affiliate link so it only appears for titles
+ * the visitor can actually transact on.
+ */
+export async function fetchWatchOptions(
+  title: string,
+  type: MediaType,
+  year: number | null,
+): Promise<WatchOptions> {
+  const none: WatchOptions = { amazon: false };
+  const apiKey = process.env.TMDB_API_KEY;
+  if (!apiKey || !title.trim()) return none;
+
+  try {
+    const hit = await findBestTmdbHit(apiKey, title, type, year);
+    const tmdbId = hit?.id;
+    if (!tmdbId) return none;
+
+    const path = type === "tv" ? `tv/${tmdbId}` : `movie/${tmdbId}`;
+    const res = await fetch(
+      `https://api.themoviedb.org/3/${path}/watch/providers?api_key=${apiKey}`,
+    );
+    if (!res.ok) return none;
+
+    const json = (await res.json()) as {
+      results?: Record<
+        string,
+        { rent?: { provider_id: number }[]; buy?: { provider_id: number }[] }
+      >;
+    };
+    const us = json.results?.US;
+    if (!us) return none;
+
+    const transactional = [...(us.rent ?? []), ...(us.buy ?? [])];
+    return { amazon: transactional.some((p) => p.provider_id === AMAZON_VIDEO_PROVIDER_ID) };
+  } catch (e) {
+    console.error("[tmdbAssets] fetchWatchOptions failed:", e);
+    return none;
+  }
+}
+
 export async function fetchTmdbAssets(
   title: string,
   type: MediaType,

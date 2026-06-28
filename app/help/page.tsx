@@ -89,7 +89,7 @@ export default function HelpPage() {
         <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-5 sm:p-6 space-y-3">
           <h2 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide">Settings</h2>
           <p className="text-sm text-zinc-600 leading-relaxed">
-            Choose trailers vs posters and which LLM to use — DeepSeek, Claude, GPT-4o, or
+            Choose trailers vs posters and which LLM to use — DeepSeek or
             <strong className="text-zinc-800"> Custom</strong> to bring your own: point it at any OpenAI-compatible endpoint
             (OpenRouter, Together, Groq, or a local Ollama / LM Studio server) with a base URL, model name, and optional key.
             That key stays in your browser. <strong className="text-zinc-800">Global request</strong> adds free-text
@@ -106,6 +106,11 @@ export default function HelpPage() {
             next batch, but nothing is kept server-side afterward: it&apos;s stateless, more like an early chat session than a platform
             building a permanent profile of you. Use <strong className="text-zinc-800">Export</strong> in Settings to back up or move your
             data between browsers.
+          </p>
+          <p className="text-sm text-zinc-600 leading-relaxed">
+            Some titles show a <strong className="text-zinc-800">Rent or buy</strong> link to Amazon. It&apos;s an affiliate
+            link — if you rent or buy after clicking, the site may earn a small commission at no extra cost to you. As an Amazon
+            Associate I earn from qualifying purchases. It appears only for titles Amazon actually offers for rent or purchase.
           </p>
         </section>
 

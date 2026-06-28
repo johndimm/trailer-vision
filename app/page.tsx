@@ -1224,6 +1224,67 @@ function MovieCategoryTags({ categories, className = "" }: { categories?: string
   );
 }
 
+// The Amazon Associates tag is public (it rides in the outbound URL), so it lives in a
+// NEXT_PUBLIC_ env var. The Rent/Buy row stays hidden entirely unless it's configured.
+const AMAZON_AFFILIATE_TAG = process.env.NEXT_PUBLIC_AMAZON_AFFILIATE_TAG ?? "";
+const AFFILIATE_ENABLED = AMAZON_AFFILIATE_TAG.length > 0;
+
+function amazonWatchUrl(title: string, year: number | null): string {
+  const q = year ? `${title} ${year}` : title;
+  // Prime Video-scoped search, affiliate-tagged.
+  return `https://www.amazon.com/s?k=${encodeURIComponent(q)}&i=instant-video&tag=${encodeURIComponent(AMAZON_AFFILIATE_TAG)}`;
+}
+
+/** Rent/buy affiliate links, shown only for providers that actually carry the title (per TMDB). */
+const WatchLinks = memo(function WatchLinks({ movie }: { movie: CurrentMovie }) {
+  // Track the title we've confirmed is on Amazon, so the link is derived (no stale flash
+  // across titles) rather than reset synchronously inside the effect.
+  const [amazonTitle, setAmazonTitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!AFFILIATE_ENABLED) return;
+    let cancelled = false;
+    const ctrl = new AbortController();
+    fetch("/api/watch-options", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: movie.title, type: movie.type, year: movie.year }),
+      signal: ctrl.signal,
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { amazon?: boolean } | null) => {
+        if (!cancelled) setAmazonTitle(d?.amazon ? movie.title : null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      ctrl.abort();
+    };
+  }, [movie.title, movie.type, movie.year]);
+
+  const onAmazon = amazonTitle === movie.title;
+  if (!AFFILIATE_ENABLED || !onAmazon) return null;
+
+  return (
+    <div className="mt-2.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-zinc-500">Rent or buy:</span>
+        <a
+          href={amazonWatchUrl(movie.title, movie.year)}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-950/50 text-amber-200 border border-amber-800/50 hover:bg-amber-900/60 transition-colors"
+        >
+          Amazon
+        </a>
+      </div>
+      <p className="mt-1 text-[10px] leading-tight text-zinc-600">
+        As an Amazon Associate I earn from qualifying purchases.
+      </p>
+    </div>
+  );
+});
+
 /** Trailer layout: title block only -- isolated from rating state. */
 const TrailerMetadata = memo(function TrailerMetadata({
   movie,
@@ -1290,6 +1351,7 @@ const TrailerMetadata = memo(function TrailerMetadata({
           ))}
         </div>
       )}
+      <WatchLinks movie={movie} />
     </div>
   );
 });
@@ -1404,6 +1466,7 @@ const PosterMovieTop = memo(function PosterMovieTop({
             ))}
           </div>
         )}
+        <WatchLinks movie={movie} />
       </div>
     </div>
   );
