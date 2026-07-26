@@ -354,7 +354,7 @@ Called when a title is saved to the watchlist (blue 4–5★ or bulk add from Ch
 
 ## Shared LLM caller  app/api/next-movie/llm.ts
 export async function callLLM(llm, systemPrompt, userMessage): Promise<string>
-Handles: deepseek (deepseek-chat), claude (claude-opus-4-6, anthropic-version header),
+Handles: deepseek (deepseek-v4-flash), claude (claude-opus-4-6, anthropic-version header),
 gpt-4o (openai), and custom:* (bring your own — decodes the config and POSTs to the user's
 OpenAI-compatible {baseUrl}/chat/completions with an optional Bearer key). The custom branch is
 checked first via isCustomLlm(); unknown ids throw.
