@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/settings", label: "Settings" },
   { href: "/help", label: "Help" },
   { href: "/debug", label: "Prompt" },
+  { href: "/about", label: "About" },
 ];
 
 /** Player home and full-screen graph use the dark chrome; utility pages use light chrome. */
