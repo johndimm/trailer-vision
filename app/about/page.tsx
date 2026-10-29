@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-const GARDEN_URL = 'https://johndimm.org';
+const GARDEN_URL = 'https://www.johndimm.org';
 const GITHUB_URL = 'https://github.com/johndimm/trailer-vision';
 
 export const metadata = {
