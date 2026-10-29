@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-const GARDEN_URL = 'https://johndimm.vercel.app';
+const GARDEN_URL = 'https://johndimm.org';
 const GITHUB_URL = 'https://github.com/johndimm/trailer-vision';
 
 export const metadata = {

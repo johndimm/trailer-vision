@@ -34,7 +34,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <NavBar hubUrl={process.env.VITE_HUB_URL || "https://johndimm.vercel.app"} />
+        <NavBar hubUrl={process.env.VITE_HUB_URL || "https://johndimm.org"} />
         {children}
         <footer className="w-full border-t border-zinc-800 py-4 text-center text-xs text-zinc-500">
           © 2026 John Dimm
